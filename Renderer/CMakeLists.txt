@@ -1,0 +1,5 @@
+file(GLOB_RECURSE source_files *.h *.cpp)
+add_library(Renderer STATIC ${source_files})
+target_link_libraries(Renderer Framework)
+set_target_properties(Renderer PROPERTIES COTIRE_CXX_PREFIX_HEADER_INIT "stdafx.h")
+cotire(Renderer)
