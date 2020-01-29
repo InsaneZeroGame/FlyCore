@@ -13,8 +13,9 @@ int main() {
 	while (1)
 	{
 		renderer->OnUpdate();
+		window->OnUpdate();
+
 	}
-	window->OnUpdate();
 	
 	renderer->OnDestory();
 	window->OnDestory();

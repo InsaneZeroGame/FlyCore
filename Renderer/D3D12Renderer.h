@@ -7,6 +7,7 @@
 #include "D3D12DescHeap.h"
 #include "D3D12Texture.h"
 #include "D3D12CmdManager.h"
+#include "D3D12CmdAllocatorPool.h"
 
 
 namespace Renderer {
@@ -35,15 +36,29 @@ namespace Renderer {
 
 		void InitSwapChain();
 
+		void InitSyncPrimitive();
+
+		void SyncFrame();
+
+		HANDLE m_fenceEvent;
+
+		std::array<int64_t, 3> m_fenceValues;
+
+		ID3D12Fence* m_fence;
+
 		ID3D12DescriptorHeap* m_rtvHeap;
 
 		UINT m_rtvDescriptorSize;
 
 		D3D12CmdListManager* m_cmdListManager;
 
-		ID3D12GraphicsCommandList* m_dummyCmdList;
+		D3D12CmdAllocatorPool* m_cmdAllocatorPool;
 
-		IDXGISwapChain1* m_swapChain1 = nullptr;
+		ID3D12GraphicsCommandList* m_graphicsCmdList;
+
+		std::array<ID3D12CommandAllocator*, Constants::SWAPCHAIN_BUFFER_COUNT> m_graphicsCmdAllocator;
+
+		Microsoft::WRL::ComPtr<IDXGISwapChain3> m_swapChain = nullptr;
 
 		ID3D12Device* m_device = nullptr;
 
@@ -54,6 +69,8 @@ namespace Renderer {
 		D3D12CmdQueue* m_cmdQueue = nullptr;
 
 		std::array<D3D12Texture*,3> m_renderTargets;
+
+		uint32_t m_frameIndex;
 
 	};
 }

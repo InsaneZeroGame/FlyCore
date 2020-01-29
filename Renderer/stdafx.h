@@ -27,6 +27,7 @@
 #include <cstdio>
 #include <cstdarg>
 #include <vector>
+#include <queue>
 #include <memory>
 #include <string>
 #include <exception>
@@ -38,8 +39,8 @@
 
 namespace Constants
 {
-	extern const uint32_t SWAPCHAIN_BUFFER_COUNT;
-	extern DXGI_FORMAT SwapChainFormat;
+	static const uint32_t SWAPCHAIN_BUFFER_COUNT = 3;
+	static DXGI_FORMAT SwapChainFormat = DXGI_FORMAT_R10G10B10A2_UNORM;
 };
 
 

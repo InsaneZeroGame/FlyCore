@@ -25,6 +25,7 @@ namespace Renderer
 
 		void AllocateCmdList(D3D12_COMMAND_LIST_TYPE p_type, 
 			ID3D12PipelineState* p_pipelineState,
+			ID3D12CommandAllocator* p_cmdAllocator,
 			REFIID riid,
 			_COM_Outptr_  void** ppCommandList);
 
@@ -33,16 +34,13 @@ namespace Renderer
 			p_cmdList->Close();
 		};
 
-		__forceinline void ResetCmdList(ID3D12GraphicsCommandList* p_cmdList,ID3D12PipelineState* pInitialState)
+		__forceinline void ResetCmdList(ID3D12GraphicsCommandList* p_cmdList,ID3D12CommandAllocator* p_allocator,ID3D12PipelineState* pInitialState)
 		{
-			m_cmdAllocators[p_cmdList->GetType()]->Reset();
-			p_cmdList->Reset(m_cmdAllocators[p_cmdList->GetType()], pInitialState);
+			p_allocator->Reset();
+			p_cmdList->Reset(p_allocator, pInitialState);
 		};
 
 	private:
-
-		//Direct Bundle Compute Copy = 4
-		std::array<ID3D12CommandAllocator*, 4> m_cmdAllocators;
 
 		D3D12CmdListManager();
 
