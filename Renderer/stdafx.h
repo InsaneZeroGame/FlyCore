@@ -39,6 +39,7 @@
 
 namespace Constants
 {
+	static const uint64_t VERTEX_BUFFER_SIZE = 10 * 1024 * 1024;
 	static const uint32_t SWAPCHAIN_BUFFER_COUNT = 3;
 	static DXGI_FORMAT SwapChainFormat = DXGI_FORMAT_R10G10B10A2_UNORM;
 };

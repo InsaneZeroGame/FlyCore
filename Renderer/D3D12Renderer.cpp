@@ -34,6 +34,7 @@ void Renderer::D3D12Renderer::OnInit()
     InitSwapChain();
     InitSyncPrimitive();
 
+
 }
 
 void Renderer::D3D12Renderer::OnUpdate()
@@ -63,14 +64,7 @@ void Renderer::D3D12Renderer::OnUpdate()
 
 }
 
-void Renderer::D3D12Renderer::OnDestory()
-{
-    if (m_cmdQueue)
-    {
-        delete m_cmdQueue;
-        m_cmdQueue = nullptr;
-    }
-}
+
 
 void Renderer::D3D12Renderer::RenderScene()
 {
@@ -186,7 +180,6 @@ void Renderer::D3D12Renderer::SyncFrame()
     auto currentBackBufferIndex = m_swapChain->GetCurrentBackBufferIndex();
 
     //2.Query if cmdlist to this buffer is completed.
-    auto debugIndex = m_fence->GetCompletedValue();
     if (m_fence->GetCompletedValue() < m_fenceValues[currentBackBufferIndex])
     {
         m_fence->SetEventOnCompletion(m_fenceValues[currentBackBufferIndex], m_fenceEvent);
@@ -196,4 +189,19 @@ void Renderer::D3D12Renderer::SyncFrame()
     m_frameIndex = currentBackBufferIndex;
 
 
+}
+
+void Renderer::D3D12Renderer::InitBuffers()
+{
+    m_vertexBuffer = new D3D12VertexBuffer(Constants::VERTEX_BUFFER_SIZE);
+}
+
+void Renderer::D3D12Renderer::OnDestory()
+{
+    SAFE_DELETE(m_cmdQueue);
+    for (auto i = 0; i < m_renderTargets.size(); ++i)
+    {
+        SAFE_DELETE(m_renderTargets[i]);
+    }
+    SAFE_DELETE(m_vertexBuffer); 
 }

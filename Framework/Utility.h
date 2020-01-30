@@ -78,6 +78,8 @@ namespace Utility
 
 #define HALT( ... ) ERROR( __VA_ARGS__ ) __debugbreak();
 
+#define SAFE_DELETE(X) if(X) {delete X ; X=nullptr;}
+
 #ifdef RELEASE
 
     #define ASSERT( isTrue, ... ) (void)(isTrue)

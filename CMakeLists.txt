@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.12.0)
-project (FlyCore CXX)
+project (FlyingCore CXX)
 set (CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMake")
 include(cotire)
 

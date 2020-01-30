@@ -8,6 +8,7 @@
 #include "D3D12Texture.h"
 #include "D3D12CmdManager.h"
 #include "D3D12CmdAllocatorPool.h"
+#include "D3D12Buffer.h"
 
 
 namespace Renderer {
@@ -39,6 +40,12 @@ namespace Renderer {
 		void InitSyncPrimitive();
 
 		void SyncFrame();
+
+		void InitBuffers();
+
+		D3D12VertexBuffer* m_vertexBuffer;
+
+		D3D12IndexBuffer* m_indexBuffer;
 
 		HANDLE m_fenceEvent;
 
