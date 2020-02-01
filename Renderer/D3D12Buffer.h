@@ -12,7 +12,7 @@ namespace Renderer
 		
 		virtual ~D3D12Buffer();
 
-		__forceinline void CopyData(void* p_src,uint64_t p_offset,uint64_t p_size)
+		virtual void CopyData(void* p_src,uint64_t p_offset,uint64_t p_size)
 		{
 			if (!m_data) return;
 			ASSERT(p_offset + p_size <= m_bufferSize,"Buffer Overflow");
@@ -31,8 +31,10 @@ namespace Renderer
 		}
 
 	protected:
-		D3D12Buffer(uint64_t p_size,D3D12_HEAP_TYPE p_heapType,
+		D3D12Buffer(uint64_t p_size,
+			D3D12_HEAP_TYPE p_heapType,
 			D3D12_HEAP_FLAGS p_heapFlag,
+			D3D12_RESOURCE_STATES p_initialState,
 			D3D12_RESOURCE_DESC p_resourceDesc);
 
 		ID3D12Device* m_device;
@@ -51,7 +53,15 @@ namespace Renderer
 		D3D12VertexBuffer(uint64_t p_size);
 		~D3D12VertexBuffer();
 
+		__forceinline D3D12_VERTEX_BUFFER_VIEW GetBufferView() const
+		{
+			return m_vertexBufferView;
+		}
+
 	private:
+
+		D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
+
 	};
 
 
@@ -64,7 +74,15 @@ namespace Renderer
 		D3D12UploadBuffer(uint64_t p_size);
 		~D3D12UploadBuffer();
 
+		void CopyData(void* p_src, uint64_t p_offset, uint64_t p_size) override;
+
+		__forceinline D3D12_VERTEX_BUFFER_VIEW GetBufferView() const
+		{
+			return m_vertexBufferView;
+		}
+
 	private:
+		D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
 
 	};
 }

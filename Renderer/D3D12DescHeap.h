@@ -13,6 +13,8 @@ namespace Renderer
 
 		__forceinline ID3D12DescriptorHeap* GetHeap() { return m_descHeap; }
 
+		
+
 	private:
 		ID3D12Device* m_device = nullptr;
 

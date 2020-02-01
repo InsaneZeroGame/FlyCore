@@ -5,6 +5,7 @@
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3.h>
 #include "IModule.h"
+#include <functional>
 
 namespace fcf
 {
@@ -23,11 +24,16 @@ namespace fcf
 
 		~Window();
 
+		void SetRendererCallback(std::function<void(void)> p_callback)
+		{
+			m_renderCallback = p_callback;
+		}
 	private:
 		WindowDescriptor m_descriptor;
 
 		GLFWwindow* m_window;
 
+		std::function<void(void)> m_renderCallback;
 
 	public:
 		// Inherited via IModule

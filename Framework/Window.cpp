@@ -36,6 +36,7 @@ void fcf::Window::OnUpdate()
 {
     while (!glfwWindowShouldClose(m_window))
     {
+        m_renderCallback();
         glfwPollEvents();
     }
 }

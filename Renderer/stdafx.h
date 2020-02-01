@@ -39,9 +39,19 @@
 
 namespace Constants
 {
+	struct Vertex
+	{
+		float position[4];
+		float color[4];
+	};
+
 	static const uint64_t VERTEX_BUFFER_SIZE = 10 * 1024 * 1024;
 	static const uint32_t SWAPCHAIN_BUFFER_COUNT = 3;
 	static DXGI_FORMAT SwapChainFormat = DXGI_FORMAT_R10G10B10A2_UNORM;
+	static const uint64_t VERTEX_STRIDE_SIZE = sizeof(Vertex);
+	static const float CLEAR_COLOR[] = { 0.5F, 0.5F, 0.5F, 1.0f };
+
+
 };
 
 

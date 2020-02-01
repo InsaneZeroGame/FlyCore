@@ -5,6 +5,13 @@
 
 namespace Renderer
 {
+	struct D3D12Descriptor
+	{
+		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle;
+		D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle;
+	};
+
+
 	class D3D12DescManager : public Interface::INoCopy
 	{
 	public:
@@ -23,5 +30,6 @@ namespace Renderer
 
 		D3D12DescHeap* m_descHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
 
+		uint64_t m_descIncrementSize[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
 	};
 }

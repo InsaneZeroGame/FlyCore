@@ -14,7 +14,6 @@ Renderer::D3D12DescHeap::D3D12DescHeap(
 	l_desc.Type = p_type;
 
 	ASSERT_SUCCEEDED(m_device->CreateDescriptorHeap(&l_desc, MY_IID_PPV_ARGS(&m_descHeap)));
-
 }
 
 Renderer::D3D12DescHeap::~D3D12DescHeap()

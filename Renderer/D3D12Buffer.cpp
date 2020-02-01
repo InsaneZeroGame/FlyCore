@@ -26,6 +26,7 @@ Renderer::D3D12Buffer::D3D12Buffer(uint64_t p_size,
 		m_UsageState,
 		nullptr,
 		MY_IID_PPV_ARGS(&m_pResource));
+	m_GpuVirtualAddress = m_pResource->GetGPUVirtualAddress();
 
 }
 
@@ -36,10 +37,13 @@ Renderer::D3D12Buffer::~D3D12Buffer()
 
 Renderer::D3D12VertexBuffer::D3D12VertexBuffer(uint64_t p_size):
 	D3D12Buffer(p_size,D3D12_HEAP_TYPE::D3D12_HEAP_TYPE_DEFAULT,
-		D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS,
+		D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE,
 		D3D12_RESOURCE_STATE_COPY_DEST,
 		{ D3D12_RESOURCE_DIMENSION_BUFFER ,0,p_size,1,1,1,DXGI_FORMAT_UNKNOWN,{1,0},D3D12_TEXTURE_LAYOUT_ROW_MAJOR,D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE })
 {
+	m_vertexBufferView.BufferLocation = m_GpuVirtualAddress;
+	m_vertexBufferView.SizeInBytes = p_size;
+	m_vertexBufferView.StrideInBytes = Constants::VERTEX_STRIDE_SIZE;
 }
 
 Renderer::D3D12VertexBuffer::~D3D12VertexBuffer()
@@ -48,19 +52,29 @@ Renderer::D3D12VertexBuffer::~D3D12VertexBuffer()
 
 Renderer::D3D12UploadBuffer::D3D12UploadBuffer(uint64_t p_size):
 	D3D12Buffer(p_size, D3D12_HEAP_TYPE::D3D12_HEAP_TYPE_UPLOAD,
-		D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS,
+		D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE,
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		{ D3D12_RESOURCE_DIMENSION_BUFFER ,0,p_size,1,1,1,DXGI_FORMAT_UNKNOWN,{1,0},D3D12_TEXTURE_LAYOUT_ROW_MAJOR,D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE })
 
 {
-	m_data = new uint8_t[m_bufferSize];
+	m_vertexBufferView.BufferLocation = m_GpuVirtualAddress;
+	m_vertexBufferView.SizeInBytes = p_size;
+	m_vertexBufferView.StrideInBytes = Constants::VERTEX_STRIDE_SIZE;
 }
 
 Renderer::D3D12UploadBuffer::~D3D12UploadBuffer()
 {
-	if (m_data)
-	{
-		delete[] m_data;
-		m_data = nullptr;
-	}
+	
+}
+
+void Renderer::D3D12UploadBuffer::CopyData(void* p_src, uint64_t p_offset, uint64_t p_size)
+{
+	D3D12_RANGE l_mapRange = {};
+	l_mapRange.Begin = p_offset;
+	l_mapRange.End = p_offset + p_size;
+	m_offset = p_offset + p_size;
+	void* l_dataPtr = m_data;
+	m_pResource->Map(0, &l_mapRange, &l_dataPtr);
+	memcpy(l_dataPtr, p_src, p_size);
+	m_pResource->Unmap(0, &l_mapRange);
 }

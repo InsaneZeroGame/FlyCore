@@ -43,9 +43,19 @@ namespace Renderer {
 
 		void InitBuffers();
 
+		void InitRootSignature();
+
+		ID3D12RootSignature* m_rootSignature;
+
+		void InitPipelineState();
+
+		ID3D12PipelineState* m_pipelineState;
+
 		D3D12VertexBuffer* m_vertexBuffer;
 
 		D3D12IndexBuffer* m_indexBuffer;
+
+		D3D12UploadBuffer* m_uploadBuffer;
 
 		HANDLE m_fenceEvent;
 
