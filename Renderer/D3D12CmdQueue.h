@@ -12,12 +12,14 @@ namespace Renderer
 
 		ID3D12CommandQueue* GetQueue() const { return m_queue; }
 	
-		void Flush(uint64_t numLists,ID3D12CommandList* p_lists[],bool p_waitFinished = false);
+		void Flush(uint64_t numLists,ID3D12CommandList* p_lists[]);
 
 		__forceinline bool IsFinished() const
 		{
 			return !(m_fence->GetCompletedValue() < m_fenceValue);
 		}
+
+		void WaitFinish();
 
 	private:
 		ID3D12Device* m_device = nullptr;
@@ -30,6 +32,5 @@ namespace Renderer
 
 		ID3D12Fence* m_fence;
 
-		void WaitFinish();
 	};
 }

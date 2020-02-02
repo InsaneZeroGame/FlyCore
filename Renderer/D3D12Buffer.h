@@ -12,12 +12,12 @@ namespace Renderer
 		
 		virtual ~D3D12Buffer();
 
-		virtual void CopyData(void* p_src,uint64_t p_offset,uint64_t p_size)
+		virtual void CopyData(void* p_src ,uint64_t p_size)
 		{
 			if (!m_data) return;
-			ASSERT(p_offset + p_size <= m_bufferSize,"Buffer Overflow");
-			memcpy(m_data + p_offset, p_src, p_size);
-			m_offset = p_offset + p_size;
+			ASSERT(m_offset + p_size <= m_bufferSize,"Buffer Overflow");
+			memcpy(m_data + m_offset, p_src, p_size);
+			m_offset += p_size;
 		}
 
 		__forceinline uint64_t GetOffset() const
@@ -74,15 +74,13 @@ namespace Renderer
 		D3D12UploadBuffer(uint64_t p_size);
 		~D3D12UploadBuffer();
 
-		void CopyData(void* p_src, uint64_t p_offset, uint64_t p_size) override;
+		uint64_t GetDataOffsetLastUpload();
 
-		__forceinline D3D12_VERTEX_BUFFER_VIEW GetBufferView() const
-		{
-			return m_vertexBufferView;
-		}
+		void CopyData(void* p_src, uint64_t p_size) override;
 
 	private:
-		D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
+		uint64_t m_dataOffsetLastUpload;
 
+		uint64_t m_dataSizeToUpload;
 	};
 }

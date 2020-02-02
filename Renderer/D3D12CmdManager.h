@@ -11,7 +11,7 @@ namespace Renderer
 	public:
 		static D3D12CmdListManager& GetManager()
 		{
-			D3D12CmdListManager l_manager;
+			static D3D12CmdListManager l_manager;
 			return l_manager;
 		}
 

@@ -42,8 +42,8 @@ Renderer::D3D12VertexBuffer::D3D12VertexBuffer(uint64_t p_size):
 		{ D3D12_RESOURCE_DIMENSION_BUFFER ,0,p_size,1,1,1,DXGI_FORMAT_UNKNOWN,{1,0},D3D12_TEXTURE_LAYOUT_ROW_MAJOR,D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE })
 {
 	m_vertexBufferView.BufferLocation = m_GpuVirtualAddress;
-	m_vertexBufferView.SizeInBytes = p_size;
-	m_vertexBufferView.StrideInBytes = Constants::VERTEX_STRIDE_SIZE;
+	m_vertexBufferView.SizeInBytes = (UINT)p_size;
+	m_vertexBufferView.StrideInBytes = (UINT)Constants::VERTEX_STRIDE_SIZE;
 }
 
 Renderer::D3D12VertexBuffer::~D3D12VertexBuffer()
@@ -51,15 +51,15 @@ Renderer::D3D12VertexBuffer::~D3D12VertexBuffer()
 }
 
 Renderer::D3D12UploadBuffer::D3D12UploadBuffer(uint64_t p_size):
+	m_dataOffsetLastUpload(0),
+	m_dataSizeToUpload(0),
 	D3D12Buffer(p_size, D3D12_HEAP_TYPE::D3D12_HEAP_TYPE_UPLOAD,
 		D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE,
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		{ D3D12_RESOURCE_DIMENSION_BUFFER ,0,p_size,1,1,1,DXGI_FORMAT_UNKNOWN,{1,0},D3D12_TEXTURE_LAYOUT_ROW_MAJOR,D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE })
 
 {
-	m_vertexBufferView.BufferLocation = m_GpuVirtualAddress;
-	m_vertexBufferView.SizeInBytes = p_size;
-	m_vertexBufferView.StrideInBytes = Constants::VERTEX_STRIDE_SIZE;
+	
 }
 
 Renderer::D3D12UploadBuffer::~D3D12UploadBuffer()
@@ -67,14 +67,22 @@ Renderer::D3D12UploadBuffer::~D3D12UploadBuffer()
 	
 }
 
-void Renderer::D3D12UploadBuffer::CopyData(void* p_src, uint64_t p_offset, uint64_t p_size)
+uint64_t Renderer::D3D12UploadBuffer::GetDataOffsetLastUpload()
+{
+	auto l_res = m_dataOffsetLastUpload;
+	m_dataOffsetLastUpload += m_dataSizeToUpload;
+	return l_res;
+}
+
+void Renderer::D3D12UploadBuffer::CopyData(void* p_src, uint64_t p_size)
 {
 	D3D12_RANGE l_mapRange = {};
-	l_mapRange.Begin = p_offset;
-	l_mapRange.End = p_offset + p_size;
-	m_offset = p_offset + p_size;
+	l_mapRange.Begin = m_offset;
+	l_mapRange.End = m_offset + p_size;
+	m_offset += p_size;
 	void* l_dataPtr = m_data;
 	m_pResource->Map(0, &l_mapRange, &l_dataPtr);
 	memcpy(l_dataPtr, p_src, p_size);
 	m_pResource->Unmap(0, &l_mapRange);
+	m_dataSizeToUpload = p_size;
 }

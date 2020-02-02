@@ -12,6 +12,9 @@ namespace Renderer
 
 		virtual ~D3D12CmdContext();
 
+		virtual void Begin(ID3D12PipelineState* p_state = nullptr);
+
+		virtual void End(bool p_waitFinished);
 
 	protected:
 		D3D12CmdContext(D3D12_COMMAND_LIST_TYPE p_type);
@@ -20,7 +23,7 @@ namespace Renderer
 
 		ID3D12CommandAllocator* m_cmdAllocator;
 
-		void WaitFinish();
+		virtual void WaitFinish(bool p_wait);
 	};
 
 
@@ -33,12 +36,30 @@ namespace Renderer
 			return l_context;
 		}
 
+		void CopyBufferData(ID3D12Resource* pDstBuffer,
+			UINT64 DstOffset,
+			ID3D12Resource* pSrcBuffer,
+			UINT64 SrcOffset,
+			UINT64 NumBytes);
+
+		void TransitResourceState(ID3D12Resource* pResource,
+		D3D12_RESOURCE_STATES StateBefore,
+		D3D12_RESOURCE_STATES StateAfter,
+		UINT Subresource = 0);
+
+		void Begin(ID3D12PipelineState* p_state) override;
+
+		void End(bool p_waitFinished) override;
+
+		void WaitFinish(bool p_wait) override;
+
 		~D3D12GraphicsCmdContext();
 
 	private:
 		D3D12GraphicsCmdContext();
 
 		ID3D12GraphicsCommandList* m_graphicsCmdList;
+
 
 	};
 }

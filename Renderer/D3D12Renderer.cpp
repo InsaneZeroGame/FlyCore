@@ -64,7 +64,7 @@ void Renderer::D3D12Renderer::OnUpdate()
     m_graphicsCmdList->ClearRenderTargetView(rtvHandle, Constants::CLEAR_COLOR, 0, nullptr);
 
 
-    m_graphicsCmdList->IASetVertexBuffers(0, 1, &m_uploadBuffer->GetBufferView());
+    m_graphicsCmdList->IASetVertexBuffers(0, 1, &m_vertexBuffer->GetBufferView());
     m_graphicsCmdList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     m_graphicsCmdList->DrawInstanced(3, 1, 0, 0);
     // Indicate that the back buffer will now be used to present.
@@ -78,7 +78,6 @@ void Renderer::D3D12Renderer::OnUpdate()
     // Present the frame.
     m_swapChain->Present(1, 0);
     SyncFrame();
-
 }
 
 
@@ -222,7 +221,19 @@ void Renderer::D3D12Renderer::InitBuffers()
 
     const UINT vertexBufferSize = sizeof(triangleVertices);
 
-    m_uploadBuffer->CopyData(triangleVertices, 0, vertexBufferSize);
+    m_uploadBuffer->CopyData(triangleVertices, vertexBufferSize);
+
+    auto & l_graphicsContext = D3D12GraphicsCmdContext::GetContext();
+    l_graphicsContext.Begin(nullptr);
+    l_graphicsContext.CopyBufferData(m_vertexBuffer->GetResource(),
+        m_vertexBuffer->GetOffset(),
+        m_uploadBuffer->GetResource(),
+        m_uploadBuffer->GetDataOffsetLastUpload(),
+        vertexBufferSize);
+    l_graphicsContext.TransitResourceState(m_vertexBuffer->GetResource(),
+        D3D12_RESOURCE_STATE_COPY_DEST,
+        D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+    l_graphicsContext.End(true);
 
 }
 

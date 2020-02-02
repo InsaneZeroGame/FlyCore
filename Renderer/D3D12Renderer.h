@@ -9,6 +9,7 @@
 #include "D3D12CmdManager.h"
 #include "D3D12CmdAllocatorPool.h"
 #include "D3D12Buffer.h"
+#include "D3D12CmdContext.h"
 
 
 namespace Renderer {
@@ -59,7 +60,7 @@ namespace Renderer {
 
 		HANDLE m_fenceEvent;
 
-		std::array<int64_t, 3> m_fenceValues;
+		std::array<uint64_t, 3> m_fenceValues;
 
 		ID3D12Fence* m_fence;
 
