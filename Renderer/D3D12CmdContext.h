@@ -3,6 +3,7 @@
 #include "D3D12CmdQueue.h"
 #include "D3D12CmdManager.h"
 #include "D3D12CmdAllocatorPool.h"
+#include "D3D12Buffer.h"
 
 namespace Renderer
 {
@@ -35,6 +36,12 @@ namespace Renderer
 			static D3D12GraphicsCmdContext l_context;
 			return l_context;
 		}
+
+		void UploadVertexBuffer(D3D12VertexBuffer* p_dst,
+			uint64_t p_dstOffset,
+			D3D12UploadBuffer* p_src,
+			uint64_t p_srcOffset,
+			uint64_t p_size);
 
 		void CopyBufferData(ID3D12Resource* pDstBuffer,
 			UINT64 DstOffset,

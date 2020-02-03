@@ -44,6 +44,19 @@ void Renderer::D3D12GraphicsCmdContext::WaitFinish(bool p_wait)
 	
 }
 
+void Renderer::D3D12GraphicsCmdContext::UploadVertexBuffer(D3D12VertexBuffer* p_dst,
+	uint64_t p_dstOffset,
+	D3D12UploadBuffer* p_src,
+	uint64_t p_srcOffset,
+	uint64_t p_size)
+{
+	CopyBufferData(p_dst->GetResource(),
+		p_dstOffset,
+		p_src->GetResource(),
+		p_srcOffset,
+		p_size);
+}
+
 void Renderer::D3D12GraphicsCmdContext::CopyBufferData(ID3D12Resource* pDstBuffer,
 	UINT64 DstOffset,
 	ID3D12Resource* pSrcBuffer,

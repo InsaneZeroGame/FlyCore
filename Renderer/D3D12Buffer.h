@@ -30,6 +30,8 @@ namespace Renderer
 			return m_bufferSize;
 		}
 
+		virtual void ResetBuffer() {};
+
 	protected:
 		D3D12Buffer(uint64_t p_size,
 			D3D12_HEAP_TYPE p_heapType,
@@ -53,14 +55,21 @@ namespace Renderer
 		D3D12VertexBuffer(uint64_t p_size);
 		~D3D12VertexBuffer();
 
-		__forceinline D3D12_VERTEX_BUFFER_VIEW GetBufferView() const
+		__forceinline D3D12_VERTEX_BUFFER_VIEW GetVertexBufferView() const
 		{
 			return m_vertexBufferView;
+		}
+
+		__forceinline D3D12_INDEX_BUFFER_VIEW GetIndexBufferView() const
+		{
+			return m_indexBufferView;
 		}
 
 	private:
 
 		D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
+
+		D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
 
 	};
 
@@ -74,13 +83,14 @@ namespace Renderer
 		D3D12UploadBuffer(uint64_t p_size);
 		~D3D12UploadBuffer();
 
-		uint64_t GetDataOffsetLastUpload();
-
 		void CopyData(void* p_src, uint64_t p_size) override;
 
-	private:
-		uint64_t m_dataOffsetLastUpload;
+		__forceinline void ResetBuffer() override
+		{
+			m_offset = 0;
+		}
 
-		uint64_t m_dataSizeToUpload;
+	private:
+
 	};
 }
