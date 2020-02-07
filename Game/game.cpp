@@ -5,7 +5,7 @@
 
 
 int main() {
-	auto window = new fcf::Window({ 800,600,"Ang's Game" });
+	auto window = new Framework::Window({ 800,600,"Ang's Game" });
 	window->OnInit();
 
 	auto renderer = new Renderer::D3D12Renderer();

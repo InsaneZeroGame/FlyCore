@@ -1,15 +1,15 @@
 #include "Window.h"
-fcf::Window::Window(const WindowDescriptor& p_desc):
+Framework::Window::Window(const WindowDescriptor& p_desc):
 	m_descriptor(p_desc),
     m_window(nullptr)
 {
 
 }
-fcf::Window::~Window()
+Framework::Window::~Window()
 {
 
 }
-void fcf::Window::OnInit()
+void Framework::Window::OnInit()
 {
 
     if (!glfwInit())
@@ -32,7 +32,7 @@ void fcf::Window::OnInit()
     
 }
 
-void fcf::Window::OnUpdate()
+void Framework::Window::OnUpdate()
 {
     while (!glfwWindowShouldClose(m_window))
     {
@@ -41,7 +41,7 @@ void fcf::Window::OnUpdate()
     }
 }
 
-void fcf::Window::OnDestory()
+void Framework::Window::OnDestory()
 {
     glfwDestroyWindow(m_window);
     m_window = nullptr;

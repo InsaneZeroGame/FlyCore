@@ -1,6 +1,6 @@
 #include "D3D12Renderer.h"
-#include "stdafx.h"
 #include <D3Dcompiler.h>
+#include "../Utility/AssetLoader.h"
 
 
 Renderer::D3D12Renderer::D3D12Renderer():
@@ -209,6 +209,12 @@ void Renderer::D3D12Renderer::SyncFrame()
 
 void Renderer::D3D12Renderer::InitBuffers()
 {
+    auto& loader = Utility::AssetLoader::GetLoader();
+    
+    Interface::IScene l_scene;
+
+    loader.LoadFbx("C:\\Dev\\FlyCore\\build\\Game\\Debug\\untitled.fbx", &l_scene);
+
     m_vertexBuffer = new D3D12VertexBuffer(Constants::VERTEX_BUFFER_SIZE);
     m_uploadBuffer = new D3D12UploadBuffer(Constants::VERTEX_BUFFER_SIZE);
     m_indexBuffer = new D3D12IndexBuffer(Constants::VERTEX_BUFFER_SIZE);

@@ -8,7 +8,7 @@ namespace Interface
 	public:
 		virtual void RenderScene() = 0;
 
-		__forceinline void SetTargetWindow(fcf::Window* p_window) 
+		__forceinline void SetTargetWindow(Framework::Window* p_window) 
 		{
 			m_window = p_window;
 		};
@@ -17,6 +17,6 @@ namespace Interface
 
 		virtual ~IRenderer() {};
 
-		fcf::Window* m_window = nullptr;
+		Framework::Window* m_window = nullptr;
 	};
 }

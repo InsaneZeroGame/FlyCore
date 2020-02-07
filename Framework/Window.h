@@ -7,7 +7,7 @@
 #include "IModule.h"
 #include <functional>
 
-namespace fcf
+namespace Framework
 {
 	struct WindowDescriptor
 	{
