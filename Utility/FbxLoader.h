@@ -13,13 +13,15 @@ namespace Utility
 
 		~FbxLoader();
 
-		void LoadFile(const std::string p_fileName, Interface::IScene* p_scene);
+		void LoadFile(const std::string p_fileName, Renderer::Scene* p_scene);
 
 
 	private:
 		FbxManager* m_sdkManager;
 
 		FbxScene* m_scene;
+
+		Renderer::Scene* m_currentGameScene;
 
 		FbxImporter* m_importer;
 
@@ -41,8 +43,8 @@ namespace Utility
 		void DisplayContent(FbxScene* pScene);
 		void DisplayContent(FbxNode* pNode);
 		void DisplayMesh(FbxNode* pNode);
-		void DisplayControlsPoints(FbxMesh* pMesh);
-		void DisplayPolygons(FbxMesh* pMesh);
+		void DisplayControlsPoints(FbxMesh* pMesh,std::vector<float>& p_vertices);
+		void DisplayPolygons(FbxMesh* pMesh, std::vector<uint32_t>& p_indices);
 		void DisplayTextureNames(FbxProperty& pProperty, FbxString& pConnectionString);
 		void DisplayMaterialTextureConnections(FbxSurfaceMaterial* pMaterial, char* header, int pMatId, int l);
 		void DisplayMaterialConnections(FbxMesh* pMesh);

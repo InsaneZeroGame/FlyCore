@@ -29,17 +29,17 @@ Utility::FbxLoader::FbxLoader():
     m_sdkManager(FbxManager::Create()),
     m_cameraArray(),
     m_poseArray(),
-    m_supportVBO(true)
+    m_supportVBO(true),
+    m_currentGameScene(nullptr)
 {
 
 }
 
 
 
-void Utility::FbxLoader::LoadFile(const std::string p_fileName, Interface::IScene* p_scene)
+void Utility::FbxLoader::LoadFile(const std::string p_fileName, Renderer::Scene* p_scene)
 {
-    FbxScene* m_scene = NULL;
-
+    m_currentGameScene = p_scene;
     // Prepare the FBX SDK.
     InitializeSdkObjects(m_sdkManager, m_scene);
     // Load the scene.
@@ -334,19 +334,27 @@ void Utility::FbxLoader::DisplayContent(FbxNode* pNode)
 void Utility::FbxLoader::DisplayMesh(FbxNode* pNode)
 {
     FbxMesh* lMesh = (FbxMesh*)pNode->GetNodeAttribute();
+    Renderer::Actor l_actor;
+    std::vector<float> l_vertices;
+    std::vector<uint32_t> l_indices;
+
+
 
     DisplayString("Mesh Name: ", (char*)pNode->GetName());
     DisplayMetaDataConnections(lMesh);
-    DisplayControlsPoints(lMesh);
-    DisplayPolygons(lMesh);
+    DisplayControlsPoints(lMesh,l_vertices);
+    DisplayPolygons(lMesh,l_indices);
     DisplayMaterialMapping(lMesh);
     DisplayMaterial(lMesh);
     DisplayTexture(lMesh);
     DisplayMaterialConnections(lMesh);
     DisplayLink(lMesh);
     DisplayShape(lMesh);
-
     DisplayCache(lMesh);
+
+    l_actor.AddMesh(Renderer::Mesh(std::move(l_vertices), std::move(l_indices)));
+    m_currentGameScene->AddActor(std::move(l_actor));
+
 }
 
 void DisplayTextureInfo(FbxTexture* pTexture, int pBlendMode)
@@ -502,7 +510,7 @@ void DisplayTexture(FbxGeometry* pGeometry)
     }// end for lMaterialIndex     
 }
 
-void Utility::FbxLoader::DisplayControlsPoints(FbxMesh* pMesh)
+void Utility::FbxLoader::DisplayControlsPoints(FbxMesh* pMesh, std::vector<float>& p_vertices)
 {
     int i, lControlPointsCount = pMesh->GetControlPointsCount();
     FbxVector4* lControlPoints = pMesh->GetControlPoints();
@@ -513,6 +521,16 @@ void Utility::FbxLoader::DisplayControlsPoints(FbxMesh* pMesh)
     {
         DisplayInt("        Control Point ", i);
         Display3DVector("            Coordinates: ", lControlPoints[i]);
+
+        p_vertices.push_back(static_cast<float>(lControlPoints[i].mData[0]));
+        p_vertices.push_back(static_cast<float>(lControlPoints[i].mData[1]));
+        p_vertices.push_back(static_cast<float>(lControlPoints[i].mData[2]));
+        p_vertices.push_back(1.0f);
+        p_vertices.push_back(1.0f);
+        p_vertices.push_back(0.0f);
+        p_vertices.push_back(0.0f);
+        p_vertices.push_back(1.0f);
+
 
         for (int j = 0; j < pMesh->GetElementNormalCount(); j++)
         {
@@ -531,8 +549,9 @@ void Utility::FbxLoader::DisplayControlsPoints(FbxMesh* pMesh)
 }
 
 
-void Utility::FbxLoader::DisplayPolygons(FbxMesh* pMesh)
+void Utility::FbxLoader::DisplayPolygons(FbxMesh* pMesh, std::vector<uint32_t>& p_indices)
 {
+    
     int i, j, lPolygonCount = pMesh->GetPolygonCount();
     FbxVector4* lControlPoints = pMesh->GetControlPoints();
     char header[100];
@@ -570,6 +589,7 @@ void Utility::FbxLoader::DisplayPolygons(FbxMesh* pMesh)
         for (j = 0; j < lPolygonSize; j++)
         {
             int lControlPointIndex = pMesh->GetPolygonVertex(i, j);
+            p_indices.push_back(lControlPointIndex);
             if (lControlPointIndex < 0)
             {
                 DisplayString("            Coordinates: Invalid index found!");
@@ -778,6 +798,7 @@ void Utility::FbxLoader::DisplayPolygons(FbxMesh* pMesh)
         }
     }
     DisplayString("");
+
 }
 
 void Utility::FbxLoader::DisplayTextureNames(FbxProperty& pProperty, FbxString& pConnectionString)

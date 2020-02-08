@@ -14,7 +14,7 @@ namespace Utility
 			return l_loader;
 		}
 
-		__forceinline void LoadFbx(const std::string p_fileName, Interface::IScene* p_scene)
+		__forceinline void LoadFbx(const std::string p_fileName, Renderer::Scene* p_scene)
 		{
 			m_fbxLoader->LoadFile(p_fileName, p_scene);
 		};
