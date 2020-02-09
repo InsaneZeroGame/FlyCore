@@ -22,7 +22,7 @@ Renderer::Mesh::Mesh()
 {
 }
 
-Renderer::Mesh::Mesh(std::vector<float>&& p_vertices, std::vector<uint32_t>&& p_indices):
+Renderer::Mesh::Mesh(std::vector<Vertex>&& p_vertices, std::vector<uint32_t>&& p_indices):
 	m_vertices(p_vertices),
 	m_indices(p_indices)
 {

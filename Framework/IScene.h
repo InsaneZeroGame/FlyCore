@@ -4,18 +4,29 @@
 namespace Renderer
 {
 
+	struct Vertex
+	{
+		float position[4];
+		float color[4];
+	};
+
 	class Mesh
 	{
 	public:
 		Mesh();
-		Mesh(std::vector<float>&& m_vertices,std::vector<uint32_t>&& m_indices);
+
+		Mesh(std::vector<Vertex>&& m_vertices,std::vector<uint32_t>&& m_indices);
+		
 		~Mesh();
-		std::vector<float> m_vertices;
+
+		std::vector<Vertex> m_vertices;
+
 		std::vector<uint32_t> m_indices;
+		
 
 	private:
 		
-
+		
 	};
 
 
@@ -23,17 +34,20 @@ namespace Renderer
 	{
 	public:
 		Actor();
+		
 		~Actor();
 
 		__forceinline void AddMesh(Mesh&& p_mesh)
 		{
 			m_meshes.push_back(p_mesh);
 		}
+
 		std::vector<Mesh> m_meshes;
 
 
 	private:
-
+		
+	
 	};
 
 
@@ -49,10 +63,12 @@ namespace Renderer
 			m_actors.push_back(p_mesh);
 		}
 
+		virtual void UploadToGPU() {};
+
 		std::vector<Actor> m_actors;
 
+
 	private:
-
-
+		
 	};
 }

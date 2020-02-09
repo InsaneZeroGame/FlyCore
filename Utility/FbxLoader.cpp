@@ -335,7 +335,7 @@ void Utility::FbxLoader::DisplayMesh(FbxNode* pNode)
 {
     FbxMesh* lMesh = (FbxMesh*)pNode->GetNodeAttribute();
     Renderer::Actor l_actor;
-    std::vector<float> l_vertices;
+    std::vector<Renderer::Vertex> l_vertices;
     std::vector<uint32_t> l_indices;
 
 
@@ -510,7 +510,7 @@ void DisplayTexture(FbxGeometry* pGeometry)
     }// end for lMaterialIndex     
 }
 
-void Utility::FbxLoader::DisplayControlsPoints(FbxMesh* pMesh, std::vector<float>& p_vertices)
+void Utility::FbxLoader::DisplayControlsPoints(FbxMesh* pMesh, std::vector<Renderer::Vertex>& p_vertices)
 {
     int i, lControlPointsCount = pMesh->GetControlPointsCount();
     FbxVector4* lControlPoints = pMesh->GetControlPoints();
@@ -521,15 +521,18 @@ void Utility::FbxLoader::DisplayControlsPoints(FbxMesh* pMesh, std::vector<float
     {
         DisplayInt("        Control Point ", i);
         Display3DVector("            Coordinates: ", lControlPoints[i]);
+        Renderer::Vertex l_vertex = {};
 
-        p_vertices.push_back(static_cast<float>(lControlPoints[i].mData[0]));
-        p_vertices.push_back(static_cast<float>(lControlPoints[i].mData[1]));
-        p_vertices.push_back(static_cast<float>(lControlPoints[i].mData[2]));
-        p_vertices.push_back(1.0f);
-        p_vertices.push_back(1.0f);
-        p_vertices.push_back(0.0f);
-        p_vertices.push_back(0.0f);
-        p_vertices.push_back(1.0f);
+        l_vertex.position[0] = static_cast<float>(lControlPoints[i].mData[0]);
+        l_vertex.position[1] = static_cast<float>(lControlPoints[i].mData[1]);
+        l_vertex.position[2] = static_cast<float>(lControlPoints[i].mData[2]);
+        l_vertex.position[3] = 1.0f;
+        l_vertex.color[0] = 1.0f;
+        l_vertex.color[1] = 0.0f;
+        l_vertex.color[2] = 0.0f;
+        l_vertex.color[3] = 1.0f;
+
+        p_vertices.push_back(l_vertex);
 
 
         for (int j = 0; j < pMesh->GetElementNormalCount(); j++)

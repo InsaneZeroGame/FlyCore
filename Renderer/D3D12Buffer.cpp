@@ -1,6 +1,7 @@
 #include "D3D12Resource.h"
 #include "D3D12Buffer.h"
 #include "D3D12Device.h"
+#include "../Framework/IScene.h"
 
 
 Renderer::D3D12Buffer::D3D12Buffer(uint64_t p_size,
@@ -43,7 +44,7 @@ Renderer::D3D12VertexBuffer::D3D12VertexBuffer(uint64_t p_size):
 {
 	m_vertexBufferView.BufferLocation = m_GpuVirtualAddress;
 	m_vertexBufferView.SizeInBytes = (UINT)p_size;
-	m_vertexBufferView.StrideInBytes = (UINT)Constants::VERTEX_STRIDE_SIZE;
+	m_vertexBufferView.StrideInBytes = sizeof(Renderer::Vertex);
 
 	m_indexBufferView.BufferLocation = m_GpuVirtualAddress;
 	m_indexBufferView.SizeInBytes = (UINT)p_size;

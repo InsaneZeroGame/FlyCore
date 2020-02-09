@@ -1,5 +1,6 @@
 #pragma once
 #include "Window.h"
+#include "IScene.h"
 
 namespace Interface
 {
@@ -7,6 +8,8 @@ namespace Interface
 	{
 	public:
 		virtual void RenderScene() = 0;
+
+		virtual void LoadScene(Renderer::Scene*) = 0;
 
 		__forceinline void SetTargetWindow(Framework::Window* p_window) 
 		{

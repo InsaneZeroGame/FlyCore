@@ -66,7 +66,7 @@ void Renderer::D3D12Renderer::OnUpdate()
     m_graphicsCmdList->IASetIndexBuffer(&m_indexBuffer->GetIndexBufferView());
     m_graphicsCmdList->IASetVertexBuffers(0, 1, &m_vertexBuffer->GetVertexBufferView());
     m_graphicsCmdList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    m_graphicsCmdList->DrawIndexedInstanced(2880, 1, 0, 0, 0);
+    m_graphicsCmdList->DrawIndexedInstanced(m_scene->m_actors[0].m_meshes[0].m_indices.size(), 1, 0, 0, 0);
     // Indicate that the back buffer will now be used to present.
     m_graphicsCmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex]->GetResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 
@@ -211,9 +211,8 @@ void Renderer::D3D12Renderer::InitBuffers()
 {
     auto& loader = Utility::AssetLoader::GetLoader();
     
-    Renderer::Scene l_scene;
-
-    loader.LoadFbx("C:\\Dev\\FlyCore\\build\\Game\\Debug\\sephere.fbx", &l_scene);
+    m_scene = new Renderer::Scene;
+    loader.LoadFbx("C:\\Dev\\FlyCore\\build\\Game\\Debug\\sephere.fbx", m_scene);
 
     m_vertexBuffer = new D3D12VertexBuffer(Constants::VERTEX_BUFFER_SIZE);
     m_uploadBuffer = new D3D12UploadBuffer(Constants::VERTEX_BUFFER_SIZE);
@@ -228,11 +227,11 @@ void Renderer::D3D12Renderer::InitBuffers()
     //
     //uint32_t triangleIndices[] = {0,1,2};
 
-    const UINT vertexBufferSize = (UINT)sizeof(l_scene.m_actors[0].m_meshes[0].m_vertices[0]) * l_scene.m_actors[0].m_meshes[0].m_vertices.size();
-    const UINT indexBufferSize = (UINT)sizeof(l_scene.m_actors[0].m_meshes[0].m_indices[0]) * l_scene.m_actors[0].m_meshes[0].m_indices.size();
+    const UINT vertexBufferSize = (UINT)sizeof(m_scene->m_actors[0].m_meshes[0].m_vertices[0]) * m_scene->m_actors[0].m_meshes[0].m_vertices.size();
+    const UINT indexBufferSize = (UINT)sizeof(m_scene->m_actors[0].m_meshes[0].m_indices[0]) * m_scene->m_actors[0].m_meshes[0].m_indices.size();
 
-    m_uploadBuffer->CopyData(l_scene.m_actors[0].m_meshes[0].m_vertices.data(), vertexBufferSize);
-    m_uploadBuffer->CopyData(l_scene.m_actors[0].m_meshes[0].m_indices.data(), indexBufferSize);
+    m_uploadBuffer->CopyData(m_scene->m_actors[0].m_meshes[0].m_vertices.data(), vertexBufferSize);
+    m_uploadBuffer->CopyData(m_scene->m_actors[0].m_meshes[0].m_indices.data(), indexBufferSize);
 
     auto & l_graphicsContext = D3D12GraphicsCmdContext::GetContext();
     l_graphicsContext.Begin(nullptr);
@@ -305,6 +304,10 @@ void Renderer::D3D12Renderer::InitPipelineState()
     psoDesc.SampleDesc.Count = 1;
     m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState));
 
+}
+
+void Renderer::D3D12Renderer::LoadScene(Renderer::Scene*)
+{
 }
 
 void Renderer::D3D12Renderer::OnDestory()

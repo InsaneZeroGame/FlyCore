@@ -29,7 +29,10 @@ namespace Renderer {
 		virtual void OnDestory() override;
 
 		// Inherited via IRenderer
-		virtual void RenderScene() override;
+		void RenderScene() override;
+
+		void LoadScene(Renderer::Scene*) override;
+
 
 	private:
 		void InitCmdQueue();
@@ -45,6 +48,9 @@ namespace Renderer {
 		void InitBuffers();
 
 		void InitRootSignature();
+
+		Renderer::Scene* m_scene;
+
 
 		ID3D12RootSignature* m_rootSignature;
 
