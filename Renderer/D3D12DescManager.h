@@ -5,13 +5,6 @@
 
 namespace Renderer
 {
-	struct D3D12Descriptor
-	{
-		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle;
-		D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle;
-	};
-
-
 	class D3D12DescManager : public Interface::INoCopy
 	{
 	public:
@@ -21,7 +14,20 @@ namespace Renderer
 			return l_descManager;
 		}
 
-		__forceinline D3D12DescHeap* GetHeap(D3D12_DESCRIPTOR_HEAP_TYPE p_type) { return m_descHeaps[p_type]; }
+		__forceinline const D3D12Descriptor* RequestDesc(D3D12_DESCRIPTOR_HEAP_TYPE p_type)
+		{
+			return m_descHeaps[p_type]->RequestDesc();
+		}
+
+		__forceinline void ReturnDesc(const D3D12Descriptor* p_desc)
+		{
+			m_descHeaps[p_desc->type]->ReturnDesc(p_desc);
+		}
+
+		__forceinline D3D12DescHeap* GetHeap(D3D12_DESCRIPTOR_HEAP_TYPE p_type) { 
+			return m_descHeaps[p_type]; 
+		}
+
 
 		~D3D12DescManager();
 

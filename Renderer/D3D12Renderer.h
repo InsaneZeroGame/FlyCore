@@ -10,6 +10,7 @@
 #include "D3D12CmdAllocatorPool.h"
 #include "D3D12Buffer.h"
 #include "D3D12CmdContext.h"
+#include "D3D12GraphicsContext.h"
 
 
 namespace Renderer {
@@ -43,6 +44,8 @@ namespace Renderer {
 
 		void InitSyncPrimitive();
 
+		void InitGraphicsContext();
+
 		void SyncFrame();
 
 		void InitBuffers();
@@ -70,9 +73,9 @@ namespace Renderer {
 
 		ID3D12Fence* m_fence;
 
-		ID3D12DescriptorHeap* m_rtvHeap;
+		//ID3D12DescriptorHeap* m_rtvHeap;
 
-		UINT m_rtvDescriptorSize;
+		//UINT m_rtvDescriptorSize;
 
 		D3D12CmdListManager* m_cmdListManager;
 
@@ -92,9 +95,6 @@ namespace Renderer {
 
 		D3D12CmdQueue* m_cmdQueue = nullptr;
 
-		std::array<D3D12Texture*,3> m_renderTargets;
-
 		uint32_t m_frameIndex;
-
 	};
 }

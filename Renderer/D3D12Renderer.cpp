@@ -19,21 +19,13 @@ Renderer::D3D12Renderer::~D3D12Renderer()
 
 void Renderer::D3D12Renderer::OnInit()
 {
+	ASSERT(m_window, "A window must be set before create swapchain\n");
     InitCmdQueue();
-    ASSERT(m_window, "A window must be set before create swapchain\n");
     ASSERT(m_cmdQueue, "A CmdQueue must be created before create swapchain\n");
+	InitCmdLists();
+	InitSwapChain();
 
-    // Describe and create a render target view (RTV) descriptor heap.
-    D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-    rtvHeapDesc.NumDescriptors = 3;
-    rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-    rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-    m_device->CreateDescriptorHeap(&rtvHeapDesc, MY_IID_PPV_ARGS(&m_rtvHeap));
-
-    m_rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-
-    InitCmdLists();
-    InitSwapChain();
+    InitGraphicsContext();
     InitSyncPrimitive();
     InitBuffers();
     InitRootSignature();
@@ -43,10 +35,11 @@ void Renderer::D3D12Renderer::OnInit()
 
 void Renderer::D3D12Renderer::OnUpdate()
 {
+	auto& l_graphicsContext = D3D12GraphicsContext::GetContext();
     m_graphicsCmdAllocator[m_frameIndex]->Reset();
     m_cmdListManager->ResetCmdList(m_graphicsCmdList, m_graphicsCmdAllocator[m_frameIndex], m_pipelineState);
     // Indicate that the back buffer will be used as a render target.
-    m_graphicsCmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex]->GetResource(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+	l_graphicsContext.BeginRender(m_frameIndex);
     m_graphicsCmdList->SetPipelineState(m_pipelineState);
     // Set necessary state.
     m_graphicsCmdList->SetGraphicsRootSignature(m_rootSignature);
@@ -55,21 +48,16 @@ void Renderer::D3D12Renderer::OnUpdate()
     m_graphicsCmdList->RSSetViewports(1, &l_viewPort);
     m_graphicsCmdList->RSSetScissorRects(1, &l_rect);
 
-    CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameIndex, m_rtvDescriptorSize);
+    //CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameIndex, m_rtvDescriptorSize);
 
     // Record commands.
-    
-    m_graphicsCmdList->OMSetRenderTargets(1, &rtvHandle, false, nullptr);
-
-    m_graphicsCmdList->ClearRenderTargetView(rtvHandle, Constants::CLEAR_COLOR, 0, nullptr);
 
     m_graphicsCmdList->IASetIndexBuffer(&m_indexBuffer->GetIndexBufferView());
     m_graphicsCmdList->IASetVertexBuffers(0, 1, &m_vertexBuffer->GetVertexBufferView());
     m_graphicsCmdList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     m_graphicsCmdList->DrawIndexedInstanced(m_scene->m_actors[0].m_meshes[0].m_indices.size(), 1, 0, 0, 0);
     // Indicate that the back buffer will now be used to present.
-    m_graphicsCmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex]->GetResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
-
+	l_graphicsContext.EndRender();
     m_graphicsCmdList->Close();
 
     // Execute the command list.
@@ -154,29 +142,7 @@ void Renderer::D3D12Renderer::InitSwapChain()
     }
 #endif
 
-    D3D12_RESOURCE_DESC l_swapChainDesc = {};
-    l_swapChainDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-    l_swapChainDesc.Alignment = 0;
-    l_swapChainDesc.Width = swapChainDesc.Width;
-    l_swapChainDesc.Height = swapChainDesc.Height;
-    l_swapChainDesc.DepthOrArraySize = 1;
-    l_swapChainDesc.MipLevels = 0;
-    l_swapChainDesc.Format = Constants::SwapChainFormat;
-    l_swapChainDesc.SampleDesc.Count = 1;
-    l_swapChainDesc.SampleDesc.Quality = 0;
-    l_swapChainDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-    l_swapChainDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-
-    CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart());
-
-    for (uint32_t i = 0; i < Constants::SWAPCHAIN_BUFFER_COUNT; ++i)
-    {
-        ID3D12Resource* DisplayPlane;
-        ASSERT_SUCCEEDED(m_swapChain->GetBuffer(i, MY_IID_PPV_ARGS(&DisplayPlane)));
-        m_renderTargets[i] = new D3D12Texture(&l_swapChainDesc, D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES, DisplayPlane);
-        m_device->CreateRenderTargetView(m_renderTargets[i]->GetResource(), nullptr, rtvHandle);
-        rtvHandle.Offset(1, m_rtvDescriptorSize);
-    }
+   
 }
 
 void Renderer::D3D12Renderer::InitSyncPrimitive()
@@ -186,6 +152,13 @@ void Renderer::D3D12Renderer::InitSyncPrimitive()
     m_fenceValues[2] = 0;
     m_fenceEvent = CreateEvent(0, false, false, 0);
     ASSERT_SUCCEEDED(m_device->CreateFence(m_fenceValues[0], D3D12_FENCE_FLAGS::D3D12_FENCE_FLAG_NONE, MY_IID_PPV_ARGS(&m_fence)));
+}
+
+void Renderer::D3D12Renderer::InitGraphicsContext()
+{
+	D3D12GraphicsContext::GetContext().InitRenderTargets(m_window->GetWidth(), m_window->GetHeight(), m_swapChain.Get());
+	D3D12GraphicsContext::GetContext().SetGraphicsCmdList(m_graphicsCmdList);
+
 }
 
 void Renderer::D3D12Renderer::SyncFrame()
@@ -212,7 +185,7 @@ void Renderer::D3D12Renderer::InitBuffers()
     auto& loader = Utility::AssetLoader::GetLoader();
     
     m_scene = new Renderer::Scene;
-    loader.LoadFbx("C:\\Dev\\FlyCore\\build\\Game\\Debug\\sephere.fbx", m_scene);
+    loader.LoadFbx("D:\\Dev\\FlyCore\\build\\Game\\Debug\\sephere.fbx", m_scene);
 
     m_vertexBuffer = new D3D12VertexBuffer(Constants::VERTEX_BUFFER_SIZE);
     m_uploadBuffer = new D3D12UploadBuffer(Constants::VERTEX_BUFFER_SIZE);
@@ -277,8 +250,8 @@ void Renderer::D3D12Renderer::InitPipelineState()
     UINT compileFlags = 0;
 #endif
 
-    D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\shaders.hlsl", nullptr, nullptr, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, nullptr);
-    D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\shaders.hlsl", nullptr, nullptr, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, nullptr);
+    D3DCompileFromFile(L"D:\\Dev\\FlyCore\\Renderer\\shaders.hlsl", nullptr, nullptr, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, nullptr);
+    D3DCompileFromFile(L"D:\\Dev\\FlyCore\\Renderer\\shaders.hlsl", nullptr, nullptr, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, nullptr);
 
     // Define the vertex input layout.
     D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
@@ -313,10 +286,7 @@ void Renderer::D3D12Renderer::LoadScene(Renderer::Scene*)
 void Renderer::D3D12Renderer::OnDestory()
 {
     SAFE_DELETE(m_cmdQueue);
-    for (auto i = 0; i < m_renderTargets.size(); ++i)
-    {
-        SAFE_DELETE(m_renderTargets[i]);
-    }
+    
     SAFE_DELETE(m_vertexBuffer); 
     SAFE_DELETE(m_indexBuffer);
     SAFE_DELETE(m_uploadBuffer);
