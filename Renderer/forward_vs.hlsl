@@ -9,23 +9,25 @@
 //
 //*********************************************************
 
+
+
 struct PSInput
 {
     float4 position : SV_POSITION;
     float4 color : COLOR;
 };
 
-PSInput VSMain(float4 position : POSITION, float4 color : COLOR)
+float4x4 MVP : register(b0);
+
+PSInput main(float4 position : POSITION, float4 color : COLOR)
 {
-    PSInput result;
+	PSInput result;
 
-    result.position = position;
-    result.color = color;
+	result.position = mul(position,MVP);
+	result.color = color;
 
-    return result;
+	return result;
 }
 
-float4 PSMain(PSInput input) : SV_TARGET
-{
-    return input.color;
-}
+
+

@@ -1,7 +1,7 @@
 #include "D3D12Renderer.h"
 #include <D3Dcompiler.h>
 #include "../Utility/AssetLoader.h"
-
+#include <DirectXMath.h>
 
 #define CAMERA_UNIFORM_ROOT_INDEX 0
 
@@ -33,7 +33,6 @@ void Renderer::D3D12Renderer::OnInit()
     InitBuffers();
     InitRootSignature();
     InitPipelineState();
-
 }
 
 void Renderer::D3D12Renderer::OnUpdate()
@@ -184,13 +183,22 @@ void Renderer::D3D12Renderer::InitBuffers()
     auto& loader = Utility::AssetLoader::GetLoader();
     
     m_scene = new Renderer::Scene;
-    loader.LoadFbx("D:\\Dev\\FlyCore\\build\\Game\\Debug\\sephere.fbx", m_scene);
+    loader.LoadFbx("D:\\Dev\\FlyCore\\build\\Game\\Debug\\box.fbx", m_scene);
 
     m_vertexBuffer = new D3D12VertexBuffer(Constants::VERTEX_BUFFER_SIZE);
     m_uploadBuffer = new D3D12UploadBuffer(Constants::MAX_CONST_BUFFER_VIEW_SIZE);
     m_indexBuffer = new D3D12IndexBuffer(Constants::VERTEX_BUFFER_SIZE);
 	const auto CAMERA_UNIFORM_BUFFER_SIZE = sizeof(float) * 16 * Constants::SWAPCHAIN_BUFFER_COUNT;
 	m_cameraUniformBuffer = new D3D12UploadBuffer(Utility::AlignTo256(CAMERA_UNIFORM_BUFFER_SIZE));
+	
+
+	auto viewMatrix = DirectX::XMMatrixLookAtLH({30.0f,30.0f,30.0f }, {0.0f,0.0f,0.0f}, {0.0f,1.0f,0.0f});
+	auto projectMatrix = DirectX::XMMatrixPerspectiveFovLH(DirectX::XM_PIDIV4,600.0f/800.0f,0.001f,100.0f);
+	DirectX::XMMATRIX mvp = XMMatrixMultiply(viewMatrix,projectMatrix);
+
+	
+	
+	m_cameraUniformBuffer->CopyData(&mvp, sizeof(float) * 16);
     //Constants::Vertex triangleVertices[] =
     //{
     //    { { 0.0f, 0.25f , 0.0f ,1.0f}, { 1.0f, 0.0f, 0.0f, 1.0f } },
@@ -257,13 +265,13 @@ void Renderer::D3D12Renderer::InitPipelineState()
 
 #if defined(_DEBUG)
     // Enable better shader debugging with the graphics debugging tools.
-    UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+    UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION |D3DCOMPILE_PACK_MATRIX_ROW_MAJOR;
 #else
     UINT compileFlags = 0;
 #endif
 
-    D3DCompileFromFile(L"D:\\Dev\\FlyCore\\Renderer\\shaders.hlsl", nullptr, nullptr, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, nullptr);
-    D3DCompileFromFile(L"D:\\Dev\\FlyCore\\Renderer\\shaders.hlsl", nullptr, nullptr, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, nullptr);
+    D3DCompileFromFile(L"D:\\Dev\\FlyCore\\Renderer\\forward_vs.hlsl", nullptr, nullptr, "main", "vs_5_0", compileFlags, 0, &vertexShader, nullptr);
+    D3DCompileFromFile(L"D:\\Dev\\FlyCore\\Renderer\\forward_ps.hlsl", nullptr, nullptr, "main", "ps_5_0", compileFlags, 0, &pixelShader, nullptr);
 
     // Define the vertex input layout.
     D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
@@ -280,7 +288,7 @@ void Renderer::D3D12Renderer::InitPipelineState()
     psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader.Get());
     psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
     psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-    psoDesc.DepthStencilState.DepthEnable = true;
+    psoDesc.DepthStencilState.DepthEnable = false;
 	psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
     psoDesc.DepthStencilState.StencilEnable = FALSE;
     psoDesc.SampleMask = UINT_MAX;
