@@ -2,6 +2,7 @@
 #include "D3D12Buffer.h"
 #include "D3D12Device.h"
 #include "../Framework/IScene.h"
+#include "D3D12DescManager.h"
 
 
 Renderer::D3D12Buffer::D3D12Buffer(uint64_t p_size,
@@ -69,6 +70,8 @@ Renderer::D3D12UploadBuffer::D3D12UploadBuffer(uint64_t p_size):
 	void* l_dataPtr;
 	m_pResource->Map(0, &l_mapRange, &l_dataPtr);
 	m_data = (uint8_t*)l_dataPtr;
+
+	CreateViews();
 }
 
 Renderer::D3D12UploadBuffer::~D3D12UploadBuffer()
@@ -84,4 +87,13 @@ void Renderer::D3D12UploadBuffer::CopyData(void* p_src, uint64_t p_size)
 {
 	memcpy(m_data + m_offset, p_src, p_size);
 	m_offset += p_size;
+}
+
+void Renderer::D3D12UploadBuffer::CreateViews()
+{
+	D3D12_CONSTANT_BUFFER_VIEW_DESC l_cbvDesc = {};
+	l_cbvDesc.BufferLocation = m_GpuVirtualAddress;
+	l_cbvDesc.SizeInBytes = m_bufferSize;
+	m_cbv = D3D12DescManager::GetDescManager().RequestDesc(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	m_device->CreateConstantBufferView(&l_cbvDesc, m_cbv->cpuHandle);
 }

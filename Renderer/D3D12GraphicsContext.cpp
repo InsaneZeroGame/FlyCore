@@ -16,6 +16,7 @@ void Renderer::D3D12GraphicsContext::BeginRender(const uint32_t& p_index)
 	m_graphicsCmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[p_index]->GetResource(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
 	m_graphicsCmdList->OMSetRenderTargets(1, &m_renderTargets[m_currentFrameIndex]->GetRTV()->cpuHandle,false, &m_depthBuffer->GetDSV()->cpuHandle);
 	m_graphicsCmdList->ClearRenderTargetView(m_renderTargets[m_currentFrameIndex]->GetRTV()->cpuHandle, Constants::CLEAR_COLOR, 0, nullptr);
+	m_graphicsCmdList->ClearDepthStencilView(m_depthBuffer->GetDSV()->cpuHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 }
 
 void Renderer::D3D12GraphicsContext::EndRender()

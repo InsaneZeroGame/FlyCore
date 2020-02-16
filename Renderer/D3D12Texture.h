@@ -17,7 +17,7 @@ namespace Renderer
 
 	protected:
 
-		D3D12Texture(const D3D12_RESOURCE_DESC& p_desc, D3D12_HEAP_FLAGS p_flag, ID3D12Resource* p_resource = nullptr);
+		D3D12Texture(const D3D12_RESOURCE_DESC& p_desc, D3D12_HEAP_FLAGS p_flag, D3D12_CLEAR_VALUE p_clearValue = {}, ID3D12Resource* p_resource = nullptr);
 
 		D3D12_RESOURCE_DESC m_resourceDesc;
 

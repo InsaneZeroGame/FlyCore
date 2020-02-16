@@ -1,11 +1,12 @@
 #include "D3D12Texture.h"
 #include "D3D12Device.h"
 #include "D3D12DescManager.h"
-
+#include "D3D12CmdContext.h"
 
 Renderer::D3D12Texture::D3D12Texture(
 	const D3D12_RESOURCE_DESC& p_desc,
 	D3D12_HEAP_FLAGS p_flag,
+	D3D12_CLEAR_VALUE p_clearValue,
 	ID3D12Resource* p_resource):
 	m_resourceDesc(p_desc)
 {
@@ -25,7 +26,7 @@ Renderer::D3D12Texture::D3D12Texture(
 		l_heapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 		l_heapProperties.CreationNodeMask = 0;
 		l_heapProperties.VisibleNodeMask = 0;
-		ASSERT_SUCCEEDED(l_device->CreateCommittedResource(&l_heapProperties, p_flag, &m_resourceDesc, D3D12_RESOURCE_STATE_COMMON, nullptr, MY_IID_PPV_ARGS(&m_pResource)));
+		ASSERT_SUCCEEDED(l_device->CreateCommittedResource(&l_heapProperties, p_flag, &m_resourceDesc, D3D12_RESOURCE_STATE_COMMON, &p_clearValue, MY_IID_PPV_ARGS(&m_pResource)));
 	}
 }
 
@@ -44,9 +45,18 @@ Renderer::D3D12DepthBuffer::D3D12DepthBuffer(uint32_t p_width,uint32_t p_height)
 		DXGI_FORMAT_D32_FLOAT,
 		{1,0},
 		D3D12_TEXTURE_LAYOUT_UNKNOWN ,
-		D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL }, D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE)
+		D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL }, 
+		D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE,
+		{ DXGI_FORMAT_D32_FLOAT,{1.0f,0} })
 {
 	CreateViews();
+	//Transit resource state to depth_write using graphics cmd context
+	auto& l_cmdContxt = D3D12GraphicsCmdContext::GetContext();
+	l_cmdContxt.Begin(nullptr);
+	l_cmdContxt.TransitResourceState(m_pResource.Get(),
+		D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON,
+		D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_DEPTH_WRITE);
+	l_cmdContxt.End(true);
 }
 
 void Renderer::D3D12DepthBuffer::CreateViews()
@@ -80,6 +90,7 @@ Renderer::D3D12RenderTarget::D3D12RenderTarget(uint32_t p_width,uint32_t p_heigh
 		D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
 		},
 		D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES,
+		{},
 		p_resource)
 {
 	CreateViews();

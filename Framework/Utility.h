@@ -17,6 +17,13 @@
 
 namespace Utility
 {
+	//Align to 256
+	static uint64_t AlignTo256(uint64_t i)
+	{
+		return ((i >> 8) + 1) << 8;
+	}
+
+
     inline void Print( const char* msg ) { printf("%s", msg); }
     inline void Print( const wchar_t* msg ) { wprintf(L"%ws", msg); }
 

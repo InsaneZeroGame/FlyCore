@@ -3,13 +3,17 @@
 #include "../Utility/AssetLoader.h"
 
 
+#define CAMERA_UNIFORM_ROOT_INDEX 0
+
+
 Renderer::D3D12Renderer::D3D12Renderer():
     m_device(D3D12Device::GetDevice()),
     m_cmdQueue(nullptr),
     m_swapChain(nullptr),
     m_cmdListManager(D3D12CmdListManager::GetManagerPtr()),
     m_cmdAllocatorPool(D3D12CmdAllocatorPool::GetPoolPtr()),
-    m_frameIndex(0)
+    m_frameIndex(0),
+	m_cameraUniformBuffer(nullptr)
 {
 }
 
@@ -24,7 +28,6 @@ void Renderer::D3D12Renderer::OnInit()
     ASSERT(m_cmdQueue, "A CmdQueue must be created before create swapchain\n");
 	InitCmdLists();
 	InitSwapChain();
-
     InitGraphicsContext();
     InitSyncPrimitive();
     InitBuffers();
@@ -47,13 +50,11 @@ void Renderer::D3D12Renderer::OnUpdate()
     D3D12_RECT l_rect = {0,0,800,600};
     m_graphicsCmdList->RSSetViewports(1, &l_viewPort);
     m_graphicsCmdList->RSSetScissorRects(1, &l_rect);
-
-    //CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameIndex, m_rtvDescriptorSize);
-
     // Record commands.
 
     m_graphicsCmdList->IASetIndexBuffer(&m_indexBuffer->GetIndexBufferView());
     m_graphicsCmdList->IASetVertexBuffers(0, 1, &m_vertexBuffer->GetVertexBufferView());
+	m_graphicsCmdList->SetGraphicsRootConstantBufferView(CAMERA_UNIFORM_ROOT_INDEX, m_cameraUniformBuffer->GetGpuVirtualAddress());
     m_graphicsCmdList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     m_graphicsCmdList->DrawIndexedInstanced(m_scene->m_actors[0].m_meshes[0].m_indices.size(), 1, 0, 0, 0);
     // Indicate that the back buffer will now be used to present.
@@ -141,8 +142,6 @@ void Renderer::D3D12Renderer::InitSwapChain()
         }
     }
 #endif
-
-   
 }
 
 void Renderer::D3D12Renderer::InitSyncPrimitive()
@@ -188,9 +187,10 @@ void Renderer::D3D12Renderer::InitBuffers()
     loader.LoadFbx("D:\\Dev\\FlyCore\\build\\Game\\Debug\\sephere.fbx", m_scene);
 
     m_vertexBuffer = new D3D12VertexBuffer(Constants::VERTEX_BUFFER_SIZE);
-    m_uploadBuffer = new D3D12UploadBuffer(Constants::VERTEX_BUFFER_SIZE);
+    m_uploadBuffer = new D3D12UploadBuffer(Constants::MAX_CONST_BUFFER_VIEW_SIZE);
     m_indexBuffer = new D3D12IndexBuffer(Constants::VERTEX_BUFFER_SIZE);
-
+	const auto CAMERA_UNIFORM_BUFFER_SIZE = sizeof(float) * 16 * Constants::SWAPCHAIN_BUFFER_COUNT;
+	m_cameraUniformBuffer = new D3D12UploadBuffer(Utility::AlignTo256(CAMERA_UNIFORM_BUFFER_SIZE));
     //Constants::Vertex triangleVertices[] =
     //{
     //    { { 0.0f, 0.25f , 0.0f ,1.0f}, { 1.0f, 0.0f, 0.0f, 1.0f } },
@@ -226,7 +226,19 @@ void Renderer::D3D12Renderer::InitRootSignature()
     using namespace Microsoft::WRL;
     // Create an empty root signature.
     CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
-    rootSignatureDesc.Init(0, nullptr, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+	D3D12_ROOT_PARAMETER l_cameraUniform = {};
+	l_cameraUniform.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	l_cameraUniform.Descriptor = {0,0};
+	l_cameraUniform.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
+
+	std::vector<D3D12_ROOT_PARAMETER> l_rootParameters = 
+	{
+		l_cameraUniform
+	};
+
+    rootSignatureDesc.Init(l_rootParameters.size(), l_rootParameters.data(), 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
     ComPtr<ID3DBlob> signature;
     ComPtr<ID3DBlob> error;
@@ -268,12 +280,14 @@ void Renderer::D3D12Renderer::InitPipelineState()
     psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader.Get());
     psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
     psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-    psoDesc.DepthStencilState.DepthEnable = FALSE;
+    psoDesc.DepthStencilState.DepthEnable = true;
+	psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
     psoDesc.DepthStencilState.StencilEnable = FALSE;
     psoDesc.SampleMask = UINT_MAX;
     psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     psoDesc.NumRenderTargets = 1;
     psoDesc.RTVFormats[0] = DXGI_FORMAT_R10G10B10A2_UNORM;
+	psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
     psoDesc.SampleDesc.Count = 1;
     m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState));
 
@@ -286,7 +300,6 @@ void Renderer::D3D12Renderer::LoadScene(Renderer::Scene*)
 void Renderer::D3D12Renderer::OnDestory()
 {
     SAFE_DELETE(m_cmdQueue);
-    
     SAFE_DELETE(m_vertexBuffer); 
     SAFE_DELETE(m_indexBuffer);
     SAFE_DELETE(m_uploadBuffer);

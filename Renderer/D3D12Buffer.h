@@ -32,6 +32,11 @@ namespace Renderer
 
 		virtual void ResetBuffer() {};
 
+		virtual const D3D12Descriptor* GetSRV() 
+		{
+			return nullptr;
+		};
+
 	protected:
 		D3D12Buffer(uint64_t p_size,
 			D3D12_HEAP_TYPE p_heapType,
@@ -46,6 +51,12 @@ namespace Renderer
 		uint64_t m_offset;
 		//Max Buffer Size
 		uint64_t m_bufferSize;
+
+
+		virtual void CreateViews()
+		{
+
+		}
 
 	};
 
@@ -71,6 +82,7 @@ namespace Renderer
 
 		D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
 
+
 	};
 
 
@@ -90,6 +102,9 @@ namespace Renderer
 			m_offset = 0;
 		}
 
+		void CreateViews() override;
+
+		const D3D12Descriptor* m_cbv;
 	private:
 
 	};

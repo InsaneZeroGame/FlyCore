@@ -67,15 +67,13 @@ namespace Renderer {
 
 		D3D12UploadBuffer* m_uploadBuffer;
 
+		D3D12UploadBuffer* m_cameraUniformBuffer;
+
 		HANDLE m_fenceEvent;
 
 		std::array<uint64_t, 3> m_fenceValues;
 
 		ID3D12Fence* m_fence;
-
-		//ID3D12DescriptorHeap* m_rtvHeap;
-
-		//UINT m_rtvDescriptorSize;
 
 		D3D12CmdListManager* m_cmdListManager;
 
