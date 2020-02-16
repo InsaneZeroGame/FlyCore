@@ -14,12 +14,12 @@ namespace Renderer
 			return l_descManager;
 		}
 
-		__forceinline const D3D12Descriptor* RequestDesc(D3D12_DESCRIPTOR_HEAP_TYPE p_type)
+		__forceinline D3D12Descriptor* RequestDesc(D3D12_DESCRIPTOR_HEAP_TYPE p_type)
 		{
 			return m_descHeaps[p_type]->RequestDesc();
 		}
 
-		__forceinline void ReturnDesc(const D3D12Descriptor* p_desc)
+		__forceinline void ReturnDesc(D3D12Descriptor* p_desc)
 		{
 			m_descHeaps[p_desc->type]->ReturnDesc(p_desc);
 		}

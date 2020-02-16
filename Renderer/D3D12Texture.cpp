@@ -1,9 +1,10 @@
 #include "D3D12Texture.h"
 #include "D3D12Device.h"
+#include "D3D12DescManager.h"
 
 
 Renderer::D3D12Texture::D3D12Texture(
-	D3D12_RESOURCE_DESC* p_desc,
+	const D3D12_RESOURCE_DESC& p_desc,
 	D3D12_HEAP_FLAGS p_flag,
 	ID3D12Resource* p_resource):
 	m_resourceDesc(p_desc)
@@ -24,11 +25,74 @@ Renderer::D3D12Texture::D3D12Texture(
 		l_heapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 		l_heapProperties.CreationNodeMask = 0;
 		l_heapProperties.VisibleNodeMask = 0;
-		ASSERT_SUCCEEDED(l_device->CreateCommittedResource(&l_heapProperties, p_flag, m_resourceDesc, D3D12_RESOURCE_STATE_COMMON, nullptr, MY_IID_PPV_ARGS(&m_pResource)));
-
+		ASSERT_SUCCEEDED(l_device->CreateCommittedResource(&l_heapProperties, p_flag, &m_resourceDesc, D3D12_RESOURCE_STATE_COMMON, nullptr, MY_IID_PPV_ARGS(&m_pResource)));
 	}
-	}
+}
 
 Renderer::D3D12Texture::~D3D12Texture()
 {
+}
+
+Renderer::D3D12DepthBuffer::D3D12DepthBuffer(uint32_t p_width,uint32_t p_height):
+	D3D12Texture(
+		{D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+		0,
+		p_width,
+		p_height,
+		1,
+		1,
+		DXGI_FORMAT_D32_FLOAT,
+		{1,0},
+		D3D12_TEXTURE_LAYOUT_UNKNOWN ,
+		D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL }, D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE)
+{
+	CreateViews();
+}
+
+void Renderer::D3D12DepthBuffer::CreateViews()
+{
+	D3D12_DEPTH_STENCIL_VIEW_DESC l_viewDesc = {};
+	l_viewDesc.Format = m_resourceDesc.Format;
+	l_viewDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+	l_viewDesc.Flags = D3D12_DSV_FLAG_NONE;
+	m_dsv = D3D12DescManager::GetDescManager().RequestDesc(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+	ID3D12Device* l_device = (D3D12Device::GetDevice());
+	l_device->CreateDepthStencilView(m_pResource.Get(), &l_viewDesc, m_dsv->cpuHandle);
+}
+
+Renderer::D3D12DepthBuffer::~D3D12DepthBuffer()
+{
+}
+
+Renderer::D3D12RenderTarget::D3D12RenderTarget(uint32_t p_width,uint32_t p_height,ID3D12Resource* p_resource):
+	D3D12Texture(
+		{
+		 D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+		 0,
+		 p_width,
+		 p_height,
+		 1,
+		 0,
+		 Constants::SwapChainFormat,
+		{1,
+		 0},
+		 D3D12_TEXTURE_LAYOUT_UNKNOWN,
+		D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
+		},
+		D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES,
+		p_resource)
+{
+	CreateViews();
+}
+
+Renderer::D3D12RenderTarget::~D3D12RenderTarget()
+{
+
+}
+
+void Renderer::D3D12RenderTarget::CreateViews()
+{
+	m_rtv = D3D12DescManager::GetDescManager().RequestDesc(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	ID3D12Device* l_device = (D3D12Device::GetDevice());
+	l_device->CreateRenderTargetView(m_pResource.Get(), nullptr, m_rtv->cpuHandle);
 }

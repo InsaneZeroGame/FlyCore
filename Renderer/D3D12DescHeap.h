@@ -5,12 +5,7 @@
 namespace Renderer
 {
 
-	struct D3D12Descriptor
-	{
-		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle;
-		D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle;
-		D3D12_DESCRIPTOR_HEAP_TYPE type;
-	};
+	
 
 
 	class D3D12DescHeap : public Interface::INoCopy
@@ -22,9 +17,9 @@ namespace Renderer
 
 		__forceinline ID3D12DescriptorHeap* GetHeap() { return m_descHeap; }
 
-		const D3D12Descriptor* RequestDesc();
+		D3D12Descriptor* RequestDesc();
 
-		__forceinline void ReturnDesc(const D3D12Descriptor*  p_desc)
+		__forceinline void ReturnDesc(D3D12Descriptor*  p_desc)
 		{
 			m_descs.push(p_desc);
 		}
@@ -36,7 +31,7 @@ namespace Renderer
 
 		uint64_t m_descHandleIncrementSize;
 
-		std::queue<const D3D12Descriptor*> m_descs;
+		std::queue<D3D12Descriptor*> m_descs;
 
 		const uint64_t m_maxDescCount;
 

@@ -32,12 +32,12 @@ Renderer::D3D12DescHeap::~D3D12DescHeap()
 	}
 }
 
-const Renderer::D3D12Descriptor* Renderer::D3D12DescHeap::RequestDesc()
+Renderer::D3D12Descriptor* Renderer::D3D12DescHeap::RequestDesc()
 {
 	if (!m_descs.empty())
 	{
 		//Has available descs
-		const D3D12Descriptor* l_desc = m_descs.front();
+		D3D12Descriptor* l_desc = m_descs.front();
 		m_descs.pop();
 		return l_desc;
 	}

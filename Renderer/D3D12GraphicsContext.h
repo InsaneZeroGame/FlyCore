@@ -31,15 +31,19 @@ namespace Renderer
 	private:
 		D3D12GraphicsContext();
 
+		D3D12DepthBuffer* m_depthBuffer;
 
-		std::array<D3D12Texture*, 3> m_renderTextures;
-
-		std::array<const D3D12Descriptor*, 3> m_renderTargetsDesc;
+		std::array <D3D12RenderTarget*,3> m_renderTargets;
 
 		ID3D12Device* m_device;
 
 		ID3D12GraphicsCommandList* m_graphicsCmdList;
 
 		uint32_t m_currentFrameIndex;
+
+		uint32_t m_RTWidth;
+
+		uint32_t m_RTHeight;
+
 	};
 }
