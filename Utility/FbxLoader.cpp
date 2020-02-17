@@ -343,7 +343,7 @@ void Utility::FbxLoader::DisplayMesh(FbxNode* pNode)
     DisplayString("Mesh Name: ", (char*)pNode->GetName());
     DisplayMetaDataConnections(lMesh);
     DisplayControlsPoints(lMesh,l_vertices);
-    DisplayPolygons(lMesh,l_indices);
+    DisplayPolygons(lMesh,l_indices,l_vertices);
     DisplayMaterialMapping(lMesh);
     DisplayMaterial(lMesh);
     DisplayTexture(lMesh);
@@ -514,6 +514,7 @@ void Utility::FbxLoader::DisplayControlsPoints(FbxMesh* pMesh, std::vector<Rende
 {
     int i, lControlPointsCount = pMesh->GetControlPointsCount();
     FbxVector4* lControlPoints = pMesh->GetControlPoints();
+	p_vertices.resize(lControlPointsCount);
 
     DisplayString("    Control Points");
 
@@ -527,12 +528,8 @@ void Utility::FbxLoader::DisplayControlsPoints(FbxMesh* pMesh, std::vector<Rende
         l_vertex.position[1] = static_cast<float>(lControlPoints[i].mData[1]);
         l_vertex.position[2] = static_cast<float>(lControlPoints[i].mData[2]);
         l_vertex.position[3] = 1.0f;
-        l_vertex.color[0] = 1.0f;
-        l_vertex.color[1] = 0.0f;
-        l_vertex.color[2] = 0.0f;
-        l_vertex.color[3] = 1.0f;
 
-        p_vertices.push_back(l_vertex);
+        p_vertices[i] = l_vertex;
 
 
         for (int j = 0; j < pMesh->GetElementNormalCount(); j++)
@@ -552,7 +549,7 @@ void Utility::FbxLoader::DisplayControlsPoints(FbxMesh* pMesh, std::vector<Rende
 }
 
 
-void Utility::FbxLoader::DisplayPolygons(FbxMesh* pMesh, std::vector<uint32_t>& p_indices)
+void Utility::FbxLoader::DisplayPolygons(FbxMesh* pMesh, std::vector<uint32_t>& p_indices, std::vector<Renderer::Vertex>& p_vertices)
 {
     
     int i, j, lPolygonCount = pMesh->GetPolygonCount();
@@ -656,7 +653,7 @@ void Utility::FbxLoader::DisplayPolygons(FbxMesh* pMesh, std::vector<uint32_t>& 
             {
                 FbxGeometryElementUV* leUV = pMesh->GetElementUV(l);
                 FBXSDK_sprintf(header, 100, "            Texture UV: ");
-
+				FbxVector2 l_uv;
                 switch (leUV->GetMappingMode())
                 {
                 default:
@@ -665,12 +662,17 @@ void Utility::FbxLoader::DisplayPolygons(FbxMesh* pMesh, std::vector<uint32_t>& 
                     switch (leUV->GetReferenceMode())
                     {
                     case FbxGeometryElement::eDirect:
-                        Display2DVector(header, leUV->GetDirectArray().GetAt(lControlPointIndex));
+						l_uv = leUV->GetDirectArray().GetAt(lControlPointIndex);
+						p_vertices[lControlPointIndex].uv[0] = float(l_uv.mData[0]);
+						p_vertices[lControlPointIndex].uv[1] = float(l_uv.mData[1]);
+
                         break;
                     case FbxGeometryElement::eIndexToDirect:
                     {
                         int id = leUV->GetIndexArray().GetAt(lControlPointIndex);
-                        Display2DVector(header, leUV->GetDirectArray().GetAt(id));
+						l_uv = leUV->GetDirectArray().GetAt(id);
+						p_vertices[lControlPointIndex].uv[0] = float(l_uv.mData[0]);
+						p_vertices[lControlPointIndex].uv[1] = float(l_uv.mData[1]);
                     }
                     break;
                     default:
@@ -686,7 +688,9 @@ void Utility::FbxLoader::DisplayPolygons(FbxMesh* pMesh, std::vector<uint32_t>& 
                     case FbxGeometryElement::eDirect:
                     case FbxGeometryElement::eIndexToDirect:
                     {
-                        Display2DVector(header, leUV->GetDirectArray().GetAt(lTextureUVIndex));
+						l_uv = leUV->GetDirectArray().GetAt(lTextureUVIndex);
+						p_vertices[lControlPointIndex].uv[0] = float(l_uv.mData[0]);
+						p_vertices[lControlPointIndex].uv[1] = float(l_uv.mData[1]);
                     }
                     break;
                     default:
@@ -705,18 +709,26 @@ void Utility::FbxLoader::DisplayPolygons(FbxMesh* pMesh, std::vector<uint32_t>& 
             {
                 FbxGeometryElementNormal* leNormal = pMesh->GetElementNormal(l);
                 FBXSDK_sprintf(header, 100, "            Normal: ");
-
+				FbxVector4 l_normal;
                 if (leNormal->GetMappingMode() == FbxGeometryElement::eByPolygonVertex)
                 {
                     switch (leNormal->GetReferenceMode())
                     {
                     case FbxGeometryElement::eDirect:
-                        Display3DVector(header, leNormal->GetDirectArray().GetAt(vertexId));
-                        break;
+                        l_normal =  leNormal->GetDirectArray().GetAt(vertexId);
+						p_vertices[lControlPointIndex].normal[0] = float(l_normal.mData[0]);
+						p_vertices[lControlPointIndex].normal[1] = float(l_normal.mData[1]);
+						p_vertices[lControlPointIndex].normal[2] = float(l_normal.mData[2]);
+
+						break;
                     case FbxGeometryElement::eIndexToDirect:
                     {
                         int id = leNormal->GetIndexArray().GetAt(vertexId);
                         Display3DVector(header, leNormal->GetDirectArray().GetAt(id));
+						l_normal = leNormal->GetDirectArray().GetAt(id);
+						p_vertices[lControlPointIndex].normal[0] = float(l_normal.mData[0]);
+						p_vertices[lControlPointIndex].normal[1] = float(l_normal.mData[1]);
+						p_vertices[lControlPointIndex].normal[2] = float(l_normal.mData[2]);
                     }
                     break;
                     default:

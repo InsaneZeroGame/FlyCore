@@ -52,6 +52,12 @@ namespace Renderer {
 
 		void InitRootSignature();
 
+
+		//Default texture
+		void CreateDefaultTexture();
+
+
+
 		Renderer::Scene* m_scene;
 
 

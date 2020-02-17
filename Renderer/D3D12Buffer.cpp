@@ -93,7 +93,7 @@ void Renderer::D3D12UploadBuffer::CreateViews()
 {
 	D3D12_CONSTANT_BUFFER_VIEW_DESC l_cbvDesc = {};
 	l_cbvDesc.BufferLocation = m_GpuVirtualAddress;
-	l_cbvDesc.SizeInBytes = m_bufferSize;
+	l_cbvDesc.SizeInBytes = UINT(m_bufferSize);
 	m_cbv = D3D12DescManager::GetDescManager().RequestDesc(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	m_device->CreateConstantBufferView(&l_cbvDesc, m_cbv->cpuHandle);
 }

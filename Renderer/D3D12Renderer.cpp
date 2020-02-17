@@ -3,6 +3,9 @@
 #include "../Utility/AssetLoader.h"
 #include <DirectXMath.h>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "../3dparty/include/stb_image.h"
+
 #define CAMERA_UNIFORM_ROOT_INDEX 0
 
 
@@ -55,7 +58,7 @@ void Renderer::D3D12Renderer::OnUpdate()
     m_graphicsCmdList->IASetVertexBuffers(0, 1, &m_vertexBuffer->GetVertexBufferView());
 	m_graphicsCmdList->SetGraphicsRootConstantBufferView(CAMERA_UNIFORM_ROOT_INDEX, m_cameraUniformBuffer->GetGpuVirtualAddress());
     m_graphicsCmdList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    m_graphicsCmdList->DrawIndexedInstanced(m_scene->m_actors[0].m_meshes[0].m_indices.size(), 1, 0, 0, 0);
+    m_graphicsCmdList->DrawIndexedInstanced(static_cast<uint32_t>(m_scene->m_actors[0].m_meshes[0].m_indices.size()), 1, 0, 0, 0);
     // Indicate that the back buffer will now be used to present.
 	l_graphicsContext.EndRender();
     m_graphicsCmdList->Close();
@@ -208,8 +211,8 @@ void Renderer::D3D12Renderer::InitBuffers()
     //
     //uint32_t triangleIndices[] = {0,1,2};
 
-    const UINT vertexBufferSize = (UINT)sizeof(m_scene->m_actors[0].m_meshes[0].m_vertices[0]) * m_scene->m_actors[0].m_meshes[0].m_vertices.size();
-    const UINT indexBufferSize = (UINT)sizeof(m_scene->m_actors[0].m_meshes[0].m_indices[0]) * m_scene->m_actors[0].m_meshes[0].m_indices.size();
+    const UINT vertexBufferSize = (UINT)sizeof(m_scene->m_actors[0].m_meshes[0].m_vertices[0]) * static_cast<uint32_t>(m_scene->m_actors[0].m_meshes[0].m_vertices.size());
+    const UINT indexBufferSize =  (UINT)sizeof(m_scene->m_actors[0].m_meshes[0].m_indices[0])  * static_cast<uint32_t>(m_scene->m_actors[0].m_meshes[0].m_indices.size());
 
     m_uploadBuffer->CopyData(m_scene->m_actors[0].m_meshes[0].m_vertices.data(), vertexBufferSize);
     m_uploadBuffer->CopyData(m_scene->m_actors[0].m_meshes[0].m_indices.data(), indexBufferSize);
@@ -246,12 +249,16 @@ void Renderer::D3D12Renderer::InitRootSignature()
 		l_cameraUniform
 	};
 
-    rootSignatureDesc.Init(l_rootParameters.size(), l_rootParameters.data(), 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+    rootSignatureDesc.Init(static_cast<uint32_t>(l_rootParameters.size()), l_rootParameters.data(), 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
     ComPtr<ID3DBlob> signature;
     ComPtr<ID3DBlob> error;
     D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error);
     m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_rootSignature));
+}
+
+void Renderer::D3D12Renderer::CreateDefaultTexture()
+{
 }
 
 void Renderer::D3D12Renderer::InitPipelineState()
@@ -277,7 +284,9 @@ void Renderer::D3D12Renderer::InitPipelineState()
     D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
     {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 16, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+        { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 16, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 28, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+
     };
 
     // Describe and create the graphics pipeline state object (PSO).
@@ -288,7 +297,7 @@ void Renderer::D3D12Renderer::InitPipelineState()
     psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader.Get());
     psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
     psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-    psoDesc.DepthStencilState.DepthEnable = false;
+    psoDesc.DepthStencilState.DepthEnable = true;
 	psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
     psoDesc.DepthStencilState.StencilEnable = FALSE;
     psoDesc.SampleMask = UINT_MAX;

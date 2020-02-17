@@ -7,7 +7,8 @@ namespace Renderer
 	struct Vertex
 	{
 		float position[4];
-		float color[4];
+		float normal[3];
+		float uv[2];
 	};
 
 	class Mesh

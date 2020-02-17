@@ -19,12 +19,12 @@ struct PSInput
 
 float4x4 MVP : register(b0);
 
-PSInput main(float4 position : POSITION, float4 color : COLOR)
+PSInput main(float4 position : POSITION, float3 normal : NORMAL0,float2 tex_uv : TEXCOORD0)
 {
 	PSInput result;
 
 	result.position = mul(position,MVP);
-	result.color = color;
+	result.color = float4(normal,1.0f);
 
 	return result;
 }
