@@ -17,13 +17,17 @@ struct PSInput
     float4 color : COLOR;
 };
 
-float4x4 MVP : register(b0);
+cbuffer CDataBuffer : register(b0)
+{
+	float4x4 MVP;
+};
+
 
 PSInput main(float4 position : POSITION, float3 normal : NORMAL0,float2 tex_uv : TEXCOORD0)
 {
 	PSInput result;
 
-	result.position = mul(position,MVP);
+	result.position = mul(position, MVP);
 	result.color = float4(normal,1.0f);
 
 	return result;

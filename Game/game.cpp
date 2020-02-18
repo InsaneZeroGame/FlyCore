@@ -12,12 +12,11 @@ int main() {
 	renderer->SetTargetWindow(window);
 	renderer->OnInit();
 	window->SetRendererCallback(std::bind(&Renderer::D3D12Renderer::OnUpdate,renderer));
+	
 	while (1)
 	{
 		window->OnUpdate();
-
 	}
-	
 
 	renderer->OnDestory();
 	window->OnDestory();

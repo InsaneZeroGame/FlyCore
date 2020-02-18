@@ -11,11 +11,9 @@
 
 Renderer::D3D12Renderer::D3D12Renderer():
     m_device(D3D12Device::GetDevice()),
-    m_cmdQueue(nullptr),
     m_swapChain(nullptr),
-    m_cmdListManager(D3D12CmdListManager::GetManagerPtr()),
-    m_cmdAllocatorPool(D3D12CmdAllocatorPool::GetPoolPtr()),
     m_frameIndex(0),
+	m_graphicsCmd(new D3D12GraphicsCmd(Constants::SWAPCHAIN_BUFFER_COUNT)),
 	m_cameraUniformBuffer(nullptr)
 {
 }
@@ -27,9 +25,6 @@ Renderer::D3D12Renderer::~D3D12Renderer()
 void Renderer::D3D12Renderer::OnInit()
 {
 	ASSERT(m_window, "A window must be set before create swapchain\n");
-    InitCmdQueue();
-    ASSERT(m_cmdQueue, "A CmdQueue must be created before create swapchain\n");
-	InitCmdLists();
 	InitSwapChain();
     InitGraphicsContext();
     InitSyncPrimitive();
@@ -41,32 +36,34 @@ void Renderer::D3D12Renderer::OnInit()
 void Renderer::D3D12Renderer::OnUpdate()
 {
 	auto& l_graphicsContext = D3D12GraphicsContext::GetContext();
-    m_graphicsCmdAllocator[m_frameIndex]->Reset();
-    m_cmdListManager->ResetCmdList(m_graphicsCmdList, m_graphicsCmdAllocator[m_frameIndex], m_pipelineState);
+	m_graphicsCmd->Reset(m_frameIndex, m_pipelineState);
     // Indicate that the back buffer will be used as a render target.
 	l_graphicsContext.BeginRender(m_frameIndex);
-    m_graphicsCmdList->SetPipelineState(m_pipelineState);
-    // Set necessary state.
-    m_graphicsCmdList->SetGraphicsRootSignature(m_rootSignature);
-    D3D12_VIEWPORT l_viewPort = {0.0f,0.0f,800.0f,600.0f,0.0f,1.0f};
-    D3D12_RECT l_rect = {0,0,800,600};
-    m_graphicsCmdList->RSSetViewports(1, &l_viewPort);
-    m_graphicsCmdList->RSSetScissorRects(1, &l_rect);
-    // Record commands.
+	ID3D12GraphicsCommandList* l_graphicsCmdList = *m_graphicsCmd;
+	//Forward Pass
+	{
+		l_graphicsCmdList->SetPipelineState(m_pipelineState);
+		// Set necessary state.
+		l_graphicsCmdList->SetGraphicsRootSignature(m_rootSignature);
+		D3D12_VIEWPORT l_viewPort = { 0.0f,0.0f,800.0f,600.0f,0.0f,1.0f };
+		D3D12_RECT l_rect = { 0,0,800,600 };
+		l_graphicsCmdList->RSSetViewports(1, &l_viewPort);
+		l_graphicsCmdList->RSSetScissorRects(1, &l_rect);
+		// Record commands.
 
-    m_graphicsCmdList->IASetIndexBuffer(&m_indexBuffer->GetIndexBufferView());
-    m_graphicsCmdList->IASetVertexBuffers(0, 1, &m_vertexBuffer->GetVertexBufferView());
-	m_graphicsCmdList->SetGraphicsRootConstantBufferView(CAMERA_UNIFORM_ROOT_INDEX, m_cameraUniformBuffer->GetGpuVirtualAddress());
-    m_graphicsCmdList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    m_graphicsCmdList->DrawIndexedInstanced(static_cast<uint32_t>(m_scene->m_actors[0].m_meshes[0].m_indices.size()), 1, 0, 0, 0);
-    // Indicate that the back buffer will now be used to present.
+		l_graphicsCmdList->IASetIndexBuffer(&m_indexBuffer->GetIndexBufferView());
+		l_graphicsCmdList->IASetVertexBuffers(0, 1, &m_vertexBuffer->GetVertexBufferView());
+		l_graphicsCmdList->SetGraphicsRootConstantBufferView(CAMERA_UNIFORM_ROOT_INDEX, m_cameraUniformBuffer->GetGpuVirtualAddress());
+		l_graphicsCmdList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		l_graphicsCmdList->DrawIndexedInstanced(static_cast<uint32_t>(m_scene->m_actors[0].m_meshes[0].m_indices.size()), 1, 0, 0, 0);
+		// Indicate that the back buffer will now be used to present.
+	}
 	l_graphicsContext.EndRender();
-    m_graphicsCmdList->Close();
-
+	m_graphicsCmd->Close();
     // Execute the command list.
-    ID3D12CommandList* ppCommandLists[] = { m_graphicsCmdList };
-    m_cmdQueue->GetQueue()->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
-    // Present the frame.
+	m_graphicsCmd->Flush();
+
+
     m_swapChain->Present(1, 0);
     SyncFrame();
 }
@@ -75,24 +72,6 @@ void Renderer::D3D12Renderer::OnUpdate()
 
 void Renderer::D3D12Renderer::RenderScene()
 {
-}
-
-void Renderer::D3D12Renderer::InitCmdQueue()
-{
-    m_cmdQueue = new D3D12CmdQueue(D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT);
-}
-
-void Renderer::D3D12Renderer::InitCmdLists()
-{
-    //request for 3 allocators for render cmd. one for each buffer for triple buffer.
-    
-    for (auto i = 0; i < Constants::SWAPCHAIN_BUFFER_COUNT; ++i)
-    {
-        m_graphicsCmdAllocator[i] = m_cmdAllocatorPool->RequestAllocator(D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT);
-    }
-
-    m_cmdListManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_DIRECT,nullptr,m_graphicsCmdAllocator[0], MY_IID_PPV_ARGS(&m_graphicsCmdList));
-    m_cmdListManager->CloseCmdList(m_graphicsCmdList);
 }
 
 void Renderer::D3D12Renderer::InitSwapChain()
@@ -116,7 +95,7 @@ void Renderer::D3D12Renderer::InitSwapChain()
     swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
 
 #if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP) // Win32
-    dxgiFactory->CreateSwapChainForHwnd(m_cmdQueue->GetQueue(), m_window->GetWin32Window(), &swapChainDesc, nullptr, nullptr, &swapChain1);
+    dxgiFactory->CreateSwapChainForHwnd(D3D12GraphicsCmd::GetQueue(), m_window->GetWin32Window(), &swapChainDesc, nullptr, nullptr, &swapChain1);
     swapChain1.As(&m_swapChain);
     m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 #else // UWP
@@ -158,14 +137,14 @@ void Renderer::D3D12Renderer::InitSyncPrimitive()
 void Renderer::D3D12Renderer::InitGraphicsContext()
 {
 	D3D12GraphicsContext::GetContext().InitRenderTargets(m_window->GetWidth(), m_window->GetHeight(), m_swapChain.Get());
-	D3D12GraphicsContext::GetContext().SetGraphicsCmdList(m_graphicsCmdList);
+	D3D12GraphicsContext::GetContext().SetGraphicsCmdList(*m_graphicsCmd);
 
 }
 
 void Renderer::D3D12Renderer::SyncFrame()
 {
     //1.Get Current Available Backbuffer
-    m_cmdQueue->GetQueue()->Signal(m_fence, m_fenceValues[m_frameIndex]);
+    D3D12GraphicsCmd::GetQueue()->Signal(m_fence, m_fenceValues[m_frameIndex]);
 
     auto currentBackBufferIndex = m_swapChain->GetCurrentBackBufferIndex();
 
@@ -316,7 +295,7 @@ void Renderer::D3D12Renderer::LoadScene(Renderer::Scene*)
 
 void Renderer::D3D12Renderer::OnDestory()
 {
-    SAFE_DELETE(m_cmdQueue);
+	SAFE_DELETE(m_graphicsCmd);
     SAFE_DELETE(m_vertexBuffer); 
     SAFE_DELETE(m_indexBuffer);
     SAFE_DELETE(m_uploadBuffer);

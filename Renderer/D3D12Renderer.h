@@ -3,14 +3,12 @@
 #include "../Framework/IModule.h"
 #include "../Framework/IRenderer.h"
 #include "D3D12Device.h"
-#include "D3D12CmdQueue.h"
 #include "D3D12DescHeap.h"
 #include "D3D12Texture.h"
-#include "D3D12CmdManager.h"
-#include "D3D12CmdAllocatorPool.h"
 #include "D3D12Buffer.h"
 #include "D3D12CmdContext.h"
 #include "D3D12GraphicsContext.h"
+#include "D3D12RenderCmd.h"
 
 
 namespace Renderer {
@@ -36,10 +34,6 @@ namespace Renderer {
 
 
 	private:
-		void InitCmdQueue();
-
-		void InitCmdLists();
-
 		void InitSwapChain();
 
 		void InitSyncPrimitive();
@@ -56,10 +50,7 @@ namespace Renderer {
 		//Default texture
 		void CreateDefaultTexture();
 
-
-
 		Renderer::Scene* m_scene;
-
 
 		ID3D12RootSignature* m_rootSignature;
 
@@ -81,14 +72,6 @@ namespace Renderer {
 
 		ID3D12Fence* m_fence;
 
-		D3D12CmdListManager* m_cmdListManager;
-
-		D3D12CmdAllocatorPool* m_cmdAllocatorPool;
-
-		ID3D12GraphicsCommandList* m_graphicsCmdList;
-
-		std::array<ID3D12CommandAllocator*, Constants::SWAPCHAIN_BUFFER_COUNT> m_graphicsCmdAllocator;
-
 		Microsoft::WRL::ComPtr<IDXGISwapChain3> m_swapChain = nullptr;
 
 		ID3D12Device* m_device = nullptr;
@@ -97,7 +80,9 @@ namespace Renderer {
 	
 		bool m_typedUAVLoadSupport_R16G16B16A16_FLOAT = false;
 
-		D3D12CmdQueue* m_cmdQueue = nullptr;
+		D3D12GraphicsCmd* m_graphicsCmd = nullptr;
+
+		D3D12CmdQueue* m_cmdComputeQueue = nullptr;
 
 		uint32_t m_frameIndex;
 	};
