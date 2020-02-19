@@ -13,9 +13,7 @@ namespace Renderer
 
 		virtual void Flush() const {};
 
-		static ID3D12CommandQueue* GetQueue() { 
-			return m_cmdQueue->GetQueue(); 
-		}
+		
 
 	protected:
 		D3D12CmdListManager* m_cmdListManager;
@@ -23,8 +21,6 @@ namespace Renderer
 		D3D12Cmd(D3D12_COMMAND_LIST_TYPE p_type,uint32_t p_cmdListCount);
 
 		D3D12CmdAllocatorPool* m_cmdAllocatorPool;
-
-		static D3D12CmdQueue* m_cmdQueue;
 
 		std::vector<ID3D12CommandAllocator*> m_cmdAllocator;
 
@@ -48,10 +44,32 @@ namespace Renderer
 			return m_cmdList;
 		}
 
+		static ID3D12CommandQueue* GetQueue() {
+			return m_cmdQueue->GetQueue();
+		}
+
 		operator ID3D12GraphicsCommandList* () { return m_cmdList; }
 	private:
 		ID3D12GraphicsCommandList* m_cmdList;
+
+		static D3D12CmdQueue* m_cmdQueue;
+
 	};
 
+
+	class D3D12ComputeCmd : public D3D12Cmd
+	{
+	public:
+		D3D12ComputeCmd(const uint32_t& p_count);
+		~D3D12ComputeCmd();
+		
+		static ID3D12CommandQueue* GetQueue() {
+			return m_cmdQueue->GetQueue();
+		}
+
+	private:
+		static D3D12CmdQueue* m_cmdQueue;
+
+	};
 	
 }

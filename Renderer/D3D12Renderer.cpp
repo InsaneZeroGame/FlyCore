@@ -14,6 +14,7 @@ Renderer::D3D12Renderer::D3D12Renderer():
     m_swapChain(nullptr),
     m_frameIndex(0),
 	m_graphicsCmd(new D3D12GraphicsCmd(Constants::SWAPCHAIN_BUFFER_COUNT)),
+	m_computeCmd(new D3D12ComputeCmd(Constants::COMPUTE_CMD_COUNT)),
 	m_cameraUniformBuffer(nullptr)
 {
 }
@@ -35,22 +36,21 @@ void Renderer::D3D12Renderer::OnInit()
 
 void Renderer::D3D12Renderer::OnUpdate()
 {
+
+
+
+
+
 	auto& l_graphicsContext = D3D12GraphicsContext::GetContext();
-	m_graphicsCmd->Reset(m_frameIndex, m_pipelineState);
+	m_graphicsCmd->Reset(m_frameIndex, m_graphicsPipelineState);
     // Indicate that the back buffer will be used as a render target.
 	l_graphicsContext.BeginRender(m_frameIndex);
 	ID3D12GraphicsCommandList* l_graphicsCmdList = *m_graphicsCmd;
 	//Forward Pass
 	{
-		l_graphicsCmdList->SetPipelineState(m_pipelineState);
+		l_graphicsCmdList->SetPipelineState(m_graphicsPipelineState);
 		// Set necessary state.
-		l_graphicsCmdList->SetGraphicsRootSignature(m_rootSignature);
-		D3D12_VIEWPORT l_viewPort = { 0.0f,0.0f,800.0f,600.0f,0.0f,1.0f };
-		D3D12_RECT l_rect = { 0,0,800,600 };
-		l_graphicsCmdList->RSSetViewports(1, &l_viewPort);
-		l_graphicsCmdList->RSSetScissorRects(1, &l_rect);
-		// Record commands.
-
+		l_graphicsCmdList->SetGraphicsRootSignature(m_graphicsRootSignature);
 		l_graphicsCmdList->IASetIndexBuffer(&m_indexBuffer->GetIndexBufferView());
 		l_graphicsCmdList->IASetVertexBuffers(0, 1, &m_vertexBuffer->GetVertexBufferView());
 		l_graphicsCmdList->SetGraphicsRootConstantBufferView(CAMERA_UNIFORM_ROOT_INDEX, m_cameraUniformBuffer->GetGpuVirtualAddress());
@@ -62,8 +62,6 @@ void Renderer::D3D12Renderer::OnUpdate()
 	m_graphicsCmd->Close();
     // Execute the command list.
 	m_graphicsCmd->Flush();
-
-
     m_swapChain->Present(1, 0);
     SyncFrame();
 }
@@ -127,7 +125,7 @@ void Renderer::D3D12Renderer::InitSwapChain()
 
 void Renderer::D3D12Renderer::InitSyncPrimitive()
 {
-    m_fenceValues[0] = 0;
+    m_fenceValues[0] = 1;
     m_fenceValues[1] = 0;
     m_fenceValues[2] = 0;
     m_fenceEvent = CreateEvent(0, false, false, 0);
@@ -209,31 +207,55 @@ void Renderer::D3D12Renderer::InitBuffers()
         D3D12_RESOURCE_STATE_INDEX_BUFFER);
     l_graphicsContext.End(true);
 
+
+
+
 }
 
 void Renderer::D3D12Renderer::InitRootSignature()
 {
     using namespace Microsoft::WRL;
-    // Create an empty root signature.
-    CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
-
-	D3D12_ROOT_PARAMETER l_cameraUniform = {};
-	l_cameraUniform.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-	l_cameraUniform.Descriptor = {0,0};
-	l_cameraUniform.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-
-
-	std::vector<D3D12_ROOT_PARAMETER> l_rootParameters = 
+    // Create Graphics RS
 	{
-		l_cameraUniform
-	};
+		CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
 
-    rootSignatureDesc.Init(static_cast<uint32_t>(l_rootParameters.size()), l_rootParameters.data(), 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+		D3D12_ROOT_PARAMETER l_cameraUniform = {};
+		l_cameraUniform.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+		l_cameraUniform.Descriptor = { 0,0 };
+		l_cameraUniform.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 
-    ComPtr<ID3DBlob> signature;
-    ComPtr<ID3DBlob> error;
-    D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error);
-    m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_rootSignature));
+
+		std::vector<D3D12_ROOT_PARAMETER> l_rootParameters =
+		{
+			l_cameraUniform
+		};
+
+		rootSignatureDesc.Init(static_cast<uint32_t>(l_rootParameters.size()), l_rootParameters.data(), 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+		ComPtr<ID3DBlob> signature;
+		ComPtr<ID3DBlob> error;
+		D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error);
+		m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_graphicsRootSignature));
+
+	}
+   
+	// Create Compute RS
+	{
+		CD3DX12_ROOT_SIGNATURE_DESC l_computeRootSignatureDesc;
+
+		std::vector<D3D12_ROOT_PARAMETER> l_rootParameters =
+		{
+			
+		};
+
+		l_computeRootSignatureDesc.Init(static_cast<uint32_t>(l_rootParameters.size()), l_rootParameters.data(), 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+		ComPtr<ID3DBlob> signature;
+		ComPtr<ID3DBlob> error;
+		D3D12SerializeRootSignature(&l_computeRootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error);
+		m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_computeRootSignature));
+	}
+
 }
 
 void Renderer::D3D12Renderer::CreateDefaultTexture()
@@ -271,7 +293,7 @@ void Renderer::D3D12Renderer::InitPipelineState()
     // Describe and create the graphics pipeline state object (PSO).
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
     psoDesc.InputLayout = { inputElementDescs, _countof(inputElementDescs) };
-    psoDesc.pRootSignature = m_rootSignature;
+    psoDesc.pRootSignature = m_graphicsRootSignature;
     psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.Get());
     psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader.Get());
     psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
@@ -285,8 +307,18 @@ void Renderer::D3D12Renderer::InitPipelineState()
     psoDesc.RTVFormats[0] = DXGI_FORMAT_R10G10B10A2_UNORM;
 	psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
     psoDesc.SampleDesc.Count = 1;
-    m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState));
+    m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_graphicsPipelineState));
 
+
+	//Compute Pipieline state
+	{
+		ComPtr<ID3DBlob> computeShader;
+		D3DCompileFromFile(L"D:\\Dev\\FlyCore\\Renderer\\lightcull_cs.hlsl", nullptr, nullptr, "main", "cs_5_0", compileFlags, 0, &computeShader, nullptr);
+		D3D12_COMPUTE_PIPELINE_STATE_DESC l_computePipelineStateDesc = {};
+		l_computePipelineStateDesc.pRootSignature = m_computeRootSignature;
+		l_computePipelineStateDesc.CS = CD3DX12_SHADER_BYTECODE(computeShader.Get());;
+		m_device->CreateComputePipelineState(&l_computePipelineStateDesc, MY_IID_PPV_ARGS(&m_computePipelineState));
+	}
 }
 
 void Renderer::D3D12Renderer::LoadScene(Renderer::Scene*)
@@ -295,6 +327,7 @@ void Renderer::D3D12Renderer::LoadScene(Renderer::Scene*)
 
 void Renderer::D3D12Renderer::OnDestory()
 {
+	SAFE_DELETE(m_computeCmd);
 	SAFE_DELETE(m_graphicsCmd);
     SAFE_DELETE(m_vertexBuffer); 
     SAFE_DELETE(m_indexBuffer);

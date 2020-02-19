@@ -15,8 +15,11 @@ void Renderer::D3D12GraphicsContext::BeginRender(const uint32_t& p_index)
 	m_currentFrameIndex = p_index;
 	m_graphicsCmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[p_index]->GetResource(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
 	m_graphicsCmdList->OMSetRenderTargets(1, &m_renderTargets[m_currentFrameIndex]->GetRTV()->cpuHandle,false, &m_depthBuffer->GetDSV()->cpuHandle);
+	m_graphicsCmdList->RSSetViewports(1, &m_viewPort);
+	m_graphicsCmdList->RSSetScissorRects(1, &m_scissor);
 	m_graphicsCmdList->ClearRenderTargetView(m_renderTargets[m_currentFrameIndex]->GetRTV()->cpuHandle, Constants::CLEAR_COLOR, 0, nullptr);
 	m_graphicsCmdList->ClearDepthStencilView(m_depthBuffer->GetDSV()->cpuHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+
 }
 
 void Renderer::D3D12GraphicsContext::EndRender()
@@ -29,6 +32,9 @@ void Renderer::D3D12GraphicsContext::InitRenderTargets(uint32_t p_width, uint32_
 {
 	m_RTHeight = p_height;
 	m_RTWidth = p_width;
+
+	m_viewPort = { 0.0f,0.0f,static_cast<float>(m_RTWidth),static_cast<float>(m_RTHeight),0.0f,1.0f };
+	m_scissor = { 0,0,m_RTWidth,m_RTHeight };
 
 	for (uint32_t i = 0; i < Constants::SWAPCHAIN_BUFFER_COUNT; ++i)
 	{

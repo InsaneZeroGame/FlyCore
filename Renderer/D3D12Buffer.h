@@ -108,4 +108,16 @@ namespace Renderer
 	private:
 
 	};
+
+	class D3D12StructBuffer : public D3D12Buffer
+	{
+	public:
+		D3D12StructBuffer();
+		~D3D12StructBuffer();
+
+	private:
+
+	};
+
+	
 }

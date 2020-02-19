@@ -97,3 +97,14 @@ void Renderer::D3D12UploadBuffer::CreateViews()
 	m_cbv = D3D12DescManager::GetDescManager().RequestDesc(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	m_device->CreateConstantBufferView(&l_cbvDesc, m_cbv->cpuHandle);
 }
+
+
+
+Renderer::D3D12StructBuffer::D3D12StructBuffer(uint64_t p_size):
+	D3D12Buffer(p_size,)
+{
+}
+
+Renderer::D3D12StructBuffer::~D3D12StructBuffer()
+{
+}

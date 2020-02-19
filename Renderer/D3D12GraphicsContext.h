@@ -45,5 +45,9 @@ namespace Renderer
 
 		uint32_t m_RTHeight;
 
+		D3D12_VIEWPORT m_viewPort;
+
+		D3D12_RECT m_scissor;
+
 	};
 }

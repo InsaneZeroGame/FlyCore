@@ -46,17 +46,20 @@ namespace Renderer {
 
 		void InitRootSignature();
 
+		void InitPipelineState();
 
 		//Default texture
 		void CreateDefaultTexture();
 
 		Renderer::Scene* m_scene;
 
-		ID3D12RootSignature* m_rootSignature;
+		ID3D12RootSignature* m_graphicsRootSignature;
 
-		void InitPipelineState();
+		ID3D12PipelineState* m_graphicsPipelineState;
 
-		ID3D12PipelineState* m_pipelineState;
+		ID3D12RootSignature* m_computeRootSignature;
+
+		ID3D12PipelineState* m_computePipelineState;
 
 		D3D12VertexBuffer* m_vertexBuffer;
 
@@ -75,14 +78,10 @@ namespace Renderer {
 		Microsoft::WRL::ComPtr<IDXGISwapChain3> m_swapChain = nullptr;
 
 		ID3D12Device* m_device = nullptr;
-
-		bool m_typedUAVLoadSupport_R11G11B10_FLOAT = false;
-	
-		bool m_typedUAVLoadSupport_R16G16B16A16_FLOAT = false;
-
+		
 		D3D12GraphicsCmd* m_graphicsCmd = nullptr;
 
-		D3D12CmdQueue* m_cmdComputeQueue = nullptr;
+		D3D12ComputeCmd* m_computeCmd = nullptr;
 
 		uint32_t m_frameIndex;
 	};
