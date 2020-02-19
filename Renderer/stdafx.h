@@ -47,6 +47,9 @@ namespace Constants
 	static const float CLEAR_COLOR[] = { 0.5F, 0.5F, 0.5F, 1.0f };
 	static bool TypedUAVLoadSupport_R11G11B10_FLOAT = false;
 	static bool TypedUAVLoadSupport_R16G16B16A16_FLOAT = false;
+	static const uint32_t WORK_GROUP_SIZE_X = 16; 
+	static const uint32_t WORK_GROUP_SIZE_Y = 8 ;
+	static const uint32_t WORK_GROUP_SIZE_Z = 8	;
 };
 
 

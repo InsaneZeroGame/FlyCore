@@ -14,8 +14,9 @@ Renderer::D3D12Renderer::D3D12Renderer():
     m_swapChain(nullptr),
     m_frameIndex(0),
 	m_graphicsCmd(new D3D12GraphicsCmd(Constants::SWAPCHAIN_BUFFER_COUNT)),
-	m_computeCmd(new D3D12ComputeCmd(Constants::COMPUTE_CMD_COUNT)),
-	m_cameraUniformBuffer(nullptr)
+	m_computeCmd(new D3D12GraphicsCmd(Constants::COMPUTE_CMD_COUNT)),
+	m_cameraUniformBuffer(nullptr),
+	m_renderCmdQueue(new D3D12CmdQueue(D3D12_COMMAND_LIST_TYPE_DIRECT))
 {
 }
 
@@ -36,12 +37,21 @@ void Renderer::D3D12Renderer::OnInit()
 
 void Renderer::D3D12Renderer::OnUpdate()
 {
-
-
-
-
-
 	auto& l_graphicsContext = D3D12GraphicsContext::GetContext();
+
+	//Light cull 
+	{
+		using namespace Constants;
+		m_computeCmd->Reset(0, m_computePipelineState);
+		ID3D12GraphicsCommandList* l_computeCmdList = *m_computeCmd;
+		l_computeCmdList->SetPipelineState(m_computePipelineState);
+		l_computeCmdList->SetComputeRootSignature(m_computeRootSignature);
+		l_computeCmdList->SetComputeRootConstantBufferView(CAMERA_UNIFORM_ROOT_INDEX, m_cameraUniformBuffer->GetGpuVirtualAddress());
+		l_computeCmdList->Dispatch(WORK_GROUP_SIZE_X, WORK_GROUP_SIZE_Y, WORK_GROUP_SIZE_Z);
+		m_computeCmd->Close();
+		m_computeCmd->Flush(true);
+	}
+	
 	m_graphicsCmd->Reset(m_frameIndex, m_graphicsPipelineState);
     // Indicate that the back buffer will be used as a render target.
 	l_graphicsContext.BeginRender(m_frameIndex);
@@ -61,7 +71,8 @@ void Renderer::D3D12Renderer::OnUpdate()
 	l_graphicsContext.EndRender();
 	m_graphicsCmd->Close();
     // Execute the command list.
-	m_graphicsCmd->Flush();
+	ID3D12CommandList* l_lists[] = {l_graphicsCmdList};
+	m_renderCmdQueue->GetQueue()->ExecuteCommandLists(1, l_lists);
     m_swapChain->Present(1, 0);
     SyncFrame();
 }
@@ -93,7 +104,7 @@ void Renderer::D3D12Renderer::InitSwapChain()
     swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
 
 #if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP) // Win32
-    dxgiFactory->CreateSwapChainForHwnd(D3D12GraphicsCmd::GetQueue(), m_window->GetWin32Window(), &swapChainDesc, nullptr, nullptr, &swapChain1);
+    dxgiFactory->CreateSwapChainForHwnd(m_renderCmdQueue->GetQueue(), m_window->GetWin32Window(), &swapChainDesc, nullptr, nullptr, &swapChain1);
     swapChain1.As(&m_swapChain);
     m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 #else // UWP
@@ -142,7 +153,7 @@ void Renderer::D3D12Renderer::InitGraphicsContext()
 void Renderer::D3D12Renderer::SyncFrame()
 {
     //1.Get Current Available Backbuffer
-    D3D12GraphicsCmd::GetQueue()->Signal(m_fence, m_fenceValues[m_frameIndex]);
+    m_renderCmdQueue->GetQueue()->Signal(m_fence, m_fenceValues[m_frameIndex]);
 
     auto currentBackBufferIndex = m_swapChain->GetCurrentBackBufferIndex();
 
@@ -243,9 +254,14 @@ void Renderer::D3D12Renderer::InitRootSignature()
 	{
 		CD3DX12_ROOT_SIGNATURE_DESC l_computeRootSignatureDesc;
 
+		D3D12_ROOT_PARAMETER l_cameraUniform = {};
+		l_cameraUniform.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+		l_cameraUniform.Descriptor = { 0,0 };
+		l_cameraUniform.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
 		std::vector<D3D12_ROOT_PARAMETER> l_rootParameters =
 		{
-			
+			l_cameraUniform
 		};
 
 		l_computeRootSignatureDesc.Init(static_cast<uint32_t>(l_rootParameters.size()), l_rootParameters.data(), 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
@@ -255,7 +271,6 @@ void Renderer::D3D12Renderer::InitRootSignature()
 		D3D12SerializeRootSignature(&l_computeRootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error);
 		m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_computeRootSignature));
 	}
-
 }
 
 void Renderer::D3D12Renderer::CreateDefaultTexture()
@@ -327,6 +342,7 @@ void Renderer::D3D12Renderer::LoadScene(Renderer::Scene*)
 
 void Renderer::D3D12Renderer::OnDestory()
 {
+	SAFE_DELETE(m_renderCmdQueue);
 	SAFE_DELETE(m_computeCmd);
 	SAFE_DELETE(m_graphicsCmd);
     SAFE_DELETE(m_vertexBuffer); 

@@ -40,16 +40,20 @@ void Renderer::D3D12GraphicsCmd::Reset(const uint32_t& p_index, ID3D12PipelineSt
 
 }
 
-void Renderer::D3D12GraphicsCmd::Flush() const
+void Renderer::D3D12GraphicsCmd::Flush(bool p_waitFinish) const
 {
 	ID3D12CommandList* ppCommandLists[] = { m_cmdList };
-	m_cmdQueue->GetQueue()->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+	m_cmdQueue->Flush(_countof(ppCommandLists), ppCommandLists);
+	if(p_waitFinish)
+		m_cmdQueue->WaitFinish();
 }
 
 Renderer::D3D12ComputeCmd::D3D12ComputeCmd(const uint32_t& p_count):
-	D3D12Cmd(D3D12_COMMAND_LIST_TYPE_COMPUTE,p_count)
+	D3D12Cmd(D3D12_COMMAND_LIST_TYPE_COMPUTE,p_count),
+	m_cmdList(nullptr)
 {
 	m_cmdQueue = new D3D12CmdQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE);
+	m_cmdListManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_COMPUTE, nullptr, m_cmdAllocator[0], MY_IID_PPV_ARGS(&m_cmdList));
 }
 
 Renderer::D3D12ComputeCmd::~D3D12ComputeCmd()

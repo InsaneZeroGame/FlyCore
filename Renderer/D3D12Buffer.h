@@ -32,10 +32,21 @@ namespace Renderer
 
 		virtual void ResetBuffer() {};
 
-		virtual const D3D12Descriptor* GetSRV() 
+		__forceinline const D3D12Descriptor* GetSRV()
 		{
-			return nullptr;
+			return m_srv;
 		};
+
+		__forceinline const D3D12Descriptor* GetUAV()
+		{
+			return m_uav;
+		}
+
+		__forceinline const D3D12Descriptor* GetCBV()
+		{
+			return m_cbv;
+		}
+
 
 	protected:
 		D3D12Buffer(uint64_t p_size,
@@ -52,6 +63,11 @@ namespace Renderer
 		//Max Buffer Size
 		uint64_t m_bufferSize;
 
+		const D3D12Descriptor* m_cbv;
+
+		const D3D12Descriptor* m_uav;
+		
+		const D3D12Descriptor* m_srv;
 
 		virtual void CreateViews()
 		{
@@ -102,21 +118,25 @@ namespace Renderer
 			m_offset = 0;
 		}
 
-		void CreateViews() override;
-
-		const D3D12Descriptor* m_cbv;
 	private:
+		void CreateViews() override;
 
 	};
 
-	class D3D12StructBuffer : public D3D12Buffer
+	class D3D12StructBuffer final: public D3D12Buffer
 	{
 	public:
-		D3D12StructBuffer();
+		D3D12StructBuffer(uint64_t p_elementCount,uint64_t p_elementSize);
+		
 		~D3D12StructBuffer();
 
 	private:
+		void CreateViews() override;
 
+		uint64_t m_elementSize;
+
+		uint64_t m_elementCount;
+		
 	};
 
 	

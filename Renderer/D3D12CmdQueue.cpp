@@ -26,16 +26,18 @@ Renderer::D3D12CmdQueue::~D3D12CmdQueue()
 void Renderer::D3D12CmdQueue::Flush(uint64_t numLists, ID3D12CommandList* p_lists[])
 {
 	m_queue->ExecuteCommandLists(static_cast<UINT>(numLists), p_lists);
-	m_queue->Signal(m_fence, m_fenceValue);
+
 }
 
 
 void Renderer::D3D12CmdQueue::WaitFinish()
 {
+	m_queue->Signal(m_fence, m_fenceValue);
 	if (!IsFinished())
 	{
 		m_fence->SetEventOnCompletion(m_fenceValue, m_fenceEvent);
 		WaitForSingleObject(m_fenceEvent, INFINITE);
 		m_fenceValue++;
 	}
+
 }

@@ -100,11 +100,63 @@ void Renderer::D3D12UploadBuffer::CreateViews()
 
 
 
-Renderer::D3D12StructBuffer::D3D12StructBuffer(uint64_t p_size):
-	D3D12Buffer(p_size,)
+Renderer::D3D12StructBuffer::D3D12StructBuffer(uint64_t p_elementCount, uint64_t p_elementSize):
+	D3D12Buffer(static_cast<uint64_t>(p_elementCount * p_elementSize),D3D12_HEAP_TYPE_DEFAULT,
+		D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS,
+		D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+		{
+			D3D12_RESOURCE_DIMENSION_BUFFER,
+			0,
+			p_elementCount* p_elementSize,
+			1,
+			1,
+			1,
+			DXGI_FORMAT::DXGI_FORMAT_R32_FLOAT,
+		{1,0},
+		D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+		D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
+		}),
+	m_elementCount(p_elementCount),
+	m_elementSize(p_elementSize)
 {
+	CreateViews();
 }
 
 Renderer::D3D12StructBuffer::~D3D12StructBuffer()
 {
+}
+
+void Renderer::D3D12StructBuffer::CreateViews()
+{
+
+	m_uav = D3D12DescManager::GetDescManager().RequestDesc(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+
+	//Create UAV
+	{
+		D3D12_UNORDERED_ACCESS_VIEW_DESC l_desc = {};
+		l_desc.Format = DXGI_FORMAT_R32_FLOAT;
+		l_desc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+		l_desc.Buffer.FirstElement = 0;
+		l_desc.Buffer.NumElements = m_elementCount;
+		l_desc.Buffer.StructureByteStride = m_elementSize;
+		l_desc.Buffer.CounterOffsetInBytes = 0;
+		l_desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
+		m_device->CreateUnorderedAccessView(m_pResource.Get(), nullptr, &l_desc, m_uav->cpuHandle);
+	}
+
+	m_srv = D3D12DescManager::GetDescManager().RequestDesc(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+	//Create SRV
+	{
+		D3D12_SHADER_RESOURCE_VIEW_DESC l_desc = {};
+		l_desc.Format = DXGI_FORMAT_R32_FLOAT;
+		l_desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+		l_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		l_desc.Buffer.FirstElement = 0;
+		l_desc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+		l_desc.Buffer.NumElements = m_elementCount;
+		l_desc.Buffer.StructureByteStride = m_elementSize;
+		m_device->CreateShaderResourceView(m_pResource.Get(), &l_desc, m_srv->cpuHandle);
+	}
 }

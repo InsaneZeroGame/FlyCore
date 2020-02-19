@@ -34,7 +34,7 @@ void Renderer::D3D12GraphicsContext::InitRenderTargets(uint32_t p_width, uint32_
 	m_RTWidth = p_width;
 
 	m_viewPort = { 0.0f,0.0f,static_cast<float>(m_RTWidth),static_cast<float>(m_RTHeight),0.0f,1.0f };
-	m_scissor = { 0,0,m_RTWidth,m_RTHeight };
+	m_scissor = { 0,0,static_cast<LONG>(m_RTWidth),static_cast<LONG>(m_RTHeight) };
 
 	for (uint32_t i = 0; i < Constants::SWAPCHAIN_BUFFER_COUNT; ++i)
 	{

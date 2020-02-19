@@ -11,7 +11,7 @@ namespace Renderer
 	public:
 		virtual ~D3D12Cmd();
 
-		virtual void Flush() const {};
+		virtual void Flush(bool p_waitFinish = false) const {};
 
 		
 
@@ -35,7 +35,7 @@ namespace Renderer
 		
 		__forceinline void Close() { m_cmdList->Close(); }
 		
-		void Flush() const override;
+		void Flush(bool p_waitFinish = false) const override;
 
 		void Reset(const uint32_t& p_index,ID3D12PipelineState* p_state = nullptr) const;
 
@@ -67,8 +67,16 @@ namespace Renderer
 			return m_cmdQueue->GetQueue();
 		}
 
+		operator ID3D12CommandList* () 
+		{
+			return m_cmdList;
+		}
+
+
 	private:
 		static D3D12CmdQueue* m_cmdQueue;
+
+		ID3D12CommandList* m_cmdList;
 
 	};
 	

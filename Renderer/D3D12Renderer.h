@@ -13,6 +13,14 @@
 
 namespace Renderer {
 
+	struct LightData
+	{
+		float position[4];
+		float color[4];
+		float attenutation;
+	};
+
+
 	class D3D12Renderer : public Interface::IRenderer, public Interface::IModule
 	{
 	public:
@@ -81,8 +89,15 @@ namespace Renderer {
 		
 		D3D12GraphicsCmd* m_graphicsCmd = nullptr;
 
-		D3D12ComputeCmd* m_computeCmd = nullptr;
+		D3D12GraphicsCmd* m_computeCmd = nullptr;
 
 		uint32_t m_frameIndex;
+
+		//CmdQueue for renderer,associate with swapchain
+		//So thast cmdlist write to swapchain can be flushed
+		//and properly synced.
+		D3D12CmdQueue* m_renderCmdQueue;
+
+		std::vector<LightData> m_lightData;
 	};
 }
