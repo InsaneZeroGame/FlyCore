@@ -50,6 +50,7 @@ namespace Constants
 	static const uint32_t WORK_GROUP_SIZE_X = 16; 
 	static const uint32_t WORK_GROUP_SIZE_Y = 8 ;
 	static const uint32_t WORK_GROUP_SIZE_Z = 8	;
+	static const uint32_t MAX_NUM_LIGHT_COUNT_PER_TILE = 32;
 };
 
 

@@ -5,6 +5,7 @@
 
 
 int main() {
+
 	auto window = new Framework::Window({ 800,600,"Ang's Game" });
 	window->OnInit();
 

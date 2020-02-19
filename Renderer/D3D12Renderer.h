@@ -77,6 +77,8 @@ namespace Renderer {
 
 		D3D12UploadBuffer* m_cameraUniformBuffer;
 
+		D3D12StructBuffer* m_lightBuffer;
+
 		HANDLE m_fenceEvent;
 
 		std::array<uint64_t, 3> m_fenceValues;

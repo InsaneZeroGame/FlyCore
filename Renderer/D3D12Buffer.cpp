@@ -101,8 +101,9 @@ void Renderer::D3D12UploadBuffer::CreateViews()
 
 
 Renderer::D3D12StructBuffer::D3D12StructBuffer(uint64_t p_elementCount, uint64_t p_elementSize):
-	D3D12Buffer(static_cast<uint64_t>(p_elementCount * p_elementSize),D3D12_HEAP_TYPE_DEFAULT,
-		D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS,
+	D3D12Buffer(static_cast<uint64_t>(p_elementCount * p_elementSize),
+		D3D12_HEAP_TYPE_DEFAULT,
+		D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE,
 		D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
 		{
 			D3D12_RESOURCE_DIMENSION_BUFFER,
@@ -111,7 +112,7 @@ Renderer::D3D12StructBuffer::D3D12StructBuffer(uint64_t p_elementCount, uint64_t
 			1,
 			1,
 			1,
-			DXGI_FORMAT::DXGI_FORMAT_R32_FLOAT,
+			DXGI_FORMAT::DXGI_FORMAT_UNKNOWN,
 		{1,0},
 		D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
 		D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
@@ -135,13 +136,13 @@ void Renderer::D3D12StructBuffer::CreateViews()
 	//Create UAV
 	{
 		D3D12_UNORDERED_ACCESS_VIEW_DESC l_desc = {};
-		l_desc.Format = DXGI_FORMAT_R32_FLOAT;
+		l_desc.Format = DXGI_FORMAT_UNKNOWN;
 		l_desc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
 		l_desc.Buffer.FirstElement = 0;
 		l_desc.Buffer.NumElements = m_elementCount;
 		l_desc.Buffer.StructureByteStride = m_elementSize;
 		l_desc.Buffer.CounterOffsetInBytes = 0;
-		l_desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
+		l_desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
 		m_device->CreateUnorderedAccessView(m_pResource.Get(), nullptr, &l_desc, m_uav->cpuHandle);
 	}
 
@@ -150,11 +151,11 @@ void Renderer::D3D12StructBuffer::CreateViews()
 	//Create SRV
 	{
 		D3D12_SHADER_RESOURCE_VIEW_DESC l_desc = {};
-		l_desc.Format = DXGI_FORMAT_R32_FLOAT;
+		l_desc.Format = DXGI_FORMAT_UNKNOWN;
 		l_desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
 		l_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 		l_desc.Buffer.FirstElement = 0;
-		l_desc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+		l_desc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
 		l_desc.Buffer.NumElements = m_elementCount;
 		l_desc.Buffer.StructureByteStride = m_elementSize;
 		m_device->CreateShaderResourceView(m_pResource.Get(), &l_desc, m_srv->cpuHandle);

@@ -7,6 +7,7 @@
 #include "../3dparty/include/stb_image.h"
 
 #define CAMERA_UNIFORM_ROOT_INDEX 0
+#define LIGHT_UAV_ROOT_INDEX 1
 
 
 Renderer::D3D12Renderer::D3D12Renderer():
@@ -16,7 +17,8 @@ Renderer::D3D12Renderer::D3D12Renderer():
 	m_graphicsCmd(new D3D12GraphicsCmd(Constants::SWAPCHAIN_BUFFER_COUNT)),
 	m_computeCmd(new D3D12GraphicsCmd(Constants::COMPUTE_CMD_COUNT)),
 	m_cameraUniformBuffer(nullptr),
-	m_renderCmdQueue(new D3D12CmdQueue(D3D12_COMMAND_LIST_TYPE_DIRECT))
+	m_renderCmdQueue(new D3D12CmdQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)),
+    m_lightBuffer(nullptr)
 {
 }
 
@@ -47,7 +49,8 @@ void Renderer::D3D12Renderer::OnUpdate()
 		l_computeCmdList->SetPipelineState(m_computePipelineState);
 		l_computeCmdList->SetComputeRootSignature(m_computeRootSignature);
 		l_computeCmdList->SetComputeRootConstantBufferView(CAMERA_UNIFORM_ROOT_INDEX, m_cameraUniformBuffer->GetGpuVirtualAddress());
-		l_computeCmdList->Dispatch(WORK_GROUP_SIZE_X, WORK_GROUP_SIZE_Y, WORK_GROUP_SIZE_Z);
+        l_computeCmdList->SetComputeRootUnorderedAccessView(LIGHT_UAV_ROOT_INDEX, m_lightBuffer->GetGpuVirtualAddress());
+        l_computeCmdList->Dispatch(WORK_GROUP_SIZE_X, WORK_GROUP_SIZE_Y, WORK_GROUP_SIZE_Z);
 		m_computeCmd->Close();
 		m_computeCmd->Flush(true);
 	}
@@ -174,7 +177,7 @@ void Renderer::D3D12Renderer::InitBuffers()
     auto& loader = Utility::AssetLoader::GetLoader();
     
     m_scene = new Renderer::Scene;
-    loader.LoadFbx("D:\\Dev\\FlyCore\\build\\Game\\Debug\\box.fbx", m_scene);
+    loader.LoadFbx("C:\\Dev\\FlyCore\\build\\Game\\Debug\\sephere.fbx", m_scene);
 
     m_vertexBuffer = new D3D12VertexBuffer(Constants::VERTEX_BUFFER_SIZE);
     m_uploadBuffer = new D3D12UploadBuffer(Constants::MAX_CONST_BUFFER_VIEW_SIZE);
@@ -218,9 +221,7 @@ void Renderer::D3D12Renderer::InitBuffers()
         D3D12_RESOURCE_STATE_INDEX_BUFFER);
     l_graphicsContext.End(true);
 
-
-
-
+    m_lightBuffer = new D3D12StructBuffer(1024 * Constants::MAX_NUM_LIGHT_COUNT_PER_TILE, sizeof(LightData));
 }
 
 void Renderer::D3D12Renderer::InitRootSignature()
@@ -259,12 +260,18 @@ void Renderer::D3D12Renderer::InitRootSignature()
 		l_cameraUniform.Descriptor = { 0,0 };
 		l_cameraUniform.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
+        D3D12_ROOT_PARAMETER l_lightUAV = {};
+        l_lightUAV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
+        l_lightUAV.Descriptor = { 0,0 };
+        l_lightUAV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
 		std::vector<D3D12_ROOT_PARAMETER> l_rootParameters =
 		{
-			l_cameraUniform
+			l_cameraUniform,
+            l_lightUAV
 		};
 
-		l_computeRootSignatureDesc.Init(static_cast<uint32_t>(l_rootParameters.size()), l_rootParameters.data(), 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+		l_computeRootSignatureDesc.Init(static_cast<uint32_t>(l_rootParameters.size()), l_rootParameters.data(), 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_NONE);
 
 		ComPtr<ID3DBlob> signature;
 		ComPtr<ID3DBlob> error;
@@ -293,8 +300,8 @@ void Renderer::D3D12Renderer::InitPipelineState()
     UINT compileFlags = 0;
 #endif
 
-    D3DCompileFromFile(L"D:\\Dev\\FlyCore\\Renderer\\forward_vs.hlsl", nullptr, nullptr, "main", "vs_5_0", compileFlags, 0, &vertexShader, nullptr);
-    D3DCompileFromFile(L"D:\\Dev\\FlyCore\\Renderer\\forward_ps.hlsl", nullptr, nullptr, "main", "ps_5_0", compileFlags, 0, &pixelShader, nullptr);
+    D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\forward_vs.hlsl", nullptr, nullptr, "main", "vs_5_0", compileFlags, 0, &vertexShader, nullptr);
+    D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\forward_ps.hlsl", nullptr, nullptr, "main", "ps_5_0", compileFlags, 0, &pixelShader, nullptr);
 
     // Define the vertex input layout.
     D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
@@ -328,7 +335,7 @@ void Renderer::D3D12Renderer::InitPipelineState()
 	//Compute Pipieline state
 	{
 		ComPtr<ID3DBlob> computeShader;
-		D3DCompileFromFile(L"D:\\Dev\\FlyCore\\Renderer\\lightcull_cs.hlsl", nullptr, nullptr, "main", "cs_5_0", compileFlags, 0, &computeShader, nullptr);
+		D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\lightcull_cs.hlsl", nullptr, nullptr, "main", "cs_5_0", compileFlags, 0, &computeShader, nullptr);
 		D3D12_COMPUTE_PIPELINE_STATE_DESC l_computePipelineStateDesc = {};
 		l_computePipelineStateDesc.pRootSignature = m_computeRootSignature;
 		l_computePipelineStateDesc.CS = CD3DX12_SHADER_BYTECODE(computeShader.Get());;
@@ -342,6 +349,7 @@ void Renderer::D3D12Renderer::LoadScene(Renderer::Scene*)
 
 void Renderer::D3D12Renderer::OnDestory()
 {
+    SAFE_DELETE(m_lightBuffer);
 	SAFE_DELETE(m_renderCmdQueue);
 	SAFE_DELETE(m_computeCmd);
 	SAFE_DELETE(m_graphicsCmd);
