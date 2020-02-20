@@ -1,4 +1,7 @@
 #pragma once
+#include <d3d12.h>
+#include <array>
+#include <queue>
 
 namespace Renderer
 {

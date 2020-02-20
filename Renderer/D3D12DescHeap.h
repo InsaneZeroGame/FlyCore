@@ -1,5 +1,7 @@
 #pragma once
+#include "D3D12Common.h"
 #include "D3D12Device.h"
+#include <queue>
 
 namespace Renderer
 {

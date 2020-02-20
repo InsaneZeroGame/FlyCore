@@ -1,6 +1,6 @@
 #pragma once
 #include "INoCopy.h"
-
+#include <vector>
 namespace Renderer
 {
 

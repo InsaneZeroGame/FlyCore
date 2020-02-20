@@ -2,7 +2,6 @@
 #include "D3D12CmdAllocatorPool.h"
 #include "D3D12Device.h"
 
-
 Renderer::D3D12CmdAllocatorPool::D3D12CmdAllocatorPool():
 	m_device(D3D12Device::GetDevice())
 {

@@ -1,6 +1,6 @@
 #pragma once
 #include "D3D12Resource.h"
-
+#include "../Framework/Utility.h"
 
 
 namespace Renderer

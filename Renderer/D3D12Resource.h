@@ -1,5 +1,6 @@
 #pragma once
-
+#include "D3D12Common.h"
+#include <wrl.h>
 
 namespace Renderer
 {
