@@ -23,10 +23,12 @@ namespace Renderer
 		std::vector<Vertex> m_vertices;
 
 		std::vector<uint32_t> m_indices;
-		
+
+		uint32_t m_vertexOffset;
+
+		uint32_t m_indexOffset;
 
 	private:
-		
 		
 	};
 
@@ -38,17 +40,23 @@ namespace Renderer
 		
 		~Actor();
 
-		__forceinline void AddMesh(Mesh&& p_mesh)
+		__forceinline void AddMesh(Mesh& p_mesh)
 		{
+			p_mesh.m_vertexOffset = m_currentVertexOffset;
+			p_mesh.m_indexOffset = m_currentIndexOffset;
 			m_meshes.push_back(p_mesh);
+			m_currentVertexOffset += static_cast<uint32_t>(p_mesh.m_vertices.size());
+			m_currentIndexOffset += static_cast<uint32_t>(p_mesh.m_indices.size());
 		}
 
 		std::vector<Mesh> m_meshes;
 
 
 	private:
-		
-	
+		//Vertex offset of meshes when loading the assets.
+		uint32_t m_currentVertexOffset;
+		uint32_t m_currentIndexOffset;
+
 	};
 
 

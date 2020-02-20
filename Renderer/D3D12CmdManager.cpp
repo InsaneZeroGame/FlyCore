@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "D3D12CmdManager.h"
 
 

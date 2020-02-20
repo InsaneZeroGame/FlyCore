@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "Window.h"
 Framework::Window::Window(const WindowDescriptor& p_desc):
 	m_descriptor(p_desc),

@@ -1,5 +1,4 @@
 #pragma once
-#include "stdafx.h"
 #include "../Framework/INoCopy.h"
 
 namespace Renderer

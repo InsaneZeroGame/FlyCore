@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "D3D12DescHeap.h"
 
 Renderer::D3D12DescHeap::D3D12DescHeap(

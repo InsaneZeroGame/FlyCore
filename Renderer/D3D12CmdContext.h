@@ -1,5 +1,4 @@
 #pragma once
-#include "stdafx.h"
 #include "D3D12CmdQueue.h"
 #include "D3D12CmdManager.h"
 #include "D3D12CmdAllocatorPool.h"

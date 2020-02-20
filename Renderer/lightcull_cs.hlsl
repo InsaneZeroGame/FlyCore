@@ -2,17 +2,19 @@
 #define WORK_GROUP_SIZE_Y 8 
 #define WORK_GROUP_SIZE_Z 8
 
-cbuffer CDataBuffer : register(b0)
-{
-	float4x4 MVP;
-};
-
 struct PointLight
 {
 	float4 pos;
 	float4 color;
 	float attenutation;
 };
+
+cbuffer CDataBuffer : register(b0)
+{
+	float4x4 MVP;
+	PointLight PointLights[1024];
+};
+
 
 RWStructuredBuffer<PointLight> LightBuffer : register(u0);
 

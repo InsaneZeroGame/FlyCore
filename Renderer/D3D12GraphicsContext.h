@@ -1,5 +1,4 @@
 #pragma once
-#include "stdafx.h"
 #include "D3D12DescManager.h"
 #include "D3D12Texture.h"
 

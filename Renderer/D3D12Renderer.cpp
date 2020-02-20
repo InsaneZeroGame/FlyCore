@@ -1,7 +1,9 @@
+#include "stdafx.h"
 #include "D3D12Renderer.h"
 #include <D3Dcompiler.h>
 #include "../Utility/AssetLoader.h"
-#include <DirectXMath.h>
+#include "../3dparty/include/glm/glm.hpp"
+#include "../3dparty/include/glm/ext.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "../3dparty/include/stb_image.h"
@@ -16,7 +18,7 @@ Renderer::D3D12Renderer::D3D12Renderer():
     m_frameIndex(0),
 	m_graphicsCmd(new D3D12GraphicsCmd(Constants::SWAPCHAIN_BUFFER_COUNT)),
 	m_computeCmd(new D3D12GraphicsCmd(Constants::COMPUTE_CMD_COUNT)),
-	m_cameraUniformBuffer(nullptr),
+	m_VSUniform(nullptr),
 	m_renderCmdQueue(new D3D12CmdQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)),
     m_lightBuffer(nullptr)
 {
@@ -43,16 +45,16 @@ void Renderer::D3D12Renderer::OnUpdate()
 
 	//Light cull 
 	{
-		using namespace Constants;
-		m_computeCmd->Reset(0, m_computePipelineState);
-		ID3D12GraphicsCommandList* l_computeCmdList = *m_computeCmd;
-		l_computeCmdList->SetPipelineState(m_computePipelineState);
-		l_computeCmdList->SetComputeRootSignature(m_computeRootSignature);
-		l_computeCmdList->SetComputeRootConstantBufferView(CAMERA_UNIFORM_ROOT_INDEX, m_cameraUniformBuffer->GetGpuVirtualAddress());
-        l_computeCmdList->SetComputeRootUnorderedAccessView(LIGHT_UAV_ROOT_INDEX, m_lightBuffer->GetGpuVirtualAddress());
-        l_computeCmdList->Dispatch(WORK_GROUP_SIZE_X, WORK_GROUP_SIZE_Y, WORK_GROUP_SIZE_Z);
-		m_computeCmd->Close();
-		m_computeCmd->Flush(true);
+		//using namespace Constants;
+		//m_computeCmd->Reset(0, m_computePipelineState);
+		//ID3D12GraphicsCommandList* l_computeCmdList = *m_computeCmd;
+		//l_computeCmdList->SetPipelineState(m_computePipelineState);
+		//l_computeCmdList->SetComputeRootSignature(m_computeRootSignature);
+		//l_computeCmdList->SetComputeRootConstantBufferView(CAMERA_UNIFORM_ROOT_INDEX, m_VSUniform->GetGpuVirtualAddress());
+        //l_computeCmdList->SetComputeRootUnorderedAccessView(LIGHT_UAV_ROOT_INDEX, m_lightBuffer->GetGpuVirtualAddress());
+        //l_computeCmdList->Dispatch(WORK_GROUP_SIZE_X, WORK_GROUP_SIZE_Y, WORK_GROUP_SIZE_Z);
+		//m_computeCmd->Close();
+		//m_computeCmd->Flush(true);
 	}
 	
 	m_graphicsCmd->Reset(m_frameIndex, m_graphicsPipelineState);
@@ -66,10 +68,17 @@ void Renderer::D3D12Renderer::OnUpdate()
 		l_graphicsCmdList->SetGraphicsRootSignature(m_graphicsRootSignature);
 		l_graphicsCmdList->IASetIndexBuffer(&m_indexBuffer->GetIndexBufferView());
 		l_graphicsCmdList->IASetVertexBuffers(0, 1, &m_vertexBuffer->GetVertexBufferView());
-		l_graphicsCmdList->SetGraphicsRootConstantBufferView(CAMERA_UNIFORM_ROOT_INDEX, m_cameraUniformBuffer->GetGpuVirtualAddress());
+		l_graphicsCmdList->SetGraphicsRootConstantBufferView(CAMERA_UNIFORM_ROOT_INDEX, m_VSUniform->GetGpuVirtualAddress());
+		l_graphicsCmdList->SetGraphicsRootShaderResourceView(LIGHT_UAV_ROOT_INDEX, m_lightBuffer->GetGpuVirtualAddress());
 		l_graphicsCmdList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		l_graphicsCmdList->DrawIndexedInstanced(static_cast<uint32_t>(m_scene->m_actors[0].m_meshes[0].m_indices.size()), 1, 0, 0, 0);
-		// Indicate that the back buffer will now be used to present.
+		
+		for (auto& l_actor = m_scene->m_actors.begin(); l_actor < m_scene->m_actors.end(); ++l_actor)
+		{
+			for (auto& l_mesh = l_actor->m_meshes.begin(); l_mesh < l_actor->m_meshes.end(); l_mesh++)
+			{
+				l_graphicsCmdList->DrawIndexedInstanced(static_cast<uint32_t>(l_mesh->m_indices.size()), 1, l_mesh->m_indexOffset, l_mesh->m_vertexOffset, 0);
+			}
+		}
 	}
 	l_graphicsContext.EndRender();
 	m_graphicsCmd->Close();
@@ -177,22 +186,21 @@ void Renderer::D3D12Renderer::InitBuffers()
     auto& loader = Utility::AssetLoader::GetLoader();
     
     m_scene = new Renderer::Scene;
-    loader.LoadFbx("C:\\Dev\\FlyCore\\build\\Game\\Debug\\sephere.fbx", m_scene);
+    loader.LoadFbx("D:\\Dev\\FlyCore\\build\\Game\\Debug\\scene.fbx", m_scene);
 
     m_vertexBuffer = new D3D12VertexBuffer(Constants::VERTEX_BUFFER_SIZE);
     m_uploadBuffer = new D3D12UploadBuffer(Constants::MAX_CONST_BUFFER_VIEW_SIZE);
     m_indexBuffer = new D3D12IndexBuffer(Constants::VERTEX_BUFFER_SIZE);
 	const auto CAMERA_UNIFORM_BUFFER_SIZE = sizeof(float) * 16 * Constants::SWAPCHAIN_BUFFER_COUNT;
-	m_cameraUniformBuffer = new D3D12UploadBuffer(Utility::AlignTo256(CAMERA_UNIFORM_BUFFER_SIZE));
+	const auto UNIFORM_BUFFER_SIZE = CAMERA_UNIFORM_BUFFER_SIZE + m_lights.size() * sizeof(PointLight);
+	m_VSUniform = new D3D12UploadBuffer(Utility::AlignTo256(UNIFORM_BUFFER_SIZE));
+	//PSUniform = new D3D12UploadBuffer()
 	
-
-	auto viewMatrix = DirectX::XMMatrixLookAtLH({30.0f,30.0f,30.0f }, {0.0f,0.0f,0.0f}, {0.0f,1.0f,0.0f});
-	auto projectMatrix = DirectX::XMMatrixPerspectiveFovLH(DirectX::XM_PIDIV4,600.0f/800.0f,0.001f,100.0f);
-	DirectX::XMMATRIX mvp = XMMatrixMultiply(viewMatrix,projectMatrix);
-
+	auto m_projMatrix = glm::perspectiveFovLH(45.0f, 50.0f, 50.0f, 0.01f, 125.0f);
+	auto m_viewMatrix = glm::lookAtLH(glm::vec3(31.0f, 30.0f, 30.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	auto mvp = m_projMatrix * m_viewMatrix;
 	
-	
-	m_cameraUniformBuffer->CopyData(&mvp, sizeof(float) * 16);
+	m_VSUniform->CopyData(&mvp, sizeof(float) * 16);
     //Constants::Vertex triangleVertices[] =
     //{
     //    { { 0.0f, 0.25f , 0.0f ,1.0f}, { 1.0f, 0.0f, 0.0f, 1.0f } },
@@ -202,11 +210,27 @@ void Renderer::D3D12Renderer::InitBuffers()
     //
     //uint32_t triangleIndices[] = {0,1,2};
 
-    const UINT vertexBufferSize = (UINT)sizeof(m_scene->m_actors[0].m_meshes[0].m_vertices[0]) * static_cast<uint32_t>(m_scene->m_actors[0].m_meshes[0].m_vertices.size());
-    const UINT indexBufferSize =  (UINT)sizeof(m_scene->m_actors[0].m_meshes[0].m_indices[0])  * static_cast<uint32_t>(m_scene->m_actors[0].m_meshes[0].m_indices.size());
+	UINT vertexBufferSize = 0;
+	for (auto i = 0; i < m_scene->m_actors.size(); ++i)
+	{
+	   for (auto j = 0; j < m_scene->m_actors[i].m_meshes.size(); ++j)
+	   {
+		   auto l_vertexSize = (UINT)sizeof(m_scene->m_actors[i].m_meshes[j].m_vertices[0]) * static_cast<uint32_t>(m_scene->m_actors[i].m_meshes[j].m_vertices.size());
+		   m_uploadBuffer->CopyData(m_scene->m_actors[i].m_meshes[j].m_vertices.data(), l_vertexSize);
+		   vertexBufferSize += l_vertexSize;
+	   }
+	}
 
-    m_uploadBuffer->CopyData(m_scene->m_actors[0].m_meshes[0].m_vertices.data(), vertexBufferSize);
-    m_uploadBuffer->CopyData(m_scene->m_actors[0].m_meshes[0].m_indices.data(), indexBufferSize);
+	UINT indexBufferSize = 0;
+	for (auto i = 0; i < m_scene->m_actors.size(); ++i)
+	{
+	   for (auto j = 0; j < m_scene->m_actors[i].m_meshes.size(); j++)
+	   {
+		   auto l_indexSize = (UINT)sizeof(m_scene->m_actors[i].m_meshes[j].m_indices[0]) * static_cast<uint32_t>(m_scene->m_actors[i].m_meshes[j].m_indices.size());
+		   m_uploadBuffer->CopyData(m_scene->m_actors[i].m_meshes[j].m_indices.data(),l_indexSize);
+		   indexBufferSize += l_indexSize;
+	   }
+	}
 
     auto & l_graphicsContext = D3D12GraphicsCmdContext::GetContext();
     l_graphicsContext.Begin(nullptr);
@@ -221,7 +245,7 @@ void Renderer::D3D12Renderer::InitBuffers()
         D3D12_RESOURCE_STATE_INDEX_BUFFER);
     l_graphicsContext.End(true);
 
-    m_lightBuffer = new D3D12StructBuffer(1024 * Constants::MAX_NUM_LIGHT_COUNT_PER_TILE, sizeof(LightData));
+    m_lightBuffer = new D3D12StructBuffer(1024 * Constants::MAX_NUM_LIGHT_COUNT_PER_TILE, sizeof(PointLight));
 }
 
 void Renderer::D3D12Renderer::InitRootSignature()
@@ -236,10 +260,16 @@ void Renderer::D3D12Renderer::InitRootSignature()
 		l_cameraUniform.Descriptor = { 0,0 };
 		l_cameraUniform.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 
+		D3D12_ROOT_PARAMETER l_lightUAV = {};
+		l_lightUAV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		l_lightUAV.Descriptor = { 0,0 };
+		l_lightUAV.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
 
 		std::vector<D3D12_ROOT_PARAMETER> l_rootParameters =
 		{
-			l_cameraUniform
+			l_cameraUniform,
+			l_lightUAV
 		};
 
 		rootSignatureDesc.Init(static_cast<uint32_t>(l_rootParameters.size()), l_rootParameters.data(), 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
@@ -295,13 +325,13 @@ void Renderer::D3D12Renderer::InitPipelineState()
 
 #if defined(_DEBUG)
     // Enable better shader debugging with the graphics debugging tools.
-    UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION |D3DCOMPILE_PACK_MATRIX_ROW_MAJOR;
+    UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION  ;
 #else
     UINT compileFlags = 0;
 #endif
 
-    D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\forward_vs.hlsl", nullptr, nullptr, "main", "vs_5_0", compileFlags, 0, &vertexShader, nullptr);
-    D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\forward_ps.hlsl", nullptr, nullptr, "main", "ps_5_0", compileFlags, 0, &pixelShader, nullptr);
+    D3DCompileFromFile(L"D:\\Dev\\FlyCore\\Renderer\\forward_vs.hlsl", nullptr, nullptr, "main", "vs_5_0", compileFlags, 0, &vertexShader, nullptr);
+    D3DCompileFromFile(L"D:\\Dev\\FlyCore\\Renderer\\forward_ps.hlsl", nullptr, nullptr, "main", "ps_5_0", compileFlags, 0, &pixelShader, nullptr);
 
     // Define the vertex input layout.
     D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
@@ -320,9 +350,7 @@ void Renderer::D3D12Renderer::InitPipelineState()
     psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader.Get());
     psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
     psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-    psoDesc.DepthStencilState.DepthEnable = true;
-	psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
-    psoDesc.DepthStencilState.StencilEnable = FALSE;
+    psoDesc.DepthStencilState= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
     psoDesc.SampleMask = UINT_MAX;
     psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     psoDesc.NumRenderTargets = 1;
@@ -335,7 +363,7 @@ void Renderer::D3D12Renderer::InitPipelineState()
 	//Compute Pipieline state
 	{
 		ComPtr<ID3DBlob> computeShader;
-		D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\lightcull_cs.hlsl", nullptr, nullptr, "main", "cs_5_0", compileFlags, 0, &computeShader, nullptr);
+		D3DCompileFromFile(L"D:\\Dev\\FlyCore\\Renderer\\lightcull_cs.hlsl", nullptr, nullptr, "main", "cs_5_0", compileFlags, 0, &computeShader, nullptr);
 		D3D12_COMPUTE_PIPELINE_STATE_DESC l_computePipelineStateDesc = {};
 		l_computePipelineStateDesc.pRootSignature = m_computeRootSignature;
 		l_computePipelineStateDesc.CS = CD3DX12_SHADER_BYTECODE(computeShader.Get());;
@@ -349,6 +377,7 @@ void Renderer::D3D12Renderer::LoadScene(Renderer::Scene*)
 
 void Renderer::D3D12Renderer::OnDestory()
 {
+	SAFE_DELETE(m_VSUniform);
     SAFE_DELETE(m_lightBuffer);
 	SAFE_DELETE(m_renderCmdQueue);
 	SAFE_DELETE(m_computeCmd);

@@ -43,7 +43,7 @@ namespace Utility
 		void DisplayContent(FbxScene* pScene);
 		void DisplayContent(FbxNode* pNode);
 		void DisplayMesh(FbxNode* pNode);
-		void DisplayControlsPoints(FbxMesh* pMesh,std::vector<Renderer::Vertex>& p_vertices);
+		void DisplayControlsPoints(FbxMesh* pMesh,std::vector<Renderer::Vertex>& p_vertices,FbxAMatrix* l_transformMatrix);
 		void DisplayPolygons(FbxMesh* pMesh, std::vector<uint32_t>& p_indices, std::vector<Renderer::Vertex>& p_vertices);
 		void DisplayTextureNames(FbxProperty& pProperty, FbxString& pConnectionString);
 		void DisplayMaterialTextureConnections(FbxSurfaceMaterial* pMaterial, char* header, int pMatId, int l);

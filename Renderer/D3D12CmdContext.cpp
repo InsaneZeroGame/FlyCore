@@ -1,3 +1,5 @@
+#include "stdafx.h"
+
 #include "D3D12CmdContext.h"
 #include "D3D12Device.h"
 

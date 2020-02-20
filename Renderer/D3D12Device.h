@@ -1,5 +1,4 @@
 #pragma once
-#include "stdafx.h"
 #if defined(NTDDI_WIN10_RS2) && (NTDDI_VERSION >= NTDDI_WIN10_RS2)
 #include <dxgi1_6.h>
 #else

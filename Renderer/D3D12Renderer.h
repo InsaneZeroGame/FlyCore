@@ -1,5 +1,4 @@
 #pragma once
-#include "stdafx.h"
 #include "../Framework/IModule.h"
 #include "../Framework/IRenderer.h"
 #include "D3D12Device.h"
@@ -13,7 +12,7 @@
 
 namespace Renderer {
 
-	struct LightData
+	struct PointLight
 	{
 		float position[4];
 		float color[4];
@@ -75,7 +74,9 @@ namespace Renderer {
 
 		D3D12UploadBuffer* m_uploadBuffer;
 
-		D3D12UploadBuffer* m_cameraUniformBuffer;
+		D3D12UploadBuffer* m_VSUniform;
+
+		D3D12UploadBuffer* m_PSUniform;
 
 		D3D12StructBuffer* m_lightBuffer;
 
@@ -100,6 +101,8 @@ namespace Renderer {
 		//and properly synced.
 		D3D12CmdQueue* m_renderCmdQueue;
 
-		std::vector<LightData> m_lightData;
+		std::vector<PointLight> m_lightData;
+
+		std::array<PointLight,1024> m_lights;
 	};
 }

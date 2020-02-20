@@ -1,5 +1,4 @@
 #pragma once
-#include "stdafx.h"
 #include <glad/glad.h>
 #define GLFW_INCLUDE_NONE
 #define GLFW_EXPOSE_NATIVE_WIN32

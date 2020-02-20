@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "D3D12Resource.h"
 #include "D3D12Buffer.h"
 #include "D3D12Device.h"
@@ -139,8 +140,8 @@ void Renderer::D3D12StructBuffer::CreateViews()
 		l_desc.Format = DXGI_FORMAT_UNKNOWN;
 		l_desc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
 		l_desc.Buffer.FirstElement = 0;
-		l_desc.Buffer.NumElements = m_elementCount;
-		l_desc.Buffer.StructureByteStride = m_elementSize;
+		l_desc.Buffer.NumElements = static_cast<uint32_t>(m_elementCount);
+		l_desc.Buffer.StructureByteStride = static_cast<uint32_t>(m_elementSize);
 		l_desc.Buffer.CounterOffsetInBytes = 0;
 		l_desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
 		m_device->CreateUnorderedAccessView(m_pResource.Get(), nullptr, &l_desc, m_uav->cpuHandle);
@@ -156,8 +157,8 @@ void Renderer::D3D12StructBuffer::CreateViews()
 		l_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 		l_desc.Buffer.FirstElement = 0;
 		l_desc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-		l_desc.Buffer.NumElements = m_elementCount;
-		l_desc.Buffer.StructureByteStride = m_elementSize;
+		l_desc.Buffer.NumElements = static_cast<uint32_t>(m_elementCount);
+		l_desc.Buffer.StructureByteStride = static_cast<uint32_t>(m_elementSize);
 		m_device->CreateShaderResourceView(m_pResource.Get(), &l_desc, m_srv->cpuHandle);
 	}
 }

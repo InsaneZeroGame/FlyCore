@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "D3D12RenderCmd.h"
 
 
@@ -9,7 +10,7 @@ Renderer::D3D12Cmd::D3D12Cmd(D3D12_COMMAND_LIST_TYPE p_type, uint32_t p_cmdListC
 	m_cmdListManager(D3D12CmdListManager::GetManagerPtr())
 {
 	m_cmdAllocator.resize(p_cmdListCount);
-	for (auto i = 0; i < p_cmdListCount; ++i)
+	for (uint32_t i = 0; i < p_cmdListCount; ++i)
 	{
 		m_cmdAllocator[i] = m_cmdAllocatorPool->RequestAllocator(p_type);
 	}

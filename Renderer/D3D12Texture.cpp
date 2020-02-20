@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "D3D12Texture.h"
 #include "D3D12Device.h"
 #include "D3D12DescManager.h"

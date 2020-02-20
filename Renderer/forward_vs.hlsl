@@ -17,9 +17,17 @@ struct PSInput
     float4 color : COLOR;
 };
 
+struct PointLight
+{
+	float4 pos;
+	float4 color;
+	float attenutation;
+};
+
 cbuffer CDataBuffer : register(b0)
 {
 	float4x4 MVP;
+	PointLight PointLights[1024];
 };
 
 
@@ -27,7 +35,7 @@ PSInput main(float4 position : POSITION, float3 normal : NORMAL0,float2 tex_uv :
 {
 	PSInput result;
 
-	result.position = mul(position, MVP);
+	result.position = mul(MVP,position);
 	result.color = float4(normal,1.0f);
 
 	return result;

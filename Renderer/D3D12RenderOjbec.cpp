@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "D3D12RenderOjbec.h"
 
 Renderer::D3D12RenderObject::D3D12RenderObject(

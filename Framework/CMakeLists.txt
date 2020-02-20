@@ -1,5 +1,5 @@
 file(GLOB_RECURSE source_files *.h *.cpp)
 add_library(Framework STATIC ${source_files})
 target_link_libraries(Framework glfw3)
-set_target_properties(Renderer PROPERTIES COTIRE_CXX_PREFIX_HEADER_INIT "stdafx.h")
+set_target_properties(Framework PROPERTIES COTIRE_CXX_PREFIX_HEADER_INIT "stdafx.h")
 cotire(Framework)

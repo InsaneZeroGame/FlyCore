@@ -11,7 +11,6 @@
 // Author:  James Stanard 
 //
 
-#include "stdafx.h"
 #include "Utility.h"
 
 std::wstring MakeWStr( const std::string& str )
