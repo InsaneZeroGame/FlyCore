@@ -42,24 +42,24 @@ void Renderer::D3D12Renderer::OnInit()
 void Renderer::D3D12Renderer::OnUpdate()
 {
 	auto& l_graphicsContext = D3D12GraphicsContext::GetContext();
-
+    m_graphicsCmd->Reset(m_frameIndex, m_graphicsPipelineState);
+    // Indicate that the back buffer will be used as a render target.
+    l_graphicsContext.BeginRender(m_frameIndex);
 	//Light cull 
 	{
-		using namespace Constants;
-		m_computeCmd->Reset(0, m_computePipelineState);
-		ID3D12GraphicsCommandList* l_computeCmdList = *m_computeCmd;
-		l_computeCmdList->SetPipelineState(m_computePipelineState);
-		l_computeCmdList->SetComputeRootSignature(m_computeRootSignature);
-		l_computeCmdList->SetComputeRootConstantBufferView(CAMERA_UNIFORM_ROOT_INDEX, m_VSUniform->GetGpuVirtualAddress());
-        l_computeCmdList->SetComputeRootUnorderedAccessView(LIGHT_UAV_ROOT_INDEX, m_lightBuffer->GetGpuVirtualAddress());
-        l_computeCmdList->Dispatch(WORK_GROUP_SIZE_X, WORK_GROUP_SIZE_Y, WORK_GROUP_SIZE_Z);
-		m_computeCmd->Close();
-		m_computeCmd->Flush(true);
+		//using namespace Constants;
+		//m_computeCmd->Reset(0, m_computePipelineState);
+		//ID3D12GraphicsCommandList* l_computeCmdList = *m_computeCmd;
+		//l_computeCmdList->SetPipelineState(m_computePipelineState);
+		//l_computeCmdList->SetComputeRootSignature(m_computeRootSignature);
+		//l_computeCmdList->SetComputeRootConstantBufferView(CAMERA_UNIFORM_ROOT_INDEX, m_VSUniform->GetGpuVirtualAddress());
+        //l_computeCmdList->SetComputeRootUnorderedAccessView(LIGHT_UAV_ROOT_INDEX, m_lightBuffer->GetGpuVirtualAddress());
+        //l_computeCmdList->Dispatch(WORK_GROUP_SIZE_X, WORK_GROUP_SIZE_Y, WORK_GROUP_SIZE_Z);
+		//m_computeCmd->Close();
+		//m_computeCmd->Flush(true);
 	}
 	
-	m_graphicsCmd->Reset(m_frameIndex, m_graphicsPipelineState);
-    // Indicate that the back buffer will be used as a render target.
-	l_graphicsContext.BeginRender(m_frameIndex);
+	
 	ID3D12GraphicsCommandList* l_graphicsCmdList = *m_graphicsCmd;
 	//Forward Pass
 	{
@@ -196,19 +196,11 @@ void Renderer::D3D12Renderer::InitBuffers()
 	m_VSUniform = new D3D12UploadBuffer(Utility::AlignTo256(UNIFORM_BUFFER_SIZE));
 	//PSUniform = new D3D12UploadBuffer()
 	
-	auto m_projMatrix = glm::perspectiveFovLH(45.0f, 10.0f, 10.0f, 0.01f, 25.0f);
-	auto m_viewMatrix = glm::lookAtLH(glm::vec3(1.0f, 3.0f, 1.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	auto m_projMatrix = glm::perspectiveFovLH(45.0f, 5.0f, 5.0f, 0.01f, 15.0f);
+	auto m_viewMatrix = glm::lookAtLH(glm::vec3(3.0f, 3.0f, 1.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	auto mvp = m_projMatrix * m_viewMatrix;
 	
 	m_VSUniform->CopyData(&mvp, sizeof(float) * 16);
-    //Constants::Vertex triangleVertices[] =
-    //{
-    //    { { 0.0f, 0.25f , 0.0f ,1.0f}, { 1.0f, 0.0f, 0.0f, 1.0f } },
-    //    { { 0.25f, -0.25f , 0.0f ,1.0f}, { 0.0f, 1.0f, 0.0f, 1.0f } },
-    //    { { -0.25f, -0.25f , 0.0f ,1.0f}, { 0.0f, 0.0f, 1.0f, 1.0f } }
-    //};
-    //
-    //uint32_t triangleIndices[] = {0,1,2};
 
 	UINT vertexBufferSize = 0;
 	for (auto i = 0; i < m_scene->m_actors.size(); ++i)

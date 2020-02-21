@@ -35,7 +35,7 @@ void Framework::Window::OnInit()
 
 void Framework::Window::OnUpdate()
 {
-    while (!glfwWindowShouldClose(m_window))
+    if (!glfwWindowShouldClose(m_window))
     {
         m_renderCallback();
         glfwPollEvents();
