@@ -17,11 +17,20 @@ namespace Renderer {
 		float position[4];
 		float color[4];
 		float attenutation;
+		uint32_t isActive;
+
+		PointLight() : 
+			isActive(0)
+		{
+			
+		}
 	};
 
 	struct LightList
 	{
-		bool isActive[256];
+		//Todo use bit mask to
+		//reduce memory cost
+		uint32_t isActive[256];
 	};
 
 

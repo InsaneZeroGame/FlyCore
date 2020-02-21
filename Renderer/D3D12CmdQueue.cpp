@@ -38,7 +38,7 @@ void Renderer::D3D12CmdQueue::WaitFinish()
 	{
 		m_fence->SetEventOnCompletion(m_fenceValue, m_fenceEvent);
 		WaitForSingleObject(m_fenceEvent, INFINITE);
-		m_fenceValue++;
 	}
+	m_fenceValue++;
 
 }

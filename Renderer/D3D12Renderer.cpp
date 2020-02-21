@@ -200,13 +200,35 @@ void Renderer::D3D12Renderer::InitBuffers()
 	{
 		glm::mat4x4 m_proj;
 		glm::mat4x4 m_view;
+		glm::mat4x4 m_inverProj;
 		std::array<PointLight, 1024> m_lights;
 	} m_uniformBuffer;
 
 	
 	m_uniformBuffer.m_proj = glm::perspectiveFovLH(45.0f, 35.0f, 35.0f, 0.01f, 55.0f);
+	m_uniformBuffer.m_inverProj = glm::inverse(m_uniformBuffer.m_proj);
 	m_uniformBuffer.m_view = glm::lookAtLH(glm::vec3(10.0f, 5.0f, 10.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	
+	for (auto i = 0; i < m_uniformBuffer.m_lights.size(); ++i)
+	{
+		m_uniformBuffer.m_lights[i] = PointLight();
+		m_uniformBuffer.m_lights[i].isActive = false;
+	}
+	m_uniformBuffer.m_lights[0].isActive = true;
+
+	m_uniformBuffer.m_lights[0].position[0] = 0.0f;
+	m_uniformBuffer.m_lights[0].position[1] = 0.0f;
+	m_uniformBuffer.m_lights[0].position[2] = 0.0f;
+	m_uniformBuffer.m_lights[0].position[3] = 0.0f;
+
+	m_uniformBuffer.m_lights[0].color[0] = 1.0f;
+	m_uniformBuffer.m_lights[0].color[1] = 0.0f;
+	m_uniformBuffer.m_lights[0].color[2] = 1.0f;
+	m_uniformBuffer.m_lights[0].color[3] = 0.0f;
+
+	m_uniformBuffer.m_lights[0].attenutation = 1.0f;
+
+
 	m_VSUniform->CopyData(&m_uniformBuffer, sizeof(SceneUniformBuffer));
 
 	UINT vertexBufferSize = 0;
@@ -261,7 +283,7 @@ void Renderer::D3D12Renderer::InitRootSignature()
 
 		D3D12_ROOT_PARAMETER l_lightUAV = {};
 		l_lightUAV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-		l_lightUAV.Descriptor = { 0,0 };
+		l_lightUAV.Descriptor = { 1,0 };
 		l_lightUAV.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 

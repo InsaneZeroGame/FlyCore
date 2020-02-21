@@ -1,3 +1,5 @@
+
+
 struct PSInput
 {
 	float4 position : SV_POSITION;
@@ -11,9 +13,15 @@ struct PointLight
 	float4 pos;
 	float4 color;
 	float attenutation;
+	uint isActive;
 };
 
-RWStructuredBuffer<PointLight> LightBuffer : register(u0);
+struct LightList
+{
+	unsigned int isActive[256];
+};
+
+StructuredBuffer<LightList> LightBuffer : register(t1);
 
 static float4 sliceColor[8] = {
 	float4(1.0,0.0,0.0,1.0f),
@@ -28,6 +36,8 @@ static float4 sliceColor[8] = {
 
 static float zNear = 0.01;
 static float zFar = 55.0;
+static uint2  SCREEN_DIMENSION = uint2(1920, 1080);
+
 
 float4 main(PSInput input) : SV_TARGET
 {
@@ -39,6 +49,15 @@ float4 main(PSInput input) : SV_TARGET
 	//unsigned int numSlices = 8;
 	//unsigned int slice = log(z) * numSlices / log(zFar / zNear) - numSlices * log(zNear) / (log(zFar / zNear));
 	//
+	float2 screenPosition = input.position.xy / SCREEN_DIMENSION.xy;
+	uint3 clusterPosition = uint3(screenPosition * uint2(16,8), zIndex);
+	for (uint i = 0; i < 256; ++i)
+	{
+		if (LightBuffer[clusterPosition.z * (16 * 8) + clusterPosition.y * 16 + clusterPosition.x].isActive[i] == 1)
+		{
+			return float4(1.0, 1.0, 1.0, 1.0) + sliceColor[zIndex];
+		}
+	}
+
 	return sliceColor[zIndex];
-	//return input.color;
 }
