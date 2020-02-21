@@ -33,8 +33,9 @@ cbuffer CDataBuffer : register(b0)
 	float4x4 project;
 	float4x4 view;
 	float4x4 projInverse;
-
-	PointLight PointLights[1024];
+	float zNear;
+	float zFar;
+	PointLight PointLights[256];
 };
 
 

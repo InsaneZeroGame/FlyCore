@@ -8,7 +8,8 @@
 #include "D3D12CmdContext.h"
 #include "D3D12GraphicsContext.h"
 #include "D3D12RenderCmd.h"
-
+#include "../3dparty/include/glm/glm.hpp"
+#include "../3dparty/include/glm/ext.hpp"
 
 namespace Renderer {
 
@@ -31,6 +32,16 @@ namespace Renderer {
 		//Todo use bit mask to
 		//reduce memory cost
 		uint32_t isActive[256];
+	};
+
+	struct SceneUniformBuffer
+	{
+		glm::mat4x4 m_proj;
+		glm::mat4x4 m_view;
+		glm::mat4x4 m_inverProj;
+		float zNear;
+		float zFar;
+		std::array<PointLight, 256> m_lights;
 	};
 
 
@@ -109,6 +120,7 @@ namespace Renderer {
 		D3D12GraphicsCmd* m_computeCmd = nullptr;
 
 		uint32_t m_frameIndex;
+		SceneUniformBuffer m_uniformBuffer;
 
 		//CmdQueue for renderer,associate with swapchain
 		//So thast cmdlist write to swapchain can be flushed

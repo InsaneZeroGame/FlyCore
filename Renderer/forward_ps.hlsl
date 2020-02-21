@@ -18,7 +18,7 @@ struct PointLight
 
 struct LightList
 {
-	unsigned int isActive[256];
+	uint isActive[256];
 };
 
 StructuredBuffer<LightList> LightBuffer : register(t1);
@@ -51,13 +51,17 @@ float4 main(PSInput input) : SV_TARGET
 	//
 	float2 screenPosition = input.position.xy / SCREEN_DIMENSION.xy;
 	uint3 clusterPosition = uint3(screenPosition * uint2(16,8), zIndex);
+
+	float4 colorStep = float4(16.0 / 256, 16.0 / 256, 16.0 / 256, 1.0f);
+	float4 res_color = float4(0.0f, 0.0f, 0.0f, 1.0f);
+
 	for (uint i = 0; i < 256; ++i)
 	{
 		if (LightBuffer[clusterPosition.z * (16 * 8) + clusterPosition.y * 16 + clusterPosition.x].isActive[i] == 1)
 		{
-			return float4(1.0, 1.0, 1.0, 1.0) + sliceColor[zIndex];
+			res_color += colorStep;
 		}
 	}
 
-	return sliceColor[zIndex];
+	return res_color;
 }

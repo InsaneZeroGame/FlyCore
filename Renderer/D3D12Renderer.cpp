@@ -2,8 +2,7 @@
 #include "D3D12Renderer.h"
 #include <D3Dcompiler.h>
 #include "../Utility/AssetLoader.h"
-#include "../3dparty/include/glm/glm.hpp"
-#include "../3dparty/include/glm/ext.hpp"
+
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "../3dparty/include/stb_image.h"
@@ -181,6 +180,18 @@ void Renderer::D3D12Renderer::SyncFrame()
 
 }
 
+static float RandomFloat01()
+{
+	//return 0.0-1.0
+	return float(rand()) / float(RAND_MAX);
+}
+
+static float RandomFloat_11()
+{
+	//return -1.0-1.0
+	return 2 * (RandomFloat01() - 0.5f);
+}
+
 void Renderer::D3D12Renderer::InitBuffers()
 {
     auto& loader = Utility::AssetLoader::GetLoader();
@@ -195,39 +206,33 @@ void Renderer::D3D12Renderer::InitBuffers()
 	const auto UNIFORM_BUFFER_SIZE = CAMERA_UNIFORM_BUFFER_SIZE + m_lights.size() * sizeof(PointLight);
 	m_VSUniform = new D3D12UploadBuffer(Utility::AlignTo256(UNIFORM_BUFFER_SIZE));
 	//PSUniform = new D3D12UploadBuffer()
-
-	struct SceneUniformBuffer
-	{
-		glm::mat4x4 m_proj;
-		glm::mat4x4 m_view;
-		glm::mat4x4 m_inverProj;
-		std::array<PointLight, 1024> m_lights;
-	} m_uniformBuffer;
-
 	
-	m_uniformBuffer.m_proj = glm::perspectiveFovLH(45.0f, 35.0f, 35.0f, 0.01f, 55.0f);
+	
+	m_uniformBuffer.zFar = 55.0f;
+	m_uniformBuffer.zNear = 0.01f;
+	m_uniformBuffer.m_proj = glm::perspectiveFovLH(45.0f, 35.0f, 35.0f, m_uniformBuffer.zNear, m_uniformBuffer.zFar);
 	m_uniformBuffer.m_inverProj = glm::inverse(m_uniformBuffer.m_proj);
-	m_uniformBuffer.m_view = glm::lookAtLH(glm::vec3(10.0f, 5.0f, 10.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	m_uniformBuffer.m_view = glm::lookAtLH(glm::vec3(15.0f, 14.0f, 10.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	
 	for (auto i = 0; i < m_uniformBuffer.m_lights.size(); ++i)
 	{
 		m_uniformBuffer.m_lights[i] = PointLight();
 		m_uniformBuffer.m_lights[i].isActive = false;
 	}
-	m_uniformBuffer.m_lights[0].isActive = true;
 
-	m_uniformBuffer.m_lights[0].position[0] = 0.0f;
-	m_uniformBuffer.m_lights[0].position[1] = 0.0f;
-	m_uniformBuffer.m_lights[0].position[2] = 0.0f;
-	m_uniformBuffer.m_lights[0].position[3] = 0.0f;
-
-	m_uniformBuffer.m_lights[0].color[0] = 1.0f;
-	m_uniformBuffer.m_lights[0].color[1] = 0.0f;
-	m_uniformBuffer.m_lights[0].color[2] = 1.0f;
-	m_uniformBuffer.m_lights[0].color[3] = 0.0f;
-
-	m_uniformBuffer.m_lights[0].attenutation = 1.0f;
-
+	for (auto i = 0; i < m_uniformBuffer.m_lights.size(); ++i)
+	{
+		m_uniformBuffer.m_lights[i].isActive = true;
+		m_uniformBuffer.m_lights[i].position[0] = RandomFloat_11() * 8.0f;
+		m_uniformBuffer.m_lights[i].position[1] = RandomFloat_11() * 8.0f;
+		m_uniformBuffer.m_lights[i].position[2] = RandomFloat_11() * 8.0f;
+		m_uniformBuffer.m_lights[i].position[3] = 0.0f;
+		m_uniformBuffer.m_lights[i].color[0] = RandomFloat01();
+		m_uniformBuffer.m_lights[i].color[1] = RandomFloat01();
+		m_uniformBuffer.m_lights[i].color[2] = RandomFloat01();
+		m_uniformBuffer.m_lights[i].color[3] = RandomFloat01();
+		m_uniformBuffer.m_lights[i].attenutation = 1.5f;
+	}
 
 	m_VSUniform->CopyData(&m_uniformBuffer, sizeof(SceneUniformBuffer));
 

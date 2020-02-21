@@ -8,8 +8,7 @@ static uint GROUP_SIZE_Y = 8;
 static uint GROUP_SIZE_Z = 8;
 
 static uint2  SCREEN_DIMENSION = uint2(1920,1080);
-static float zNear = 0.01;
-static float zFar = 55.0;
+
 
 struct PointLight
 {
@@ -21,7 +20,7 @@ struct PointLight
 
 struct LightList
 {
-	unsigned int isActive[256];
+	uint isActive[256];
 };
 
 cbuffer CDataBuffer : register(b0)
@@ -29,13 +28,14 @@ cbuffer CDataBuffer : register(b0)
 	float4x4 project;
 	float4x4 view;
 	float4x4 projInverse;
+	float zNear;
+	float zFar;
 	PointLight PointLights[256];
 };
 
 
 RWStructuredBuffer<LightList> LightBuffer : register(u0);
-groupshared bool GroupLightList[256];
-groupshared float4 frustumPlanes[6];
+//groupshared bool GroupLightList[256];
 
 
 // Convert clip space coordinates to view space
@@ -79,40 +79,39 @@ void main(
 	uint threadIndex : SV_GroupIndex
 )
 {
-	GroupLightList[threadIndex] = false;
+	//GroupLightList[threadIndex] = false;
+
+	float zRange = zFar - zNear;
+	float zRangePerSlice = zRange / GROUP_SIZE_Z;
+	float zSlice = zNear + zRangePerSlice * groupID.z;
+	float zSliceNext = zSlice + zRangePerSlice;
 
 
-	if (threadIndex == 1)
+	float4 viewSpacePlane[4];
+	float4 frustumPlanes[6];
+
+	float tileSizeX = 1.0f / 16.0f;
+	float tileSizeY = 1.0f / 8.0f;
+
+	viewSpacePlane[0] = float4(groupID.x * tileSizeX, groupID.y * tileSizeY, 1.0f, 1.0f);
+	viewSpacePlane[1] = float4((groupID.x + 1) * tileSizeX, groupID.y * tileSizeY, 1.0f, 1.0f);
+	viewSpacePlane[2] = float4(groupID.x * tileSizeX, (groupID.y + 1) * tileSizeY, 1.0f, 1.0f);
+	viewSpacePlane[3] = float4((groupID.x + 1) * tileSizeX, (groupID.y + 1) * tileSizeY, 1.0f, 1.0f);
+
+	for (int i = 0; i < 4; i++)
 	{
-		float zRange = zFar - zNear;
-		float zRangePerSlice = zRange / GROUP_SIZE_Z;
-		float zSlice = zNear + zRangePerSlice * groupID.z;
-		float zSliceNext = zSlice + zRangePerSlice;
-
-
-		float4 viewSpacePlane[4];
-
-		float tileSizeX = 1.0f / 16.0f;
-		float tileSizeY = 1.0f / 8.0f;
-
-		viewSpacePlane[0] = float4(groupID.x * tileSizeX, groupID.y * tileSizeY, 1.0f, 1.0f);
-		viewSpacePlane[1] = float4((groupID.x + 1) * tileSizeX, groupID.y * tileSizeY, 1.0f, 1.0f);
-		viewSpacePlane[2] = float4(groupID.x * tileSizeX, (groupID.y + 1) * tileSizeY, 1.0f, 1.0f);
-		viewSpacePlane[3] = float4((groupID.x + 1) * tileSizeX, (groupID.y + 1) * tileSizeY, 1.0f, 1.0f);
-
-		for (int i = 0; i < 4; i++)
-		{
-			viewSpacePlane[i] = ScreenToView(viewSpacePlane[i]);
-		}
-		float3 eyePos = float3(0.0f, 0.0f, 0.0f);
-
-		frustumPlanes[0] = ComputePlane(eyePos, viewSpacePlane[2].xyz, viewSpacePlane[0].xyz);
-		frustumPlanes[1] = ComputePlane(eyePos, viewSpacePlane[1].xyz, viewSpacePlane[3].xyz);
-		frustumPlanes[2] = ComputePlane(eyePos, viewSpacePlane[0].xyz, viewSpacePlane[1].xyz);
-		frustumPlanes[3] = ComputePlane(eyePos, viewSpacePlane[3].xyz, viewSpacePlane[2].xyz);
-		frustumPlanes[4] = float4(0.0f, 0.0f, 1.0f, -zSlice);
-		frustumPlanes[5] = float4(0.0f, 0.0f, -1.0f, zSliceNext);
+		viewSpacePlane[i] = ScreenToView(viewSpacePlane[i]);
 	}
+	float3 eyePos = float3(0.0f, 0.0f, 0.0f);
+
+	frustumPlanes[0] = ComputePlane(eyePos, viewSpacePlane[2].xyz, viewSpacePlane[0].xyz);
+	frustumPlanes[1] = ComputePlane(eyePos, viewSpacePlane[1].xyz, viewSpacePlane[3].xyz);
+	frustumPlanes[2] = ComputePlane(eyePos, viewSpacePlane[0].xyz, viewSpacePlane[1].xyz);
+	frustumPlanes[3] = ComputePlane(eyePos, viewSpacePlane[3].xyz, viewSpacePlane[2].xyz);
+	frustumPlanes[4] = float4(0.0f, 0.0f, 1.0f, -zSlice);
+	frustumPlanes[5] = float4(0.0f, 0.0f, -1.0f, zSliceNext);
+
+
 
 	PointLight light = PointLights[threadIndex];
 
@@ -124,46 +123,18 @@ void main(
 			float d = dot(frustumPlanes[i], mul(view , float4(light.pos.xyz, 1.0f)));
 			inFrustum = inFrustum && (d >= -light.attenutation);
 		}
+		uint groupIndexInCS = groupID.z * (GROUP_SIZE_X * GROUP_SIZE_Y) + groupID.y * GROUP_SIZE_X + groupID.x;
 
 		[branch] if (inFrustum) {
 			// Append light to list
 			// Compaction might be better if we expect a lot of lights
-			GroupLightList[threadIndex] = true;
+			LightBuffer[groupIndexInCS].isActive[threadIndex] = 1;
 		}
-
-	}
-	
-
-//#if MORE_CULLING
-//	float3 normal = center - light.positionView;
-//	normal /= length(normal);
-//	// compute distance of all corners to the tangent plane, with a few shortcuts (saves 14 muls)
-//	float min_d1 = -dot(normal, light.positionView);
-//	float min_d2 = min_d1;
-//	min_d1 += min(normal.x * minZminX, normal.x * minZmaxX);
-//	min_d1 += min(normal.y * minZminY, normal.y * minZmaxY);
-//	min_d1 += normal.z * minTileZ;
-//	min_d2 += min(normal.x * maxZminX, normal.x * maxZmaxX);
-//	min_d2 += min(normal.y * maxZminY, normal.y * maxZmaxY);
-//	min_d2 += normal.z * maxTileZ;
-//	float min_d = min(min_d1, min_d2);
-//	bool separated = min_d > light.attenuationEnd;
-//	if (separated) inFrustum = false;
-//#endif
-
-	
-	
-
-
-	//Write result to LightBuffer for Pixel shader.
-	if (threadIndex == 0)
-	{
-		uint groupIndexInCS = groupID.z * (GROUP_SIZE_X * GROUP_SIZE_Y) + groupID.y * GROUP_SIZE_X + groupID.x;
-
-		for (uint i = 0; i < WORK_GROUP_SIZE_X * WORK_GROUP_SIZE_Y * WORK_GROUP_SIZE_Z; ++i)
+		else
 		{
-			LightBuffer[groupIndexInCS].isActive[i] = GroupLightList[i];
+			LightBuffer[groupIndexInCS].isActive[threadIndex] = 0;
 		}
+
+
 	}
-	
 }
