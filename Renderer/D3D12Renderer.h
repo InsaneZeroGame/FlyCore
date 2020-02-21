@@ -19,6 +19,11 @@ namespace Renderer {
 		float attenutation;
 	};
 
+	struct LightList
+	{
+		bool isActive[256];
+	};
+
 
 	class D3D12Renderer : public Interface::IRenderer, public Interface::IModule
 	{

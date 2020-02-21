@@ -14,6 +14,7 @@
 struct PSInput
 {
     float4 position : SV_POSITION;
+	float4 scenePositionView : POSITION;
     float4 color : COLOR;
 };
 
@@ -26,7 +27,8 @@ struct PointLight
 
 cbuffer CDataBuffer : register(b0)
 {
-	float4x4 MVP;
+	float4x4 project;
+	float4x4 view;
 	PointLight PointLights[1024];
 };
 
@@ -34,8 +36,8 @@ cbuffer CDataBuffer : register(b0)
 PSInput main(float4 position : POSITION, float3 normal : NORMAL0,float2 tex_uv : TEXCOORD0)
 {
 	PSInput result;
-
-	result.position = mul(MVP,position);
+	result.scenePositionView = mul(view, position);
+	result.position = mul(project, result.scenePositionView);
 	result.color = float4(normal,1.0f);
 
 	return result;

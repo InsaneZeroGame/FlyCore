@@ -1,6 +1,7 @@
 struct PSInput
 {
 	float4 position : SV_POSITION;
+	float4 scenePositionView : POSITION;
 	float4 color : COLOR;
 };
 
@@ -26,13 +27,18 @@ static float4 sliceColor[8] = {
 };
 
 static float zNear = 0.01;
-static float zFar = 15.0;
+static float zFar = 55.0;
+
 float4 main(PSInput input) : SV_TARGET
 {
-	float z = input.position.z;
-    //z = 2.0 * zNear * zFar / (zFar + zNear - z * (zFar - zNear));
-	unsigned int numSlices = 8;
-	unsigned int slice = log(z) * numSlices / log(zFar / zNear) - numSlices * log(zNear) / (log(zFar / zNear));
 
-	return sliceColor[slice];
+	float zPosition = (input.scenePositionView.z - zNear) / (zFar - zNear);
+	uint zIndex = zPosition * 8;
+	//float z = input.position.z;
+	////z = 2.0 * zNear * zFar / (zFar + zNear - z * (zFar - zNear));
+	//unsigned int numSlices = 8;
+	//unsigned int slice = log(z) * numSlices / log(zFar / zNear) - numSlices * log(zNear) / (log(zFar / zNear));
+	//
+	return sliceColor[zIndex];
+	//return input.color;
 }

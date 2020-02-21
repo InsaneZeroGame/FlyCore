@@ -47,16 +47,16 @@ void Renderer::D3D12Renderer::OnUpdate()
     l_graphicsContext.BeginRender(m_frameIndex);
 	//Light cull 
 	{
-		//using namespace Constants;
-		//m_computeCmd->Reset(0, m_computePipelineState);
-		//ID3D12GraphicsCommandList* l_computeCmdList = *m_computeCmd;
-		//l_computeCmdList->SetPipelineState(m_computePipelineState);
-		//l_computeCmdList->SetComputeRootSignature(m_computeRootSignature);
-		//l_computeCmdList->SetComputeRootConstantBufferView(CAMERA_UNIFORM_ROOT_INDEX, m_VSUniform->GetGpuVirtualAddress());
-        //l_computeCmdList->SetComputeRootUnorderedAccessView(LIGHT_UAV_ROOT_INDEX, m_lightBuffer->GetGpuVirtualAddress());
-        //l_computeCmdList->Dispatch(WORK_GROUP_SIZE_X, WORK_GROUP_SIZE_Y, WORK_GROUP_SIZE_Z);
-		//m_computeCmd->Close();
-		//m_computeCmd->Flush(true);
+		using namespace Constants;
+		m_computeCmd->Reset(0, m_computePipelineState);
+		ID3D12GraphicsCommandList* l_computeCmdList = *m_computeCmd;
+		l_computeCmdList->SetPipelineState(m_computePipelineState);
+		l_computeCmdList->SetComputeRootSignature(m_computeRootSignature);
+		l_computeCmdList->SetComputeRootConstantBufferView(CAMERA_UNIFORM_ROOT_INDEX, m_VSUniform->GetGpuVirtualAddress());
+        l_computeCmdList->SetComputeRootUnorderedAccessView(LIGHT_UAV_ROOT_INDEX, m_lightBuffer->GetGpuVirtualAddress());
+        l_computeCmdList->Dispatch(WORK_GROUP_SIZE_X, WORK_GROUP_SIZE_Y, WORK_GROUP_SIZE_Z);
+		m_computeCmd->Close();
+		m_computeCmd->Flush(true);
 	}
 	
 	
@@ -186,7 +186,7 @@ void Renderer::D3D12Renderer::InitBuffers()
     auto& loader = Utility::AssetLoader::GetLoader();
     
     m_scene = new Renderer::Scene;
-    loader.LoadFbx("C:\\Dev\\FlyCore\\build\\Game\\Debug\\untitled.fbx", m_scene);
+    loader.LoadFbx("D:\\Dev\\FlyCore\\build\\Game\\Debug\\scene.fbx", m_scene);
 
     m_vertexBuffer = new D3D12VertexBuffer(Constants::VERTEX_BUFFER_SIZE);
     m_uploadBuffer = new D3D12UploadBuffer(Constants::MAX_CONST_BUFFER_VIEW_SIZE);
@@ -195,12 +195,19 @@ void Renderer::D3D12Renderer::InitBuffers()
 	const auto UNIFORM_BUFFER_SIZE = CAMERA_UNIFORM_BUFFER_SIZE + m_lights.size() * sizeof(PointLight);
 	m_VSUniform = new D3D12UploadBuffer(Utility::AlignTo256(UNIFORM_BUFFER_SIZE));
 	//PSUniform = new D3D12UploadBuffer()
+
+	struct SceneUniformBuffer
+	{
+		glm::mat4x4 m_proj;
+		glm::mat4x4 m_view;
+		std::array<PointLight, 1024> m_lights;
+	} m_uniformBuffer;
+
 	
-	auto m_projMatrix = glm::perspectiveFovLH(45.0f, 5.0f, 5.0f, 0.01f, 15.0f);
-	auto m_viewMatrix = glm::lookAtLH(glm::vec3(3.0f, 3.0f, 1.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	auto mvp = m_projMatrix * m_viewMatrix;
+	m_uniformBuffer.m_proj = glm::perspectiveFovLH(45.0f, 35.0f, 35.0f, 0.01f, 55.0f);
+	m_uniformBuffer.m_view = glm::lookAtLH(glm::vec3(10.0f, 5.0f, 10.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	
-	m_VSUniform->CopyData(&mvp, sizeof(float) * 16);
+	m_VSUniform->CopyData(&m_uniformBuffer, sizeof(SceneUniformBuffer));
 
 	UINT vertexBufferSize = 0;
 	for (auto i = 0; i < m_scene->m_actors.size(); ++i)
@@ -237,7 +244,7 @@ void Renderer::D3D12Renderer::InitBuffers()
         D3D12_RESOURCE_STATE_INDEX_BUFFER);
     l_graphicsContext.End(true);
 
-    m_lightBuffer = new D3D12StructBuffer(1024 * Constants::MAX_NUM_LIGHT_COUNT_PER_TILE, sizeof(PointLight));
+    m_lightBuffer = new D3D12StructBuffer(1024, sizeof(LightList));
 }
 
 void Renderer::D3D12Renderer::InitRootSignature()
@@ -322,8 +329,8 @@ void Renderer::D3D12Renderer::InitPipelineState()
     UINT compileFlags = 0;
 #endif
 
-    D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\forward_vs.hlsl", nullptr, nullptr, "main", "vs_5_0", compileFlags, 0, &vertexShader, nullptr);
-    D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\forward_ps.hlsl", nullptr, nullptr, "main", "ps_5_0", compileFlags, 0, &pixelShader, nullptr);
+    D3DCompileFromFile(L"D:\\Dev\\FlyCore\\Renderer\\forward_vs.hlsl", nullptr, nullptr, "main", "vs_5_0", compileFlags, 0, &vertexShader, nullptr);
+    D3DCompileFromFile(L"D:\\Dev\\FlyCore\\Renderer\\forward_ps.hlsl", nullptr, nullptr, "main", "ps_5_0", compileFlags, 0, &pixelShader, nullptr);
 
     // Define the vertex input layout.
     D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
@@ -355,7 +362,7 @@ void Renderer::D3D12Renderer::InitPipelineState()
 	//Compute Pipieline state
 	{
 		ComPtr<ID3DBlob> computeShader;
-		D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\lightcull_cs.hlsl", nullptr, nullptr, "main", "cs_5_0", compileFlags, 0, &computeShader, nullptr);
+		D3DCompileFromFile(L"D:\\Dev\\FlyCore\\Renderer\\lightcull_cs.hlsl", nullptr, nullptr, "main", "cs_5_0", compileFlags, 0, &computeShader, nullptr);
 		D3D12_COMPUTE_PIPELINE_STATE_DESC l_computePipelineStateDesc = {};
 		l_computePipelineStateDesc.pRootSignature = m_computeRootSignature;
 		l_computePipelineStateDesc.CS = CD3DX12_SHADER_BYTECODE(computeShader.Get());;
