@@ -14,7 +14,7 @@ struct PointLight
 {
 	float4 pos;//position in world space
 	float4 color;
-	float attenutation;
+	float radius;
 	uint isActive;
 };
 
@@ -81,10 +81,10 @@ void main(
 {
 	//GroupLightList[threadIndex] = false;
 
-	float zRange = zFar - zNear;
-	float zRangePerSlice = zRange / GROUP_SIZE_Z;
-	float zSlice = zNear + zRangePerSlice * groupID.z;
-	float zSliceNext = zSlice + zRangePerSlice;
+	
+
+	float zSlice = zNear * pow(zFar / zNear, groupID.z / float(8));
+	float zSliceNext = zNear * pow(zFar / zNear, (groupID.z + 1) / float(8));
 
 
 	float4 viewSpacePlane[4];
@@ -120,8 +120,8 @@ void main(
 	if (light.isActive == 1)
 	{
 		[unroll] for (uint i = 0; i < 6; ++i) {
-			float d = dot(frustumPlanes[i], mul(view , float4(light.pos.xyz, 1.0f)));
-			inFrustum = inFrustum && (d >= -light.attenutation);
+			float d = dot(frustumPlanes[i], float4(light.pos.xyz, 1.0f));
+			inFrustum = inFrustum && (d >= -light.radius);
 		}
 		uint groupIndexInCS = groupID.z * (GROUP_SIZE_X * GROUP_SIZE_Y) + groupID.y * GROUP_SIZE_X + groupID.x;
 

@@ -15,9 +15,9 @@ namespace Renderer {
 
 	struct PointLight
 	{
-		float position[4];
+		float position[4];//view space
 		float color[4];
-		float attenutation;
+		float radius;
 		uint32_t isActive;
 
 		PointLight() : 

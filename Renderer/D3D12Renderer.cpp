@@ -197,7 +197,7 @@ void Renderer::D3D12Renderer::InitBuffers()
     auto& loader = Utility::AssetLoader::GetLoader();
     
     m_scene = new Renderer::Scene;
-    loader.LoadFbx("D:\\Dev\\FlyCore\\build\\Game\\Debug\\scene.fbx", m_scene);
+    loader.LoadFbx("C:\\Dev\\FlyCore\\build\\Game\\Debug\\scene.fbx", m_scene);
 
     m_vertexBuffer = new D3D12VertexBuffer(Constants::VERTEX_BUFFER_SIZE);
     m_uploadBuffer = new D3D12UploadBuffer(Constants::MAX_CONST_BUFFER_VIEW_SIZE);
@@ -212,7 +212,7 @@ void Renderer::D3D12Renderer::InitBuffers()
 	m_uniformBuffer.zNear = 0.01f;
 	m_uniformBuffer.m_proj = glm::perspectiveFovLH(45.0f, 35.0f, 35.0f, m_uniformBuffer.zNear, m_uniformBuffer.zFar);
 	m_uniformBuffer.m_inverProj = glm::inverse(m_uniformBuffer.m_proj);
-	m_uniformBuffer.m_view = glm::lookAtLH(glm::vec3(15.0f, 14.0f, 10.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	m_uniformBuffer.m_view = glm::lookAtLH(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	
 	for (auto i = 0; i < m_uniformBuffer.m_lights.size(); ++i)
 	{
@@ -223,15 +223,18 @@ void Renderer::D3D12Renderer::InitBuffers()
 	for (auto i = 0; i < m_uniformBuffer.m_lights.size(); ++i)
 	{
 		m_uniformBuffer.m_lights[i].isActive = true;
-		m_uniformBuffer.m_lights[i].position[0] = RandomFloat_11() * 8.0f;
-		m_uniformBuffer.m_lights[i].position[1] = RandomFloat_11() * 8.0f;
-		m_uniformBuffer.m_lights[i].position[2] = RandomFloat_11() * 8.0f;
+
+		auto lightPosView = m_uniformBuffer.m_view * glm::vec4(RandomFloat_11() * 1.0f, RandomFloat_11() * 1.0f, RandomFloat_11() * 1.0f,1.0f);
+
+		m_uniformBuffer.m_lights[i].position[0] = lightPosView.x;
+		m_uniformBuffer.m_lights[i].position[1] = lightPosView.y;
+		m_uniformBuffer.m_lights[i].position[2] = lightPosView.z;
 		m_uniformBuffer.m_lights[i].position[3] = 0.0f;
 		m_uniformBuffer.m_lights[i].color[0] = RandomFloat01();
 		m_uniformBuffer.m_lights[i].color[1] = RandomFloat01();
 		m_uniformBuffer.m_lights[i].color[2] = RandomFloat01();
 		m_uniformBuffer.m_lights[i].color[3] = RandomFloat01();
-		m_uniformBuffer.m_lights[i].attenutation = 1.5f;
+		m_uniformBuffer.m_lights[i].radius = RandomFloat01();
 	}
 
 	m_VSUniform->CopyData(&m_uniformBuffer, sizeof(SceneUniformBuffer));
@@ -284,7 +287,7 @@ void Renderer::D3D12Renderer::InitRootSignature()
 		D3D12_ROOT_PARAMETER l_cameraUniform = {};
 		l_cameraUniform.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 		l_cameraUniform.Descriptor = { 0,0 };
-		l_cameraUniform.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+		l_cameraUniform.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
 		D3D12_ROOT_PARAMETER l_lightUAV = {};
 		l_lightUAV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
@@ -356,8 +359,8 @@ void Renderer::D3D12Renderer::InitPipelineState()
     UINT compileFlags = 0;
 #endif
 
-    D3DCompileFromFile(L"D:\\Dev\\FlyCore\\Renderer\\forward_vs.hlsl", nullptr, nullptr, "main", "vs_5_0", compileFlags, 0, &vertexShader, nullptr);
-    D3DCompileFromFile(L"D:\\Dev\\FlyCore\\Renderer\\forward_ps.hlsl", nullptr, nullptr, "main", "ps_5_0", compileFlags, 0, &pixelShader, nullptr);
+    D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\forward_vs.hlsl", nullptr, nullptr, "main", "vs_5_0", compileFlags, 0, &vertexShader, nullptr);
+    D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\forward_ps.hlsl", nullptr, nullptr, "main", "ps_5_0", compileFlags, 0, &pixelShader, nullptr);
 
     // Define the vertex input layout.
     D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
@@ -389,7 +392,7 @@ void Renderer::D3D12Renderer::InitPipelineState()
 	//Compute Pipieline state
 	{
 		ComPtr<ID3DBlob> computeShader;
-		D3DCompileFromFile(L"D:\\Dev\\FlyCore\\Renderer\\lightcull_cs.hlsl", nullptr, nullptr, "main", "cs_5_0", compileFlags, 0, &computeShader, nullptr);
+		D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\lightcull_cs.hlsl", nullptr, nullptr, "main", "cs_5_0", compileFlags, 0, &computeShader, nullptr);
 		D3D12_COMPUTE_PIPELINE_STATE_DESC l_computePipelineStateDesc = {};
 		l_computePipelineStateDesc.pRootSignature = m_computeRootSignature;
 		l_computePipelineStateDesc.CS = CD3DX12_SHADER_BYTECODE(computeShader.Get());;
