@@ -80,11 +80,11 @@ void main(
 )
 {
 	//GroupLightList[threadIndex] = false;
+	float zRange = zFar - zNear;
+	float zRangePerSlice = zRange / 8.0;
 
-	
-
-	float zSlice = zNear * pow(zFar / zNear, groupID.z / float(8));
-	float zSliceNext = zNear * pow(zFar / zNear, (groupID.z + 1) / float(8));
+	float zSlice = zNear + zRangePerSlice * groupID.z;
+	float zSliceNext = zSlice + zRangePerSlice;
 
 
 	float4 viewSpacePlane[4];
@@ -111,7 +111,10 @@ void main(
 	frustumPlanes[4] = float4(0.0f, 0.0f, 1.0f, -zSlice);
 	frustumPlanes[5] = float4(0.0f, 0.0f, -1.0f, zSliceNext);
 
-
+	// Normalize frustum planes (near/far already normalized)
+	[unroll] for (uint i = 0; i < 4; ++i) {
+		frustumPlanes[i] *= rcp(length(frustumPlanes[i].xyz));
+	}
 
 	PointLight light = PointLights[threadIndex];
 
@@ -119,7 +122,7 @@ void main(
 	bool inFrustum = true;
 	if (light.isActive == 1)
 	{
-		[unroll] for (uint i = 0; i < 6; ++i) {
+		[unroll] for (uint i = 0; i < 4; ++i) {
 			float d = dot(frustumPlanes[i], float4(light.pos.xyz, 1.0f));
 			inFrustum = inFrustum && (d >= -light.radius);
 		}
