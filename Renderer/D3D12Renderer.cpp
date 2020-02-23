@@ -218,7 +218,7 @@ void Renderer::D3D12Renderer::InitBuffers()
 
 	m_uniformBuffer.m_proj = glm::perspectiveFovLH(45.0f, 15.0f, 15.0f, m_uniformBuffer.zNearFar[0], m_uniformBuffer.zNearFar[1]);
 	m_uniformBuffer.m_inverProj = glm::inverse(m_uniformBuffer.m_proj);
-	m_uniformBuffer.m_view = glm::lookAtLH(glm::vec3(0.1, 20.0, 0), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	m_uniformBuffer.m_view = glm::lookAtLH(glm::vec3(20, 20.0, 20), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	m_VSUniform->CopyData(&m_uniformBuffer, Utility::AlignTo256(sizeof(SceneUniformBuffer)));
 
 	std::array<PointLight, 256> l_lights;
@@ -230,25 +230,45 @@ void Renderer::D3D12Renderer::InitBuffers()
 		l_lights[i].isActive = false;
 	}
 
-	float step = 10.0f / 16;
+	struct Color
+	{
+		float data[4];
+	};
+
+
+	Color l_colors[] = 
+	{
+		{1.0f,0.0f,0.0f,1.0f},
+		{0.0f,1.0f,0.0f,1.0f},
+		{0.0f,0.0f,1.0f,1.0f},
+		{1.0f,0.0f,1.0f,1.0f},
+		{0.0f,1.0f,1.0f,1.0f},
+		{1.0f,0.0f,1.0f,1.0f},
+
+	};
+
+
+	float step = 30.0f / 16;
 
 	for (auto i = 0; i < 16; ++i)
 	{
 		for (auto j = 0; j < 16; ++j)
 		{
 
-			//auto lightPosView = m_uniformBuffer.m_view * glm::vec4(RandomFloat_11(), RandomFloat_11(), RandomFloat_11(), 1.0);
-			auto lightPosView = m_uniformBuffer.m_view * glm::vec4(0, 35,0, 1.0f);
+			auto lightPosView = m_uniformBuffer.m_view * glm::vec4(-10 + step * i, 6, -10 + step * j, 1.0);
+			//auto lightPosView = m_uniformBuffer.m_view * glm::vec4(0, 35,0, 1.0f);
 			l_lights[i * 16 + j].isActive = true;
 			l_lights[i * 16 + j].position[0] = lightPosView.x;
 			l_lights[i * 16 + j].position[1] = lightPosView.y;
 			l_lights[i * 16 + j].position[2] = lightPosView.z;
 			l_lights[i * 16 + j].position[3] = lightPosView.w;
-			l_lights[i * 16 + j].color[0] = RandomFloat01() ;
-			l_lights[i * 16 + j].color[1] = RandomFloat01() ;
-			l_lights[i * 16 + j].color[2] = RandomFloat01() ;
-			l_lights[i * 16 + j].color[3] = RandomFloat01() ;
-			l_lights[i * 16 + j].radius = 8;
+			auto l_color = l_colors[rand() % 6];
+			l_lights[i * 16 + j].color[0] = l_color.data[0];
+			l_lights[i * 16 + j].color[1] = l_color.data[1];
+			l_lights[i * 16 + j].color[2] = l_color.data[2];
+			l_lights[i * 16 + j].color[3] = l_color.data[3];
+
+			l_lights[i * 16 + j].radius = RandomFloat01() * 3;
 		}
 	}
 
