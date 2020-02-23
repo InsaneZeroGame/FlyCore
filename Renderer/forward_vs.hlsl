@@ -14,7 +14,8 @@
 struct PSInput
 {
     float4 position : SV_POSITION;
-	float4 scenePositionView : POSITION;
+	float4 scenePositionView : POSITION0;
+	float4 worldPos:POSITION1;
     float4 color : COLOR0;
 	float3 normal:NORMAL;
 	
@@ -45,8 +46,9 @@ PSInput main(float4 position : POSITION, float3 normal : NORMAL0,float2 tex_uv :
 {
 	PSInput result;
 	result.scenePositionView = mul(view, position);
+	result.worldPos = position;
 	result.position = mul(project, result.scenePositionView);
-	result.normal = normal;
+	result.normal = normalize(mul(view,float4(normal,0.0)));
 	result.color = float4(normal,1.0f);
 	return result;
 }

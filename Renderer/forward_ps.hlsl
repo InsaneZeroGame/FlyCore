@@ -1,7 +1,8 @@
 struct PSInput
 {
 	float4 position : SV_POSITION;
-	float4 scenePositionView : POSITION;
+	float4 scenePositionView : POSITION0;
+	float4 worldPos:POSITION1;
 	float4 color : COLOR0;
 	float3 normal:NORMAL;
 
@@ -70,35 +71,35 @@ float4 main(PSInput input) : SV_TARGET
 
 	float4 diffuseDebug = 0.0f;
 
-	for (uint i = 0; i < 256; ++i)
+	for (uint i = 0; i < 1; ++i)
 	{
-		if (LightBuffer[ClusterIndex].isActive[i] == 1)
-		{
+		//if (LightBuffer[ClusterIndex].isActive[i] == 1)
+		//{
 			
-			float3 lightDir = normalize(PointLights[i].pos.xyz - input.scenePositionView.xyz);
-			float3 viewDir = normalize(float3(0.0,0.0,0.0) - input.scenePositionView.xyz);
-			float3 halfwarDir = normalize(lightDir + viewDir);
+			float3 lightDir = normalize(PointLights[i].pos.xyz - mul(view,input.worldPos));
+			//float3 viewDir = normalize(float3(0.0,0.0,0.0) - input.scenePositionView.xyz);
+			//float3 halfwarDir = normalize(lightDir + viewDir);
 
-			float3 lightDirD = PointLights[i].pos.xyz - input.scenePositionView.xyz;
-			float lightDistSq = dot(lightDirD, lightDirD);
-			float invLightDist = rsqrt(lightDistSq);
-			lightDir *= invLightDist;
+			//float3 lightDirD = PointLights[i].pos.xyz - input.scenePositionView.xyz;
+			//float lightDistSq = dot(lightDirD, lightDirD);
+			//float invLightDist = rsqrt(lightDistSq);
+			//lightDir *= invLightDist;
 
 			// modify 1/d^2 * R^2 to fall off at a fixed radius
 			// (R/d)^2 - d/R = [(1/d^2) - (1/R^2)*(d/R)] * R^2
-			float distanceFalloff = PointLights[i].radius * PointLights[i].radius * (invLightDist * invLightDist);
-			distanceFalloff = max(0, distanceFalloff - rsqrt(distanceFalloff));
-			diffuse += dot(lightDir,viewDir) * PointLights[i].color * distanceFalloff;
+			//float distanceFalloff = PointLights[i].radius * PointLights[i].radius * (invLightDist * invLightDist);
+			//distanceFalloff = max(0, distanceFalloff - rsqrt(distanceFalloff));
+			diffuse += dot(input.normal,lightDir) * float4(1.0,0.0,0.0,1.0);
 			//diffuse += PointLights[i].color * 0.02;
-			spec += pow(max(dot(input.normal, halfwarDir), 0.0),2.0) * PointLights[i].color;
+			//spec += pow(max(dot(input.normal, halfwarDir), 0.0),15.0) * PointLights[i].color;
 			//diffuse += PointLights[i].color * 0.1;
 			diffuseDebug += colorStep;
 
-		}
+		//}
 	}
 
-	return diffuse + spec;
-
+	return diffuse;
+	//return diffuse;
 
 	if (screenPosition.x > 0.0 && screenPosition.x < 0.5)
 	{

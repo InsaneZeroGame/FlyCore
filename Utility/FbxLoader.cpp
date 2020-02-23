@@ -742,7 +742,33 @@ void Utility::FbxLoader::DisplayPolygons(FbxMesh* pMesh, std::vector<uint32_t>& 
                         break; // other reference modes not shown here!
                     }
                 }
+                else
+                {
+                    //Let's get normals of each vertex, since the mapping mode of normal element is by control point
+                    for (int lVertexIndex = 0; lVertexIndex < pMesh->GetControlPointsCount(); lVertexIndex++)
+                    {
+                        int lNormalIndex = 0;
+                        FbxGeometryElementNormal* leNormal = pMesh->GetElementNormal(l);
 
+                        //reference mode is direct, the normal index is same as vertex index.
+                        //get normals by the index of control vertex
+                        if (leNormal->GetReferenceMode() == FbxGeometryElement::eDirect)
+                            lNormalIndex = lVertexIndex;
+
+                        //reference mode is index-to-direct, get normals by the index-to-direct
+                        if (leNormal->GetReferenceMode() == FbxGeometryElement::eIndexToDirect)
+                            lNormalIndex = leNormal->GetIndexArray().GetAt(lVertexIndex);
+
+                        //Got normals of each vertex.
+                        FbxVector4 lNormal = leNormal->GetDirectArray().GetAt(lNormalIndex);
+                        //FBXSDK_printf("normals for vertex[%d]: %f %f %f %f \n", lVertexIndex, lNormal[0], lNormal[1], lNormal[2], lNormal[3]);
+                        p_vertices[lControlPointIndex].normal[0] = float(lNormal.mData[0]);
+                        p_vertices[lControlPointIndex].normal[1] = float(lNormal.mData[1]);
+                        p_vertices[lControlPointIndex].normal[2] = float(lNormal.mData[2]);
+                       //add your custom code here, to output normals or get them into a list, such as KArrayTemplate<FbxVector4>
+                        //. . .
+                    }//end for lVertexIndex
+                }
             }
             for (l = 0; l < pMesh->GetElementTangentCount(); ++l)
             {

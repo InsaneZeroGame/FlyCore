@@ -124,7 +124,7 @@ void main(
 	{
 		[unroll] for (uint i = 0; i < 4; ++i) {
 			float d = dot(frustumPlanes[i], float4(light.pos.xyz, 1.0f));
-			inFrustum = inFrustum && (d >= -light.radius);
+			//inFrustum = inFrustum && (d >= -light.radius);
 		}
 		uint groupIndexInCS = groupID.z * (GROUP_SIZE_X * GROUP_SIZE_Y) + groupID.y * GROUP_SIZE_X + groupID.x;
 
