@@ -29,11 +29,12 @@ cbuffer CDataBuffer : register(b0)
 	float4x4 view;
 	float4x4 projInverse;
 	float4 zNearFar;
-	PointLight PointLights[256];
 };
 
 
 RWStructuredBuffer<LightList> LightBuffer : register(u0);
+StructuredBuffer<PointLight> PointLights:register(t1);
+
 //groupshared bool GroupLightList[256];
 
 

@@ -9,6 +9,7 @@
 
 #define CAMERA_UNIFORM_ROOT_INDEX 0
 #define LIGHT_UAV_ROOT_INDEX 1
+#define LIGHT_BUFFER_ROOT_INDEX 2
 
 
 Renderer::D3D12Renderer::D3D12Renderer():
@@ -19,7 +20,7 @@ Renderer::D3D12Renderer::D3D12Renderer():
 	m_computeCmd(new D3D12GraphicsCmd(Constants::COMPUTE_CMD_COUNT)),
 	m_VSUniform(nullptr),
 	m_renderCmdQueue(new D3D12CmdQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)),
-    m_lightBuffer(nullptr)
+    m_lightList(nullptr)
 {
 }
 
@@ -52,8 +53,9 @@ void Renderer::D3D12Renderer::OnUpdate()
 		l_computeCmdList->SetPipelineState(m_computePipelineState);
 		l_computeCmdList->SetComputeRootSignature(m_computeRootSignature);
 		l_computeCmdList->SetComputeRootConstantBufferView(CAMERA_UNIFORM_ROOT_INDEX, m_VSUniform->GetGpuVirtualAddress());
-        l_computeCmdList->SetComputeRootUnorderedAccessView(LIGHT_UAV_ROOT_INDEX, m_lightBuffer->GetGpuVirtualAddress());
-        l_computeCmdList->Dispatch(WORK_GROUP_SIZE_X, WORK_GROUP_SIZE_Y, WORK_GROUP_SIZE_Z);
+        l_computeCmdList->SetComputeRootUnorderedAccessView(LIGHT_UAV_ROOT_INDEX, m_lightList->GetGpuVirtualAddress());
+		l_computeCmdList->SetComputeRootShaderResourceView(LIGHT_BUFFER_ROOT_INDEX, m_lightBuffer->GetGpuVirtualAddress());
+		l_computeCmdList->Dispatch(WORK_GROUP_SIZE_X, WORK_GROUP_SIZE_Y, WORK_GROUP_SIZE_Z);
 		m_computeCmd->Close();
 		m_computeCmd->Flush(true);
 	}
@@ -68,7 +70,8 @@ void Renderer::D3D12Renderer::OnUpdate()
 		l_graphicsCmdList->IASetIndexBuffer(&m_indexBuffer->GetIndexBufferView());
 		l_graphicsCmdList->IASetVertexBuffers(0, 1, &m_vertexBuffer->GetVertexBufferView());
 		l_graphicsCmdList->SetGraphicsRootConstantBufferView(CAMERA_UNIFORM_ROOT_INDEX, m_VSUniform->GetGpuVirtualAddress());
-		l_graphicsCmdList->SetGraphicsRootShaderResourceView(LIGHT_UAV_ROOT_INDEX, m_lightBuffer->GetGpuVirtualAddress());
+		l_graphicsCmdList->SetGraphicsRootShaderResourceView(LIGHT_UAV_ROOT_INDEX, m_lightList->GetGpuVirtualAddress());
+		l_graphicsCmdList->SetGraphicsRootShaderResourceView(LIGHT_BUFFER_ROOT_INDEX, m_lightBuffer->GetGpuVirtualAddress());
 		l_graphicsCmdList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		
 		for (auto& l_actor = m_scene->m_actors.begin(); l_actor < m_scene->m_actors.end(); ++l_actor)
@@ -180,24 +183,28 @@ void Renderer::D3D12Renderer::SyncFrame()
 
 }
 
-static float RandomFloat01()
-{
-	//return 0.0-1.0
-	return float(rand()) / float(RAND_MAX);
-}
-
 static float RandomFloat_11()
 {
 	//return -1.0-1.0
-	return 2 * (RandomFloat01() - 0.5f);
+	return float(rand()) / float(RAND_MAX);
+
 }
+
+static float RandomFloat01()
+{
+	//return 0.0-1.0
+	return 0.5 * RandomFloat_11() + 0.5f;
+
+}
+
+
 
 void Renderer::D3D12Renderer::InitBuffers()
 {
     auto& loader = Utility::AssetLoader::GetLoader();
     
     m_scene = new Renderer::Scene;
-    loader.LoadFbx("C:\\Dev\\FlyCore\\scene.fbx", m_scene);
+    loader.LoadFbx("D:\\Dev\\FlyCore\\scene.fbx", m_scene);
 
     m_vertexBuffer = new D3D12VertexBuffer(Constants::VERTEX_BUFFER_SIZE);
     m_uploadBuffer = new D3D12UploadBuffer(Constants::MAX_CONST_BUFFER_VIEW_SIZE);
@@ -205,43 +212,74 @@ void Renderer::D3D12Renderer::InitBuffers()
 	m_VSUniform = new D3D12UploadBuffer(Utility::AlignTo256(sizeof(SceneUniformBuffer)));
 	
 	
+	
 	m_uniformBuffer.zNearFar[1] = 55.0f;
 	m_uniformBuffer.zNearFar[0] = 0.01f;
 
 	m_uniformBuffer.m_proj = glm::perspectiveFovLH(45.0f, 15.0f, 15.0f, m_uniformBuffer.zNearFar[0], m_uniformBuffer.zNearFar[1]);
 	m_uniformBuffer.m_inverProj = glm::inverse(m_uniformBuffer.m_proj);
-	m_uniformBuffer.m_view = glm::lookAtLH(glm::vec3(10, 20.0, 10), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	
-	for (auto i = 0; i < m_uniformBuffer.m_lights.size(); ++i)
+	m_uniformBuffer.m_view = glm::lookAtLH(glm::vec3(0.1, 20.0, 0), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	m_VSUniform->CopyData(&m_uniformBuffer, Utility::AlignTo256(sizeof(SceneUniformBuffer)));
+
+	std::array<PointLight, 256> l_lights;
+	m_lightBuffer = new D3D12StructBuffer(l_lights.size(), sizeof(PointLight));
+
+	for (auto i = 0; i <l_lights.size(); ++i)
 	{
-		m_uniformBuffer.m_lights[i] = PointLight();
-		m_uniformBuffer.m_lights[i].isActive = false;
+		l_lights[i] = PointLight();
+		l_lights[i].isActive = false;
 	}
 
-	float step = 30.0f / 16;
+	float step = 10.0f / 16;
 
 	for (auto i = 0; i < 16; ++i)
 	{
 		for (auto j = 0; j < 16; ++j)
 		{
-			m_uniformBuffer.m_lights[j * 16 + i].isActive = true;
 
-			auto lightPosView = m_uniformBuffer.m_view * glm::vec4(-15 + step * i,0.0,-15 + step * j,1.0f);
-			//auto lightPosView = m_uniformBuffer.m_view * glm::vec4(0.0, 5, 0.0, 1.0f);
-
-			m_uniformBuffer.m_lights[j * 16 + i].position[0] = lightPosView.x;
-			m_uniformBuffer.m_lights[j * 16 + i].position[1] = lightPosView.y;
-			m_uniformBuffer.m_lights[j * 16 + i].position[2] = lightPosView.z;
-			m_uniformBuffer.m_lights[j * 16 + i].position[3] = lightPosView.w;
-			m_uniformBuffer.m_lights[j * 16 + i].color[0] = 0.0f;
-			m_uniformBuffer.m_lights[j * 16 + i].color[1] = 1.0f;
-			m_uniformBuffer.m_lights[j * 16 + i].color[2] = 0.0f;
-			m_uniformBuffer.m_lights[j * 16 + i].color[3] = 0.0f;
-			m_uniformBuffer.m_lights[j * 16 + i].radius = 3;
+			//auto lightPosView = m_uniformBuffer.m_view * glm::vec4(RandomFloat_11(), RandomFloat_11(), RandomFloat_11(), 1.0);
+			auto lightPosView = m_uniformBuffer.m_view * glm::vec4(0, 35,0, 1.0f);
+			l_lights[i * 16 + j].isActive = true;
+			l_lights[i * 16 + j].position[0] = lightPosView.x;
+			l_lights[i * 16 + j].position[1] = lightPosView.y;
+			l_lights[i * 16 + j].position[2] = lightPosView.z;
+			l_lights[i * 16 + j].position[3] = lightPosView.w;
+			l_lights[i * 16 + j].color[0] = RandomFloat01() ;
+			l_lights[i * 16 + j].color[1] = RandomFloat01() ;
+			l_lights[i * 16 + j].color[2] = RandomFloat01() ;
+			l_lights[i * 16 + j].color[3] = RandomFloat01() ;
+			l_lights[i * 16 + j].radius = 8;
 		}
 	}
 
-	m_VSUniform->CopyData(&m_uniformBuffer, sizeof(SceneUniformBuffer));
+	//l_lights[0].isActive = true;
+	//
+	////auto lightPosView = m_uniformBuffer.m_view * glm::vec4(RandomFloat_11(), RandomFloat_11(), RandomFloat_11(), 1.0);
+	//lightPosView = m_uniformBuffer.m_view * glm::vec4(2.0, 5, 2.0, 1.0f);
+	//
+	//l_lights[1].position[0] = lightPosView.x;
+	//l_lights[1].position[1] = lightPosView.y;
+	//l_lights[1].position[2] = lightPosView.z;
+	//l_lights[1].position[3] = lightPosView.w;
+	//l_lights[1].color[0] = 0.0f;
+	//l_lights[1].color[1] = 1.0f;
+	//l_lights[1].color[2] = 0.0f;
+	//l_lights[1].color[3] = 0.0f;
+	//l_lights[1].radius = 5;
+
+	m_uploadBuffer->CopyData(l_lights.data(), l_lights.size() * sizeof(PointLight));
+	auto& l_graphicsContext = D3D12GraphicsCmdContext::GetContext();
+	l_graphicsContext.Begin(nullptr);
+	l_graphicsContext.TransitResourceState(m_lightBuffer->GetResource(),
+		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+		D3D12_RESOURCE_STATE_COPY_DEST);
+	l_graphicsContext.CopyBufferData(m_lightBuffer->GetResource(), 0, m_uploadBuffer->GetResource(), 0, sizeof(PointLight) * l_lights.size());
+	l_graphicsContext.TransitResourceState(m_lightBuffer->GetResource(),
+		D3D12_RESOURCE_STATE_COPY_DEST,
+		D3D12_RESOURCE_STATE_GENERIC_READ);
+	l_graphicsContext.End(true);
+	m_uploadBuffer->ResetBuffer();
+
 
 	UINT vertexBufferSize = 0;
 	for (auto i = 0; i < m_scene->m_actors.size(); ++i)
@@ -265,7 +303,7 @@ void Renderer::D3D12Renderer::InitBuffers()
 	   }
 	}
 
-    auto & l_graphicsContext = D3D12GraphicsCmdContext::GetContext();
+    //auto & l_graphicsContext = D3D12GraphicsCmdContext::GetContext();
     l_graphicsContext.Begin(nullptr);
     l_graphicsContext.UploadVertexBuffer(m_vertexBuffer, 0, m_uploadBuffer, 0, vertexBufferSize);
     l_graphicsContext.UploadVertexBuffer(m_indexBuffer, 0, m_uploadBuffer, vertexBufferSize, indexBufferSize);
@@ -278,7 +316,7 @@ void Renderer::D3D12Renderer::InitBuffers()
         D3D12_RESOURCE_STATE_INDEX_BUFFER);
     l_graphicsContext.End(true);
 
-    m_lightBuffer = new D3D12StructBuffer(1024, sizeof(LightList));
+    m_lightList = new D3D12StructBuffer(1024, sizeof(LightList));
 }
 
 void Renderer::D3D12Renderer::InitRootSignature()
@@ -298,11 +336,17 @@ void Renderer::D3D12Renderer::InitRootSignature()
 		l_lightUAV.Descriptor = { 1,0 };
 		l_lightUAV.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
+		D3D12_ROOT_PARAMETER l_lightBuffer = {};
+		l_lightBuffer.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		l_lightBuffer.Descriptor = { 2,0 };
+		l_lightBuffer.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
 
 		std::vector<D3D12_ROOT_PARAMETER> l_rootParameters =
 		{
 			l_cameraUniform,
-			l_lightUAV
+			l_lightUAV,
+			l_lightBuffer
 		};
 
 		rootSignatureDesc.Init(static_cast<uint32_t>(l_rootParameters.size()), l_rootParameters.data(), 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
@@ -328,10 +372,16 @@ void Renderer::D3D12Renderer::InitRootSignature()
         l_lightUAV.Descriptor = { 0,0 };
         l_lightUAV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
+		D3D12_ROOT_PARAMETER l_lightBuffer = {};
+		l_lightBuffer.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		l_lightBuffer.Descriptor = { 1,0 };
+		l_lightBuffer.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
 		std::vector<D3D12_ROOT_PARAMETER> l_rootParameters =
 		{
 			l_cameraUniform,
-            l_lightUAV
+            l_lightUAV,
+			l_lightBuffer
 		};
 
 		l_computeRootSignatureDesc.Init(static_cast<uint32_t>(l_rootParameters.size()), l_rootParameters.data(), 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_NONE);
@@ -363,8 +413,8 @@ void Renderer::D3D12Renderer::InitPipelineState()
     UINT compileFlags = 0;
 #endif
 
-    D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\forward_vs.hlsl", nullptr, nullptr, "main", "vs_5_0", compileFlags, 0, &vertexShader, nullptr);
-    D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\forward_ps.hlsl", nullptr, nullptr, "main", "ps_5_0", compileFlags, 0, &pixelShader, nullptr);
+    D3DCompileFromFile(L"D:\\Dev\\FlyCore\\Renderer\\forward_vs.hlsl", nullptr, nullptr, "main", "vs_5_0", compileFlags, 0, &vertexShader, nullptr);
+    D3DCompileFromFile(L"D:\\Dev\\FlyCore\\Renderer\\forward_ps.hlsl", nullptr, nullptr, "main", "ps_5_0", compileFlags, 0, &pixelShader, nullptr);
 
     // Define the vertex input layout.
     D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
@@ -396,7 +446,7 @@ void Renderer::D3D12Renderer::InitPipelineState()
 	//Compute Pipieline state
 	{
 		ComPtr<ID3DBlob> computeShader;
-		D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\lightcull_cs.hlsl", nullptr, nullptr, "main", "cs_5_0", compileFlags, 0, &computeShader, nullptr);
+		D3DCompileFromFile(L"D:\\Dev\\FlyCore\\Renderer\\lightcull_cs.hlsl", nullptr, nullptr, "main", "cs_5_0", compileFlags, 0, &computeShader, nullptr);
 		D3D12_COMPUTE_PIPELINE_STATE_DESC l_computePipelineStateDesc = {};
 		l_computePipelineStateDesc.pRootSignature = m_computeRootSignature;
 		l_computePipelineStateDesc.CS = CD3DX12_SHADER_BYTECODE(computeShader.Get());;
@@ -411,7 +461,7 @@ void Renderer::D3D12Renderer::LoadScene(Renderer::Scene*)
 void Renderer::D3D12Renderer::OnDestory()
 {
 	SAFE_DELETE(m_VSUniform);
-    SAFE_DELETE(m_lightBuffer);
+    SAFE_DELETE(m_lightList);
 	SAFE_DELETE(m_renderCmdQueue);
 	SAFE_DELETE(m_computeCmd);
 	SAFE_DELETE(m_graphicsCmd);

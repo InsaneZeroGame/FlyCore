@@ -36,8 +36,9 @@ cbuffer CDataBuffer : register(b0)
 	float4x4 view;
 	float4x4 projInverse;
 	float4 zNearFar;
-	PointLight PointLights[256];
 };
+
+
 
 
 PSInput main(float4 position : POSITION, float3 normal : NORMAL0,float2 tex_uv : TEXCOORD0)
@@ -46,6 +47,7 @@ PSInput main(float4 position : POSITION, float3 normal : NORMAL0,float2 tex_uv :
 	result.scenePositionView = mul(view, position);
 	result.position = mul(project, result.scenePositionView);
 	result.normal = normalize(mul(view,float4(normal,0.0)));
+	//result.normal = normal;
 	result.color = float4(normal,1.0f);
 	return result;
 }

@@ -15,8 +15,8 @@ namespace Renderer {
 
 	struct PointLight
 	{
-		float position[4];//view space
-		float color[4];
+		std::array<float,4> position;//view space
+		std::array<float, 4> color;//view space
 		float radius;
 		uint32_t isActive;
 
@@ -40,7 +40,6 @@ namespace Renderer {
 		glm::mat4x4 m_view;
 		glm::mat4x4 m_inverProj;
 		float zNearFar[4];
-		std::array<PointLight, 256> m_lights;
 	};
 
 
@@ -101,6 +100,8 @@ namespace Renderer {
 		D3D12UploadBuffer* m_VSUniform;
 
 		D3D12UploadBuffer* m_PSUniform;
+
+		D3D12StructBuffer* m_lightList;
 
 		D3D12StructBuffer* m_lightBuffer;
 
