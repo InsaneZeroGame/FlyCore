@@ -70,25 +70,25 @@ float4 main(PSInput input) : SV_TARGET
 
 	float4 diffuseDebug = 0.0f;
 
-	for (uint i = 0; i < 1; ++i)
+	for (uint i = 0; i < 256; ++i)
 	{
 		//if (LightBuffer[ClusterIndex].isActive[i] == 1)
 		//{
 			
-			float3 lightDir = normalize(PointLights[i].pos.xyz - input.scenePositionView.xyz);
+			float3 lightDir = PointLights[i].pos.xyz - input.scenePositionView.xyz;
+			float lightDirNormalized = normalize(lightDir);
 			//float3 viewDir = normalize(float3(0.0,0.0,0.0) - input.scenePositionView.xyz);
 			//float3 halfwarDir = normalize(lightDir + viewDir);
 
-			//float3 lightDirD = PointLights[i].pos.xyz - input.scenePositionView.xyz;
-			//float lightDistSq = dot(lightDirD, lightDirD);
-			//float invLightDist = rsqrt(lightDistSq);
-			//lightDir *= invLightDist;
+			float lightDistSq = dot(lightDir, lightDir);
+			float invLightDist = rsqrt(lightDistSq);
+			lightDir *= invLightDist;
 
 			// modify 1/d^2 * R^2 to fall off at a fixed radius
 			// (R/d)^2 - d/R = [(1/d^2) - (1/R^2)*(d/R)] * R^2
-			//float distanceFalloff = PointLights[i].radius * PointLights[i].radius * (invLightDist * invLightDist);
-			//distanceFalloff = max(0, distanceFalloff - rsqrt(distanceFalloff));
-			diffuse += dot(input.normal,lightDir) * float4(1.0,0.0,0.0,1.0);
+			float distanceFalloff = PointLights[i].radius * PointLights[i].radius * (invLightDist * invLightDist);
+			distanceFalloff = max(0, distanceFalloff - rsqrt(distanceFalloff));
+			diffuse += dot(input.normal, lightDirNormalized) * PointLights[i].color * distanceFalloff;
 			//diffuse += PointLights[i].color * 0.02;
 			//spec += pow(max(dot(input.normal, halfwarDir), 0.0),15.0) * PointLights[i].color;
 			//diffuse += PointLights[i].color * 0.1;
@@ -98,6 +98,8 @@ float4 main(PSInput input) : SV_TARGET
 	}
 
 	//return float4(1,0.5,0.5,1.0);
+	//return PointLights[0].color;
+	//return float4(input.normal,1.0f);
 	return diffuse;
 
 	if (screenPosition.x > 0.0 && screenPosition.x < 0.5)
