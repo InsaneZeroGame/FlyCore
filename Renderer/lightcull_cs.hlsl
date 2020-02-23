@@ -28,8 +28,7 @@ cbuffer CDataBuffer : register(b0)
 	float4x4 project;
 	float4x4 view;
 	float4x4 projInverse;
-	float zNear;
-	float zFar;
+	float4 zNearFar;
 	PointLight PointLights[256];
 };
 
@@ -80,6 +79,8 @@ void main(
 )
 {
 	//GroupLightList[threadIndex] = false;
+	float zNear = zNearFar.x;
+	float zFar = zNearFar.y;
 	float zRange = zFar - zNear;
 	float zRangePerSlice = zRange / 8.0;
 

@@ -39,8 +39,7 @@ namespace Renderer {
 		glm::mat4x4 m_proj;
 		glm::mat4x4 m_view;
 		glm::mat4x4 m_inverProj;
-		float zNear;
-		float zFar;
+		float zNearFar[4];
 		std::array<PointLight, 256> m_lights;
 	};
 

@@ -2,7 +2,6 @@ struct PSInput
 {
 	float4 position : SV_POSITION;
 	float4 scenePositionView : POSITION0;
-	float4 worldPos:POSITION1;
 	float4 color : COLOR0;
 	float3 normal:NORMAL;
 
@@ -22,8 +21,7 @@ cbuffer CDataBuffer : register(b0)
 	float4x4 project;
 	float4x4 view;
 	float4x4 projInverse;
-	float zNear;
-	float zFar;
+	float4 zNearFar;
 	PointLight PointLights[256];
 };
 
@@ -53,7 +51,8 @@ static float4 sliceColor[8] = {
 
 float4 main(PSInput input) : SV_TARGET
 {
-
+	float zNear = zNearFar.x;
+	float zFar = zNearFar.y;
 	float zRange = zFar - zNear;
 	float zRangePerSlice = zRange / 8.0;
 
@@ -76,7 +75,7 @@ float4 main(PSInput input) : SV_TARGET
 		//if (LightBuffer[ClusterIndex].isActive[i] == 1)
 		//{
 			
-			float3 lightDir = normalize(PointLights[i].pos.xyz - mul(view,input.worldPos));
+			float3 lightDir = normalize(PointLights[i].pos.xyz - input.scenePositionView.xyz);
 			//float3 viewDir = normalize(float3(0.0,0.0,0.0) - input.scenePositionView.xyz);
 			//float3 halfwarDir = normalize(lightDir + viewDir);
 
@@ -98,8 +97,8 @@ float4 main(PSInput input) : SV_TARGET
 		//}
 	}
 
+	//return float4(1,0.5,0.5,1.0);
 	return diffuse;
-	//return diffuse;
 
 	if (screenPosition.x > 0.0 && screenPosition.x < 0.5)
 	{

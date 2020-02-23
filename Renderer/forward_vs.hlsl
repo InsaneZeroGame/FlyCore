@@ -15,7 +15,6 @@ struct PSInput
 {
     float4 position : SV_POSITION;
 	float4 scenePositionView : POSITION0;
-	float4 worldPos:POSITION1;
     float4 color : COLOR0;
 	float3 normal:NORMAL;
 	
@@ -36,8 +35,7 @@ cbuffer CDataBuffer : register(b0)
 	float4x4 project;
 	float4x4 view;
 	float4x4 projInverse;
-	float zNear;
-	float zFar;
+	float4 zNearFar;
 	PointLight PointLights[256];
 };
 
@@ -46,7 +44,6 @@ PSInput main(float4 position : POSITION, float3 normal : NORMAL0,float2 tex_uv :
 {
 	PSInput result;
 	result.scenePositionView = mul(view, position);
-	result.worldPos = position;
 	result.position = mul(project, result.scenePositionView);
 	result.normal = normalize(mul(view,float4(normal,0.0)));
 	result.color = float4(normal,1.0f);
