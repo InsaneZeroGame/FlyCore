@@ -67,14 +67,14 @@ float4 main(PSInput input) : SV_TARGET
 	uint ClusterIndex = clusterPosition.z * (16 * 8) + clusterPosition.y * 16 + clusterPosition.x;
 	float4 diffuse = float4(0.0, 0.0, 0.0, 1.0);
 	float4 spec = 0.0f;
-	float4 colorStep = float4(1.0 / 256.0, 1.0 / 256.0, 1.0 / 256.0, 1.0);
+	float4 colorStep = float4(16.0 / 256.0, 16.0 / 256.0, 16.0 / 256.0, 1.0);
 
 	float4 diffuseDebug = 0.0f;
 
 	for (uint i = 0; i < 256; ++i)
 	{
-		//if (LightBuffer[ClusterIndex].isActive[i] == 1)
-		//{
+		if (LightBuffer[ClusterIndex].isActive[i] == 1)
+		{
 		float3 lightDir = PointLights[i].pos.xyz - input.scenePositionView.xyz;
 		float3 lightDirNormalized = normalize(lightDir);
 		float3 viewDir = normalize(float3(0.0,0.0,0.0) - input.scenePositionView.xyz);
@@ -92,21 +92,22 @@ float4 main(PSInput input) : SV_TARGET
 		//diffuse += PointLights[i].color * 0.02;
 		spec += pow(max(dot(input.normal, halfwarDir), 0.0),200) * PointLights[i].color;
 		//diffuse += PointLights[i].color * 0.1;
-		//diffuseDebug += colorStep;
-		//}
+		diffuseDebug += colorStep;
+		}
 	}
 	
 
 	//return float4(1,0.5,0.5,1.0);
 	//return PointLights[0].color;
 	//return float4(input.normal,1.0f);
-	return diffuse * 0.85 + float4(0.15, 0.15, 0.15, 1.0) + spec;
 
-	if (screenPosition.x > 0.0 && screenPosition.x < 0.5)
+	return diffuse * 0.65 + float4(0.35, 0.35, 0.35, 1.0) + spec;
+
+	if (screenPosition.x > 0.0 && screenPosition.x < 0.3)
 	{
-
+		return diffuse * 0.65 + float4(0.35, 0.35, 0.35, 1.0) + spec;
 	}
-	else if(screenPosition.x > 0.5 && screenPosition.x < 1.0)
+	else if(screenPosition.x > 0.3 && screenPosition.x < 0.6)
 	{
 		return sliceColor[zIndex];
 	}

@@ -58,18 +58,67 @@ float4 ScreenToView(float4 screen)
 
 	return ClipToView(clip);
 }
+struct Plane
+{
+	float3 N;   // Plane normal.
+	float  d;   // Distance to origin.
+};
 
-float4 ComputePlane(float3 p0, float3 p1, float3 p2)
+
+Plane ComputePlane(float3 p0, float3 p1, float3 p2)
 {
 	float3 v0 = p1 - p0;
 	float3 v2 = p2 - p0;
 	float3 normal = normalize(cross(v0, v2));
 	// Compute the distance to the origin using p0.
 	float d = dot(normal, p0);
-	return float4(normal, d);
+	Plane plane;
+	plane.N = normal;
+	plane.d = d;
+	return plane;
 }
 
 
+struct Sphere
+{
+	float3 c;   // Center point.
+	float  r;   // Radius.
+};
+
+
+struct Frustum
+{
+	Plane planes[4];   // left, right, top, bottom frustum planes.
+};
+
+bool SphereInsidePlane(Sphere sphere, Plane plane)
+{
+	return dot(plane.N, sphere.c) - plane.d < -sphere.r;
+}
+
+bool SphereInsideFrustum(Sphere sphere, Frustum frustum, float l_zNear, float l_zFar)
+{
+	bool result = true;
+
+	// First check depth
+	// Note: Here, the view vector points in the -Z axis so the 
+	// far depth value will be approaching -infinity.
+	if (sphere.c.z - sphere.r > l_zFar || sphere.c.z + sphere.r < l_zNear)
+	{
+		result = false;
+	}
+
+	// Then check frustum planes
+	for (int i = 0; i < 4 && result; i++)
+	{
+		if (SphereInsidePlane(sphere, frustum.planes[i]))
+		{
+			result = false;
+		}
+	}
+
+	return result;
+}
 
 [numthreads(WORK_GROUP_SIZE_X, WORK_GROUP_SIZE_Y, WORK_GROUP_SIZE_Z)]
 void main(
@@ -80,6 +129,9 @@ void main(
 )
 {
 	//GroupLightList[threadIndex] = false;
+
+	uint groupIndexInCS = groupID.z * (GROUP_SIZE_X * GROUP_SIZE_Y) + groupID.y * GROUP_SIZE_X + groupID.x;
+
 	float zNear = zNearFar.x;
 	float zFar = zNearFar.y;
 	float zRange = zFar - zNear;
@@ -92,8 +144,8 @@ void main(
 	float4 viewSpacePlane[4];
 	float4 frustumPlanes[6];
 
-	float tileSizeX = 1.0f / 16.0f;
-	float tileSizeY = 1.0f / 8.0f;
+	float tileSizeX = 1.0 / 16.0f;
+	float tileSizeY = 1.0 / 8.0f;
 
 	viewSpacePlane[0] = float4(groupID.x * tileSizeX, groupID.y * tileSizeY, 1.0f, 1.0f);
 	viewSpacePlane[1] = float4((groupID.x + 1) * tileSizeX, groupID.y * tileSizeY, 1.0f, 1.0f);
@@ -106,17 +158,14 @@ void main(
 	}
 	float3 eyePos = float3(0.0f, 0.0f, 0.0f);
 
-	frustumPlanes[0] = ComputePlane(eyePos, viewSpacePlane[2].xyz, viewSpacePlane[0].xyz);
-	frustumPlanes[1] = ComputePlane(eyePos, viewSpacePlane[1].xyz, viewSpacePlane[3].xyz);
-	frustumPlanes[2] = ComputePlane(eyePos, viewSpacePlane[0].xyz, viewSpacePlane[1].xyz);
-	frustumPlanes[3] = ComputePlane(eyePos, viewSpacePlane[3].xyz, viewSpacePlane[2].xyz);
-	frustumPlanes[4] = float4(0.0f, 0.0f, 1.0f, -zSlice);
-	frustumPlanes[5] = float4(0.0f, 0.0f, -1.0f, zSliceNext);
+	Frustum frustum;
 
-	// Normalize frustum planes (near/far already normalized)
-	[unroll] for (uint i = 0; i < 4; ++i) {
-		frustumPlanes[i] *= rcp(length(frustumPlanes[i].xyz));
-	}
+	frustum.planes[0] = ComputePlane(eyePos, viewSpacePlane[2].xyz, viewSpacePlane[0].xyz);
+	frustum.planes[1] = ComputePlane(eyePos, viewSpacePlane[1].xyz, viewSpacePlane[3].xyz);
+	frustum.planes[2] = ComputePlane(eyePos, viewSpacePlane[0].xyz, viewSpacePlane[1].xyz);
+	frustum.planes[3] = ComputePlane(eyePos, viewSpacePlane[3].xyz, viewSpacePlane[2].xyz);
+
+
 
 	PointLight light = PointLights[threadIndex];
 
@@ -124,11 +173,13 @@ void main(
 	bool inFrustum = true;
 	if (light.isActive == 1)
 	{
-		[unroll] for (uint i = 0; i < 4; ++i) {
-			float d = dot(frustumPlanes[i], float4(light.pos.xyz, 1.0f));
-			//inFrustum = inFrustum && (d >= -light.radius);
-		}
-		uint groupIndexInCS = groupID.z * (GROUP_SIZE_X * GROUP_SIZE_Y) + groupID.y * GROUP_SIZE_X + groupID.x;
+		Sphere l_sephere;
+		l_sephere.c = light.pos.xyz;
+		l_sephere.r = light.radius;
+
+		bool inFrustum = SphereInsideFrustum(l_sephere, frustum,zSlice,zSliceNext);
+
+
 
 		[branch] if (inFrustum) {
 			// Append light to list
