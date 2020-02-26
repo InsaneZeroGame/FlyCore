@@ -213,12 +213,12 @@ void Renderer::D3D12Renderer::InitBuffers()
 	
 	
 	
-	m_uniformBuffer.zNearFar[1] = 55.0f;
+	m_uniformBuffer.zNearFar[1] = 30.0f;
 	m_uniformBuffer.zNearFar[0] = 0.01f;
 
-	m_uniformBuffer.m_proj = glm::perspectiveFovLH(45.0f, 15.0f, 15.0f, m_uniformBuffer.zNearFar[0], m_uniformBuffer.zNearFar[1]);
+	m_uniformBuffer.m_proj = glm::perspectiveFovLH(45.0f, 15.0f, 15.0f, m_uniformBuffer.zNearFar[0], -m_uniformBuffer.zNearFar[1]);
 	m_uniformBuffer.m_inverProj = glm::inverse(m_uniformBuffer.m_proj);
-	m_uniformBuffer.m_view = glm::lookAtLH(glm::vec3(10, 12, 10), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	m_uniformBuffer.m_view = glm::lookAtLH(glm::vec3(12, 14, 12), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	m_VSUniform->CopyData(&m_uniformBuffer, Utility::AlignTo256(sizeof(SceneUniformBuffer)));
 
 	std::array<PointLight, 256> l_lights;

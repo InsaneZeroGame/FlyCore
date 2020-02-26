@@ -67,7 +67,7 @@ float4 main(PSInput input) : SV_TARGET
 	uint ClusterIndex = clusterPosition.z * (16 * 8) + clusterPosition.y * 16 + clusterPosition.x;
 	float4 diffuse = float4(0.0, 0.0, 0.0, 1.0);
 	float4 spec = 0.0f;
-	float4 colorStep = float4(16.0 / 256.0, 16.0 / 256.0, 16.0 / 256.0, 1.0);
+	float4 colorStep = float4(8.0 / 256.0, 8.0 / 256.0, 8.0 / 256.0, 1.0);
 
 	float4 diffuseDebug = 0.0f;
 
@@ -88,6 +88,8 @@ float4 main(PSInput input) : SV_TARGET
 		// (R/d)^2 - d/R = [(1/d^2) - (1/R^2)*(d/R)] * R^2
 		float distanceFalloff = PointLights[i].radius * PointLights[i].radius * (invLightDist * invLightDist);
 		distanceFalloff = max(0, distanceFalloff - rsqrt(distanceFalloff));
+		//float distanceFalloff = 1.0 / (1.0 + PointLights[i].radius * pow(lightDistSq, 2));
+
 		diffuse += dot(input.normal, lightDirNormalized) * float4(PointLights[i].color) * distanceFalloff;
 		//diffuse += PointLights[i].color * 0.02;
 		spec += pow(max(dot(input.normal, halfwarDir), 0.0),200) * PointLights[i].color;
@@ -102,6 +104,7 @@ float4 main(PSInput input) : SV_TARGET
 	//return float4(input.normal,1.0f);
 
 	return diffuse * 0.65 + float4(0.35, 0.35, 0.35, 1.0) + spec;
+	//return diffuseDebug;
 
 	if (screenPosition.x > 0.0 && screenPosition.x < 0.3)
 	{
