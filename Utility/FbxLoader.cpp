@@ -48,44 +48,44 @@ void Utility::FbxLoader::LoadFile(const std::string p_fileName, Renderer::Scene*
 
     if (lResult == false)
     {
-        FBXSDK_printf("\n\nAn error occurred while loading the scene...");
+        //FBXSDK_printf("\n\nAn error occurred while loading the scene...");
     }
     else
     {
         // Display the scene.
         //DisplayMetaData(m_scene);
         //
-        //FBXSDK_printf("\n\n---------------------\nGlobal Light Settings\n---------------------\n\n");
+        ////FBXSDK_printf("\n\n---------------------\nGlobal Light Settings\n---------------------\n\n");
         //
         //if (gVerbose) DisplayGlobalLightSettings(&m_scene->GetGlobalSettings());
         //
-        //FBXSDK_printf("\n\n----------------------\nGlobal Camera Settings\n----------------------\n\n");
+        ////FBXSDK_printf("\n\n----------------------\nGlobal Camera Settings\n----------------------\n\n");
         //
         //if (gVerbose) DisplayGlobalCameraSettings(&m_scene->GetGlobalSettings());
         //
-        //FBXSDK_printf("\n\n--------------------\nGlobal Time Settings\n--------------------\n\n");
+        ////FBXSDK_printf("\n\n--------------------\nGlobal Time Settings\n--------------------\n\n");
         //
         //if (gVerbose) DisplayGlobalTimeSettings(&m_scene->GetGlobalSettings());
         //
-        //FBXSDK_printf("\n\n---------\nHierarchy\n---------\n\n");
+        ////FBXSDK_printf("\n\n---------\nHierarchy\n---------\n\n");
         //
         //if (gVerbose) DisplayHierarchy(m_scene);
         //
-        //FBXSDK_printf("\n\n------------\nNode Content\n------------\n\n");
+        ////FBXSDK_printf("\n\n------------\nNode Content\n------------\n\n");
         //
         DisplayContent(m_scene);
         
-        //FBXSDK_printf("\n\n----\nPose\n----\n\n");
+        ////FBXSDK_printf("\n\n----\nPose\n----\n\n");
         //
         //if (gVerbose) DisplayPose(m_scene);
         //
-        //FBXSDK_printf("\n\n---------\nAnimation\n---------\n\n");
+        ////FBXSDK_printf("\n\n---------\nAnimation\n---------\n\n");
         //
         //if (gVerbose) DisplayAnimation(m_scene);
         //
         ////now display generic information
         //
-        //FBXSDK_printf("\n\n---------\nGeneric Information\n---------\n\n");
+        ////FBXSDK_printf("\n\n---------\nGeneric Information\n---------\n\n");
         //if (gVerbose) DisplayGenericInfo(m_scene);
     }
 }
@@ -120,51 +120,51 @@ bool Utility::FbxLoader::LoadScene(FbxManager* pManager, FbxDocument* pScene, co
     if (!lImportStatus)
     {
         FbxString error = lImporter->GetStatus().GetErrorString();
-        FBXSDK_printf("Call to FbxImporter::Initialize() failed.\n");
-        FBXSDK_printf("Error returned: %s\n\n", error.Buffer());
+        //FBXSDK_printf("Call to FbxImporter::Initialize() failed.\n");
+        //FBXSDK_printf("Error returned: %s\n\n", error.Buffer());
 
         if (lImporter->GetStatus().GetCode() == FbxStatus::eInvalidFileVersion)
         {
-            FBXSDK_printf("FBX file format version for this FBX SDK is %d.%d.%d\n", lSDKMajor, lSDKMinor, lSDKRevision);
-            FBXSDK_printf("FBX file format version for file '%s' is %d.%d.%d\n\n", pFilename, lFileMajor, lFileMinor, lFileRevision);
+            //FBXSDK_printf("FBX file format version for this FBX SDK is %d.%d.%d\n", lSDKMajor, lSDKMinor, lSDKRevision);
+            //FBXSDK_printf("FBX file format version for file '%s' is %d.%d.%d\n\n", pFilename, lFileMajor, lFileMinor, lFileRevision);
         }
 
         return false;
     }
 
-    FBXSDK_printf("FBX file format version for this FBX SDK is %d.%d.%d\n", lSDKMajor, lSDKMinor, lSDKRevision);
+    //FBXSDK_printf("FBX file format version for this FBX SDK is %d.%d.%d\n", lSDKMajor, lSDKMinor, lSDKRevision);
 
     if (lImporter->IsFBX())
     {
-        FBXSDK_printf("FBX file format version for file '%s' is %d.%d.%d\n\n", pFilename, lFileMajor, lFileMinor, lFileRevision);
+        //FBXSDK_printf("FBX file format version for file '%s' is %d.%d.%d\n\n", pFilename, lFileMajor, lFileMinor, lFileRevision);
 
         // From this point, it is possible to access animation stack information without
         // the expense of loading the entire file.
 
-        FBXSDK_printf("Animation Stack Information\n");
+        //FBXSDK_printf("Animation Stack Information\n");
 
         lAnimStackCount = lImporter->GetAnimStackCount();
 
-        FBXSDK_printf("    Number of Animation Stacks: %d\n", lAnimStackCount);
-        FBXSDK_printf("    Current Animation Stack: \"%s\"\n", lImporter->GetActiveAnimStackName().Buffer());
-        FBXSDK_printf("\n");
+        //FBXSDK_printf("    Number of Animation Stacks: %d\n", lAnimStackCount);
+        //FBXSDK_printf("    Current Animation Stack: \"%s\"\n", lImporter->GetActiveAnimStackName().Buffer());
+        //FBXSDK_printf("\n");
 
         for (int i = 0; i < lAnimStackCount; i++)
         {
             FbxTakeInfo* lTakeInfo = lImporter->GetTakeInfo(i);
 
-            FBXSDK_printf("    Animation Stack %d\n", i);
-            FBXSDK_printf("         Name: \"%s\"\n", lTakeInfo->mName.Buffer());
-            FBXSDK_printf("         Description: \"%s\"\n", lTakeInfo->mDescription.Buffer());
+            //FBXSDK_printf("    Animation Stack %d\n", i);
+            //FBXSDK_printf("         Name: \"%s\"\n", lTakeInfo->mName.Buffer());
+            //FBXSDK_printf("         Description: \"%s\"\n", lTakeInfo->mDescription.Buffer());
 
             // Change the value of the import name if the animation stack should be imported 
             // under a different name.
-            FBXSDK_printf("         Import Name: \"%s\"\n", lTakeInfo->mImportName.Buffer());
+            //FBXSDK_printf("         Import Name: \"%s\"\n", lTakeInfo->mImportName.Buffer());
 
             // Set the value of the import state to false if the animation stack should be not
             // be imported. 
-            FBXSDK_printf("         Import State: %s\n", lTakeInfo->mSelect ? "true" : "false");
-            FBXSDK_printf("\n");
+            //FBXSDK_printf("         Import State: %s\n", lTakeInfo->mSelect ? "true" : "false");
+            //FBXSDK_printf("\n");
         }
 
         // Set the import states. By default, the import states are always set to 
@@ -187,7 +187,7 @@ bool Utility::FbxLoader::LoadScene(FbxManager* pManager, FbxDocument* pScene, co
         lGeomConverter.Triangulate(FbxCast<FbxScene>(pScene), /*replace*/true);
     }
     catch (std::runtime_error) {
-        FBXSDK_printf("Scene integrity verification failed.\n");
+        //FBXSDK_printf("Scene integrity verification failed.\n");
         return false;
     }
     if (lStatus == true)
@@ -201,33 +201,33 @@ bool Utility::FbxLoader::LoadScene(FbxManager* pManager, FbxDocument* pScene, co
         bool lNotify = (!lStatus && details.GetCount() > 0) || (lImporter->GetStatus().GetCode() != FbxStatus::eSuccess);
         if (lNotify)
         {
-            FBXSDK_printf("\n");
-            FBXSDK_printf("********************************************************************************\n");
+            //FBXSDK_printf("\n");
+            //FBXSDK_printf("********************************************************************************\n");
             if (details.GetCount())
             {
-                FBXSDK_printf("Scene integrity verification failed with the following errors:\n");
+                //FBXSDK_printf("Scene integrity verification failed with the following errors:\n");
                 for (int i = 0; i < details.GetCount(); i++)
-                    FBXSDK_printf("   %s\n", details[i]->Buffer());
+                    //FBXSDK_printf("   %s\n", details[i]->Buffer());
 
                 FbxArrayDelete<FbxString*>(details);
             }
 
             if (lImporter->GetStatus().GetCode() != FbxStatus::eSuccess)
             {
-                FBXSDK_printf("\n");
-                FBXSDK_printf("WARNING:\n");
-                FBXSDK_printf("   The importer was able to read the file but with errors.\n");
-                FBXSDK_printf("   Loaded scene may be incomplete.\n\n");
-                FBXSDK_printf("   Last error message:'%s'\n", lImporter->GetStatus().GetErrorString());
+                //FBXSDK_printf("\n");
+                //FBXSDK_printf("WARNING:\n");
+                //FBXSDK_printf("   The importer was able to read the file but with errors.\n");
+                //FBXSDK_printf("   Loaded scene may be incomplete.\n\n");
+                //FBXSDK_printf("   Last error message:'%s'\n", lImporter->GetStatus().GetErrorString());
             }
-            FBXSDK_printf("********************************************************************************\n");
-            FBXSDK_printf("\n");
+            //FBXSDK_printf("********************************************************************************\n");
+            //FBXSDK_printf("\n");
         }
     }
 
     if (lStatus == false && lImporter->GetStatus().GetCode() == FbxStatus::ePasswordError)
     {
-        FBXSDK_printf("Please enter password: ");
+        //FBXSDK_printf("Please enter password: ");
 
         lPassword[0] = '\0';
 
@@ -244,7 +244,7 @@ bool Utility::FbxLoader::LoadScene(FbxManager* pManager, FbxDocument* pScene, co
 
         if (lStatus == false && lImporter->GetStatus().GetCode() == FbxStatus::ePasswordError)
         {
-            FBXSDK_printf("\nPassword is wrong, import aborted.\n");
+            //FBXSDK_printf("\nPassword is wrong, import aborted.\n");
         }
     }
 
@@ -275,7 +275,7 @@ void Utility::FbxLoader::DisplayContent(FbxNode* pNode)
 
     if (pNode->GetNodeAttribute() == NULL)
     {
-        FBXSDK_printf("NULL Node Attribute\n\n");
+        //FBXSDK_printf("NULL Node Attribute\n\n");
     }
     else
     {
@@ -761,7 +761,7 @@ void Utility::FbxLoader::DisplayPolygons(FbxMesh* pMesh, std::vector<uint32_t>& 
 
                         //Got normals of each vertex.
                         FbxVector4 lNormal = leNormal->GetDirectArray().GetAt(lNormalIndex);
-                        //FBXSDK_printf("normals for vertex[%d]: %f %f %f %f \n", lVertexIndex, lNormal[0], lNormal[1], lNormal[2], lNormal[3]);
+                        ////FBXSDK_printf("normals for vertex[%d]: %f %f %f %f \n", lVertexIndex, lNormal[0], lNormal[1], lNormal[2], lNormal[3]);
                         p_vertices[lControlPointIndex].normal[0] = float(lNormal.mData[0]);
                         p_vertices[lControlPointIndex].normal[1] = float(lNormal.mData[1]);
                         p_vertices[lControlPointIndex].normal[2] = float(lNormal.mData[2]);
@@ -1111,7 +1111,7 @@ void Utility::FbxLoader::DisplayMaterialMapping(FbxMesh* pMesh)
 
                 lString += "\n";
 
-                FBXSDK_printf(lString);
+                //FBXSDK_printf(lString);
             }
         }
     }
@@ -1129,7 +1129,8 @@ void Utility::FbxLoader::InitializeSdkObjects(FbxManager*& pManager, FbxScene*& 
         FBXSDK_printf("Error: Unable to create FBX Manager!\n");
         exit(1);
     }
-    else FBXSDK_printf("Autodesk FBX SDK version %s\n", pManager->GetVersion());
+    else
+        FBXSDK_printf("Autodesk FBX SDK version %s\n", pManager->GetVersion());
 
     //Create an IOSettings object. This object holds all import/export settings.
     FbxIOSettings* ios = FbxIOSettings::Create(pManager, IOSROOT);
@@ -1153,7 +1154,7 @@ void DestroySdkObjects(FbxManager* pManager, bool pExitStatus)
 {
     //Delete the FBX Manager. All the objects that have been allocated using the FBX Manager and that haven't been explicitly destroyed are also automatically destroyed.
     if (pManager) pManager->Destroy();
-    if (pExitStatus) FBXSDK_printf("Program Success!\n");
+    if (pExitStatus);//FBXSDK_printf("Program Success!\n");
 }
 
 
@@ -1193,7 +1194,7 @@ void DisplayMaterial(FbxGeometry* pGeometry)
             if (lImplementation)
             {
                 //Now we have a hardware shader, let's read it
-                FBXSDK_printf("            Hardware Shader Type: %s\n", lImplemenationType.Buffer());
+                //FBXSDK_printf("            Hardware Shader Type: %s\n", lImplemenationType.Buffer());
                 const FbxBindingTable* lRootTable = lImplementation->GetRootTable();
                 FbxString lFileName = lRootTable->DescAbsoluteURL.Get();
                 FbxString lTechniqueName = lRootTable->DescTAG.Get();
@@ -1210,7 +1211,7 @@ void DisplayMaterial(FbxGeometry* pGeometry)
 
 
                     FbxString lTest = lEntry.GetSource();
-                    FBXSDK_printf("            Entry: %s\n", lTest.Buffer());
+                    //FBXSDK_printf("            Entry: %s\n", lTest.Buffer());
 
 
                     if (strcmp(FbxPropertyEntryView::sEntryType, lEntrySrcType) == 0)
@@ -1235,17 +1236,17 @@ void DisplayMaterial(FbxGeometry* pGeometry)
                             for (int j = 0; j < lFbxProp.GetSrcObjectCount<FbxFileTexture>(); ++j)
                             {
                                 FbxFileTexture* lTex = lFbxProp.GetSrcObject<FbxFileTexture>(j);
-                                FBXSDK_printf("           File Texture: %s\n", lTex->GetFileName());
+                                //FBXSDK_printf("           File Texture: %s\n", lTex->GetFileName());
                             }
                             for (int j = 0; j < lFbxProp.GetSrcObjectCount<FbxLayeredTexture>(); ++j)
                             {
                                 FbxLayeredTexture* lTex = lFbxProp.GetSrcObject<FbxLayeredTexture>(j);
-                                FBXSDK_printf("        Layered Texture: %s\n", lTex->GetName());
+                                //FBXSDK_printf("        Layered Texture: %s\n", lTex->GetName());
                             }
                             for (int j = 0; j < lFbxProp.GetSrcObjectCount<FbxProceduralTexture>(); ++j)
                             {
                                 FbxProceduralTexture* lTex = lFbxProp.GetSrcObject<FbxProceduralTexture>(j);
-                                FBXSDK_printf("     Procedural Texture: %s\n", lTex->GetName());
+                                //FBXSDK_printf("     Procedural Texture: %s\n", lTex->GetName());
                             }
                         }
                         else
@@ -1417,7 +1418,7 @@ void DisplayString(const char* pHeader, const char* pValue /* = "" */, const cha
     lString += pValue;
     lString += pSuffix;
     lString += "\n";
-    FBXSDK_printf(lString);
+    //FBXSDK_printf(lString);
 }
 
 
@@ -1429,7 +1430,7 @@ void DisplayBool(const char* pHeader, bool pValue, const char* pSuffix /* = "" *
     lString += pValue ? "true" : "false";
     lString += pSuffix;
     lString += "\n";
-    FBXSDK_printf(lString);
+    //FBXSDK_printf(lString);
 }
 
 
@@ -1441,7 +1442,7 @@ void DisplayInt(const char* pHeader, int pValue, const char* pSuffix /* = "" */)
     lString += pValue;
     lString += pSuffix;
     lString += "\n";
-    FBXSDK_printf(lString);
+    //FBXSDK_printf(lString);
 }
 
 
@@ -1457,7 +1458,7 @@ void DisplayDouble(const char* pHeader, double pValue, const char* pSuffix /* = 
     lString += lFloatValue;
     lString += pSuffix;
     lString += "\n";
-    FBXSDK_printf(lString);
+    //FBXSDK_printf(lString);
 }
 
 
@@ -1478,7 +1479,7 @@ void Display2DVector(const char* pHeader, FbxVector2 pValue, const char* pSuffix
     lString += lFloatValue2;
     lString += pSuffix;
     lString += "\n";
-    FBXSDK_printf(lString);
+    //FBXSDK_printf(lString);
 }
 
 
@@ -1504,7 +1505,7 @@ void Display3DVector(const char* pHeader, FbxVector4 pValue, const char* pSuffix
     lString += lFloatValue3;
     lString += pSuffix;
     lString += "\n";
-    FBXSDK_printf(lString);
+    //FBXSDK_printf(lString);
 }
 
 void Display4DVector(const char* pHeader, FbxVector4 pValue, const char* pSuffix /* = "" */)
@@ -1534,7 +1535,7 @@ void Display4DVector(const char* pHeader, FbxVector4 pValue, const char* pSuffix
     lString += lFloatValue4;
     lString += pSuffix;
     lString += "\n";
-    FBXSDK_printf(lString);
+    //FBXSDK_printf(lString);
 }
 
 
@@ -1555,7 +1556,7 @@ void DisplayColor(const char* pHeader, FbxPropertyT<FbxDouble3> pValue, const ch
     lString += " (blue)";
     lString += pSuffix;
     lString += "\n";
-    FBXSDK_printf(lString);
+    //FBXSDK_printf(lString);
 }
 
 
@@ -1575,7 +1576,7 @@ void DisplayColor(const char* pHeader, FbxColor pValue, const char* pSuffix /* =
     lString += " (blue)";
     lString += pSuffix;
     lString += "\n";
-    FBXSDK_printf(lString);
+    //FBXSDK_printf(lString);
 }
 
 
@@ -1638,8 +1639,8 @@ void DisplayLink(FbxGeometry* pGeometry)
             lString1 += "\n";
             lString2 += "\n";
 
-            FBXSDK_printf(lString1);
-            FBXSDK_printf(lString2);
+            //FBXSDK_printf(lString1);
+            //FBXSDK_printf(lString2);
 
             DisplayString("");
 

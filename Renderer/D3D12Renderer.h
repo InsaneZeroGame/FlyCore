@@ -18,6 +18,7 @@ namespace Renderer {
 		std::array<float,4> position;//view space
 		std::array<float, 4> color;//view space
 		float radius;
+		float attenutation;
 		uint32_t isActive;
 
 		PointLight() : 
@@ -39,7 +40,7 @@ namespace Renderer {
 		glm::mat4x4 m_proj;
 		glm::mat4x4 m_view;
 		glm::mat4x4 m_inverProj;
-		float zNearFar[4];
+		std::array<float,4> zNearFar;
 	};
 
 

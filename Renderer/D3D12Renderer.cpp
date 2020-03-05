@@ -183,17 +183,17 @@ void Renderer::D3D12Renderer::SyncFrame()
 
 }
 
-static float RandomFloat_11()
+static float RandomFloat_01()
 {
-	//return -1.0-1.0
+	//return 0-1.0
 	return float(rand()) / float(RAND_MAX);
 
 }
 
-static float RandomFloat01()
+static float RandomFloat_11()
 {
 	//return 0.0-1.0
-	return 0.5 * RandomFloat_11() + 0.5f;
+	return 2.0f * RandomFloat_01() - 1.0f;
 
 }
 
@@ -213,12 +213,13 @@ void Renderer::D3D12Renderer::InitBuffers()
 	
 	
 	
-	m_uniformBuffer.zNearFar[1] = 30.0f;
+	m_uniformBuffer.zNearFar[1] = 50.0f;
 	m_uniformBuffer.zNearFar[0] = 0.01f;
 
-	m_uniformBuffer.m_proj = glm::perspectiveFovLH(45.0f, 15.0f, 15.0f, m_uniformBuffer.zNearFar[0], -m_uniformBuffer.zNearFar[1]);
+	m_uniformBuffer.m_proj = glm::perspectiveFovLH(45.0f, 15.0f, 15.0f, m_uniformBuffer.zNearFar[0], m_uniformBuffer.zNearFar[1]);
+	//m_uniformBuffer.m_proj = glm::orthoLH(-20.0f, 20.0f, -20.0f, 20.0f, m_uniformBuffer.zNearFar[2], -m_uniformBuffer.zNearFar[2]);
 	m_uniformBuffer.m_inverProj = glm::inverse(m_uniformBuffer.m_proj);
-	m_uniformBuffer.m_view = glm::lookAtLH(glm::vec3(12, 14, 12), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	m_uniformBuffer.m_view = glm::lookAtLH(glm::vec3(10.1, 15, 10.0), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	m_VSUniform->CopyData(&m_uniformBuffer, Utility::AlignTo256(sizeof(SceneUniformBuffer)));
 
 	std::array<PointLight, 256> l_lights;
@@ -252,41 +253,26 @@ void Renderer::D3D12Renderer::InitBuffers()
 
 	for (auto i = 0; i < 16; ++i)
 	{
-		for (auto j = 0; j < 16; ++j)
+		for (auto j = 0; j < 3; ++j)
 		{
-
-			auto lightPosView = m_uniformBuffer.m_view * glm::vec4(-10 + step * i, 0.5, -10 + step * j, 1.0);
-			//auto lightPosView = m_uniformBuffer.m_view * glm::vec4(0, 35,0, 1.0f);
+			auto lightPosView = m_uniformBuffer.m_view * glm::vec4(10 * RandomFloat_11(), 1.0, 10 * RandomFloat_11(), 1.0);
+			//auto lightPosView = m_uniformBuffer.m_view * glm::vec4(0, 0.5, 0, 1.0f);
 			l_lights[i * 16 + j].isActive = true;
 			l_lights[i * 16 + j].position[0] = lightPosView.x;
 			l_lights[i * 16 + j].position[1] = lightPosView.y;
 			l_lights[i * 16 + j].position[2] = lightPosView.z;
 			l_lights[i * 16 + j].position[3] = lightPosView.w;
-			auto l_color = l_colors[rand() % 6];
-			l_lights[i * 16 + j].color[0] = l_color.data[0];
-			l_lights[i * 16 + j].color[1] = l_color.data[1];
-			l_lights[i * 16 + j].color[2] = l_color.data[2];
-			l_lights[i * 16 + j].color[3] = l_color.data[3];
+			l_lights[i * 16 + j].color[0] = l_colors[rand() % 6].data[0];
+			l_lights[i * 16 + j].color[1] = l_colors[rand() % 6].data[1];
+			l_lights[i * 16 + j].color[2] = l_colors[rand() % 6].data[2];
+			l_lights[i * 16 + j].color[3] = l_colors[rand() % 6].data[3];
+			l_lights[i * 16 + j].radius = 2.0;
+			l_lights[i * 16 + j].attenutation = RandomFloat_01();
 
-			l_lights[i * 16 + j].radius = RandomFloat01() * 2;
+			
 		}
 	}
-
-	//l_lights[0].isActive = true;
-	//
-	////auto lightPosView = m_uniformBuffer.m_view * glm::vec4(RandomFloat_11(), RandomFloat_11(), RandomFloat_11(), 1.0);
-	//lightPosView = m_uniformBuffer.m_view * glm::vec4(2.0, 5, 2.0, 1.0f);
-	//
-	//l_lights[1].position[0] = lightPosView.x;
-	//l_lights[1].position[1] = lightPosView.y;
-	//l_lights[1].position[2] = lightPosView.z;
-	//l_lights[1].position[3] = lightPosView.w;
-	//l_lights[1].color[0] = 0.0f;
-	//l_lights[1].color[1] = 1.0f;
-	//l_lights[1].color[2] = 0.0f;
-	//l_lights[1].color[3] = 0.0f;
-	//l_lights[1].radius = 5;
-
+	
 	m_uploadBuffer->CopyData(l_lights.data(), l_lights.size() * sizeof(PointLight));
 	auto& l_graphicsContext = D3D12GraphicsCmdContext::GetContext();
 	l_graphicsContext.Begin(nullptr);

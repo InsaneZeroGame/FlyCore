@@ -14,7 +14,7 @@
 struct PSInput
 {
     float4 position : SV_POSITION;
-	float4 scenePositionView : POSITION0;
+	float4 scenePositionView : positionView;
     float4 color : COLOR0;
 	float3 normal:NORMAL;
 	
@@ -25,6 +25,7 @@ struct PointLight
 	float4 pos;
 	float4 color;
 	float radius;
+	float attenutation;
 	uint isActive;
 };
 

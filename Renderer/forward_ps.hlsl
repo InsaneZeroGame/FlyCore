@@ -1,7 +1,7 @@
 struct PSInput
 {
 	float4 position : SV_POSITION;
-	float4 scenePositionView : POSITION0;
+	float4 scenePositionView : positionView;
 	float4 color : COLOR0;
 	float3 normal:NORMAL;
 
@@ -13,6 +13,7 @@ struct PointLight
 	float4 pos;
 	float4 color;
 	float radius;
+	float attenutation;
 	uint isActive;
 };
 
@@ -38,7 +39,7 @@ StructuredBuffer<LightList> LightBuffer : register(t1);
 StructuredBuffer<PointLight> PointLights : register(t2);
 
 static uint2  SCREEN_DIMENSION = uint2(1920, 1080);
-static float4 sliceColor[8] = {
+static float4 sliceColor[16] = {
 	float4(0.0,0.0,0.0,1.0f),
 	float4(0.1,0.1,0.1,1.0f),
 	float4(0.2,0.2,0.2,1.0f),
@@ -47,6 +48,15 @@ static float4 sliceColor[8] = {
 	float4(0.5,0.5,0.5,1.0f),
 	float4(0.6,0.6,0.6,1.0f),
 	float4(0.7,0.7,0.7,1.0f),
+	float4(0.8,0.8,0.8,1.0f),
+	float4(0.3,0.3,0.3,1.0f),
+	float4(0.4,0.4,0.4,1.0f),
+	float4(0.5,0.5,0.5,1.0f),
+	float4(0.6,0.6,0.6,1.0f),
+	float4(0.7,0.7,0.7,1.0f),
+	float4(0.8,0.8,0.8,1.0f),
+	float4(0.0,0.0,0.0,1.0f),
+
 };
 
 
@@ -54,20 +64,16 @@ float4 main(PSInput input) : SV_TARGET
 {
 	float zNear = zNearFar.x;
 	float zFar = zNearFar.y;
-	float zRange = zFar - zNear;
-	float zRangePerSlice = zRange / 8.0;
-
-	float zPosition = (input.scenePositionView.z - zNear) / zRangePerSlice;
-	uint zIndex = zPosition;
-	
+	float zPosition = (input.scenePositionView.z - zNear) / (zFar - zNear);
+	//float zPosition = log(input.scenePositionView.z)
 	float2 screenPosition = input.position.xy / SCREEN_DIMENSION.xy;
-	uint3 clusterPosition = uint3(screenPosition * uint2(16,8), zIndex);
+	uint3 clusterPosition = uint3(screenPosition * uint2(8,8), zPosition * 16);
 
 	float4 res_color = float4(0.0f, 0.0f, 0.0f, 1.0f);
-	uint ClusterIndex = clusterPosition.z * (16 * 8) + clusterPosition.y * 16 + clusterPosition.x;
+	uint ClusterIndex = clusterPosition.z * (8 * 8) + clusterPosition.y * 8 + clusterPosition.x;
 	float4 diffuse = float4(0.0, 0.0, 0.0, 1.0);
 	float4 spec = 0.0f;
-	float4 colorStep = float4(8.0 / 256.0, 8.0 / 256.0, 8.0 / 256.0, 1.0);
+	float4 colorStep = float4(1.0 / 256.0, 1.0 / 256.0, 1.0 / 256.0, 1.0);
 
 	float4 diffuseDebug = 0.0f;
 
@@ -82,17 +88,18 @@ float4 main(PSInput input) : SV_TARGET
 
 		float lightDistSq = dot(lightDir, lightDir);
 		float invLightDist = rsqrt(lightDistSq);
-		lightDir *= invLightDist;
 		
 		// modify 1/d^2 * R^2 to fall off at a fixed radius
 		// (R/d)^2 - d/R = [(1/d^2) - (1/R^2)*(d/R)] * R^2
 		float distanceFalloff = PointLights[i].radius * PointLights[i].radius * (invLightDist * invLightDist);
 		distanceFalloff = max(0, distanceFalloff - rsqrt(distanceFalloff));
 		//float distanceFalloff = 1.0 / (1.0 + PointLights[i].radius * pow(lightDistSq, 2));
+		float attenuation = 1.0 / (1.0 + PointLights[i].attenutation * pow(lightDistSq, 2));
 
-		diffuse += dot(input.normal, lightDirNormalized) * float4(PointLights[i].color) * distanceFalloff;
+
+		diffuse += max(dot(input.normal, lightDirNormalized), 0.0) * float4(PointLights[i].color) * attenuation;
 		//diffuse += PointLights[i].color * 0.02;
-		spec += pow(max(dot(input.normal, halfwarDir), 0.0),200) * PointLights[i].color;
+		spec += pow(max(dot(input.normal, halfwarDir), 0.0),20) * PointLights[i].color;
 		//diffuse += PointLights[i].color * 0.1;
 		diffuseDebug += colorStep;
 		}
@@ -102,21 +109,28 @@ float4 main(PSInput input) : SV_TARGET
 	//return float4(1,0.5,0.5,1.0);
 	//return PointLights[0].color;
 	//return float4(input.normal,1.0f);
+	//return sliceColor[ClusterIndex % 9];
 
-	return diffuse * 0.65 + float4(0.35, 0.35, 0.35, 1.0) + spec;
-	//return diffuseDebug;
+	return diffuse * 0.85 + float4(0.15, 0.15, 0.15, 1.0) ;
+	//return diffuse;
+#define DEBUG_SHADER
 
-	if (screenPosition.x > 0.0 && screenPosition.x < 0.3)
+#ifdef DEBUG_SHADER
+
+	if (screenPosition.x > 0.0 && screenPosition.x < 0.6)
 	{
-		return diffuse * 0.65 + float4(0.35, 0.35, 0.35, 1.0) + spec;
+		return diffuse * 0.85 + float4(0.15, 0.15, 0.15, 1.0);
 	}
-	else if(screenPosition.x > 0.3 && screenPosition.x < 0.6)
+	else if(screenPosition.x > 0.6 && screenPosition.x < 1.0)
 	{
-		return sliceColor[zIndex];
+		return diffuseDebug;
+
 	}
 	else
 	{
-		return diffuseDebug;
+		return sliceColor[clusterPosition.z];
+
 	}
+#endif
 
 }
