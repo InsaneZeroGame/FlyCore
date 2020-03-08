@@ -9,37 +9,7 @@
 //
 //*********************************************************
 
-
-
-struct PSInput
-{
-    float4 position : SV_POSITION;
-	float4 scenePositionView : positionView;
-    float4 color : COLOR0;
-	float3 normal:NORMAL;
-	
-};
-
-struct PointLight
-{
-	float4 pos;
-	float4 color;
-	float radius;
-	float attenutation;
-	uint isActive;
-};
-
-
-
-cbuffer CDataBuffer : register(b0)
-{
-	float4x4 project;
-	float4x4 view;
-	float4x4 projInverse;
-	float4 zNearFar;
-};
-
-
+#include "shader_common.hlsli"
 
 
 PSInput main(float4 position : POSITION, float3 normal : NORMAL0,float2 tex_uv : TEXCOORD0)

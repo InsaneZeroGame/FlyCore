@@ -131,5 +131,15 @@ namespace Renderer {
 		std::vector<PointLight> m_lightData;
 
 		std::array<PointLight,1024> m_lights;
+
+		struct FrameQuad
+		{
+			Mesh m_quadMesh;
+			uint32_t m_quadVertexOffset;
+			uint32_t m_quadIndexOffset;
+
+		}m_frameQuad;
+
+
 	};
-}
+};

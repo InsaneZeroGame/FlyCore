@@ -1,34 +1,4 @@
-struct PSInput
-{
-	float4 position : SV_POSITION;
-	float4 scenePositionView : positionView;
-	float4 color : COLOR0;
-	float3 normal:NORMAL;
-
-};
-
-
-struct PointLight
-{
-	float4 pos;
-	float4 color;
-	float radius;
-	float attenutation;
-	uint isActive;
-};
-
-cbuffer CDataBuffer : register(b0)
-{
-	float4x4 project;
-	float4x4 view;
-	float4x4 projInverse;
-	float4 zNearFar;
-};
-
-struct LightList
-{
-	uint isActive[256];
-};
+#include "shader_common.hlsli"
 
 float linstep(float min, float max, float v)
 {
@@ -73,7 +43,7 @@ float4 main(PSInput input) : SV_TARGET
 	uint ClusterIndex = clusterPosition.z * (8 * 8) + clusterPosition.y * 8 + clusterPosition.x;
 	float4 diffuse = float4(0.0, 0.0, 0.0, 1.0);
 	float4 spec = 0.0f;
-	float4 colorStep = float4(1.0 / 256.0, 1.0 / 256.0, 1.0 / 256.0, 1.0);
+	float4 colorStep = 1.0/256.0;
 
 	float4 diffuseDebug = 0.0f;
 
@@ -88,38 +58,20 @@ float4 main(PSInput input) : SV_TARGET
 
 		float lightDistSq = dot(lightDir, lightDir);
 		float invLightDist = rsqrt(lightDistSq);
-		
-		// modify 1/d^2 * R^2 to fall off at a fixed radius
-		// (R/d)^2 - d/R = [(1/d^2) - (1/R^2)*(d/R)] * R^2
-		float distanceFalloff = PointLights[i].radius * PointLights[i].radius * (invLightDist * invLightDist);
-		distanceFalloff = max(0, distanceFalloff - rsqrt(distanceFalloff));
-		//float distanceFalloff = 1.0 / (1.0 + PointLights[i].radius * pow(lightDistSq, 2));
 		float attenuation = 1.0 / (1.0 + PointLights[i].attenutation * pow(lightDistSq, 2));
-
-
 		diffuse += max(dot(input.normal, lightDirNormalized), 0.0) * float4(PointLights[i].color) * attenuation;
-		//diffuse += PointLights[i].color * 0.02;
-		spec += pow(max(dot(input.normal, halfwarDir), 0.0),20) * PointLights[i].color;
-		//diffuse += PointLights[i].color * 0.1;
+		spec += pow(max(dot(input.normal, halfwarDir), 0.0),3.5) * attenuation;
 		diffuseDebug += colorStep;
 		}
 	}
-	
-
-	//return float4(1,0.5,0.5,1.0);
-	//return PointLights[0].color;
-	//return float4(input.normal,1.0f);
-	//return sliceColor[ClusterIndex % 9];
-
-	return diffuse * 0.85 + float4(0.15, 0.15, 0.15, 1.0) ;
-	//return diffuse;
-#define DEBUG_SHADER
+	//return spec;
+	return (diffuse + spec) * 0.75 + float4(0.25, 0.25, 0.25, 1.0);
 
 #ifdef DEBUG_SHADER
 
 	if (screenPosition.x > 0.0 && screenPosition.x < 0.6)
 	{
-		return diffuse * 0.85 + float4(0.15, 0.15, 0.15, 1.0);
+		return (diffuse + spec) * 0.75 + float4(0.25, 0.25, 0.25, 1.0);
 	}
 	else if(screenPosition.x > 0.6 && screenPosition.x < 1.0)
 	{

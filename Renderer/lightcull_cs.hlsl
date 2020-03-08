@@ -1,3 +1,4 @@
+#include "shader_common.hlsli"
 #define WORK_GROUP_SIZE_X 8 
 #define WORK_GROUP_SIZE_Y 8 
 #define WORK_GROUP_SIZE_Z 4
@@ -9,28 +10,6 @@ static uint GROUP_SIZE_Z = 16;
 
 static uint2  SCREEN_DIMENSION = uint2(1920,1080);
 
-
-struct PointLight
-{
-	float4 pos;//position in world space
-	float4 color;
-	float radius;
-	float attenutation;
-	uint isActive;
-};
-
-struct LightList
-{
-	uint isActive[256];
-};
-
-cbuffer CDataBuffer : register(b0)
-{
-	float4x4 project;
-	float4x4 view;
-	float4x4 projInverse;
-	float4 zNearFar;
-};
 
 
 RWStructuredBuffer<LightList> LightBuffer : register(u0);
@@ -86,7 +65,7 @@ void main(
 
 		[unroll] for (uint i = 0; i < 6; ++i) {
 			float d = dot(frustumPlanes[i], float4(light.pos));
-			//inFrustum = inFrustum && (d > -light.radius / light.attenutation);
+			inFrustum = inFrustum && (d > -light.radius / light.attenutation);
 		}
 
 		LightBuffer[groupIndexInCS].isActive[threadIndex] = inFrustum;

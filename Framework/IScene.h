@@ -1,14 +1,15 @@
 #pragma once
 #include "INoCopy.h"
 #include <vector>
+#include <array>
 namespace Renderer
 {
 
 	struct Vertex
 	{
-		float position[4];
-		float normal[3];
-		float uv[2];
+		std::array<float,4> position;
+		std::array<float,3> normal;
+		std::array<float,2> uv;
 	};
 
 	class Mesh

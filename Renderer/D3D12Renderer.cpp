@@ -204,7 +204,7 @@ void Renderer::D3D12Renderer::InitBuffers()
     auto& loader = Utility::AssetLoader::GetLoader();
     
     m_scene = new Renderer::Scene;
-    loader.LoadFbx("C:\\Dev\\FlyCore\\scene.fbx", m_scene);
+    loader.LoadFbx("C:\\Dev\\FlyCore\\scene1.fbx", m_scene);
 
     m_vertexBuffer = new D3D12VertexBuffer(Constants::VERTEX_BUFFER_SIZE);
     m_uploadBuffer = new D3D12UploadBuffer(Constants::MAX_CONST_BUFFER_VIEW_SIZE);
@@ -216,10 +216,10 @@ void Renderer::D3D12Renderer::InitBuffers()
 	m_uniformBuffer.zNearFar[1] = 50.0f;
 	m_uniformBuffer.zNearFar[0] = 0.01f;
 
-	m_uniformBuffer.m_proj = glm::perspectiveFovLH(45.0f, 15.0f, 15.0f, m_uniformBuffer.zNearFar[0], m_uniformBuffer.zNearFar[1]);
+	m_uniformBuffer.m_proj = glm::perspectiveFovLH(45.0f, 30.0f, 30.0f, m_uniformBuffer.zNearFar[0], m_uniformBuffer.zNearFar[1]);
 	//m_uniformBuffer.m_proj = glm::orthoLH(-20.0f, 20.0f, -20.0f, 20.0f, m_uniformBuffer.zNearFar[2], -m_uniformBuffer.zNearFar[2]);
 	m_uniformBuffer.m_inverProj = glm::inverse(m_uniformBuffer.m_proj);
-	m_uniformBuffer.m_view = glm::lookAtLH(glm::vec3(10.1, 15, 10.0), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	m_uniformBuffer.m_view = glm::lookAtLH(glm::vec3(15.1, 20.0, 15.0), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	m_VSUniform->CopyData(&m_uniformBuffer, Utility::AlignTo256(sizeof(SceneUniformBuffer)));
 
 	std::array<PointLight, 256> l_lights;
@@ -249,13 +249,13 @@ void Renderer::D3D12Renderer::InitBuffers()
 	};
 
 
-	float step = 30.0f / 16;
+	float step = 10.0f / 16;
 
 	for (auto i = 0; i < 16; ++i)
 	{
-		for (auto j = 0; j < 3; ++j)
+		for (auto j = 0; j < 4; ++j)
 		{
-			auto lightPosView = m_uniformBuffer.m_view * glm::vec4(10 * RandomFloat_11(), 1.0, 10 * RandomFloat_11(), 1.0);
+			auto lightPosView = m_uniformBuffer.m_view * glm::vec4(10 * RandomFloat_11(), 4.0 * RandomFloat_01(), 10 * RandomFloat_11(), 1.0);
 			//auto lightPosView = m_uniformBuffer.m_view * glm::vec4(0, 0.5, 0, 1.0f);
 			l_lights[i * 16 + j].isActive = true;
 			l_lights[i * 16 + j].position[0] = lightPosView.x;
@@ -266,8 +266,8 @@ void Renderer::D3D12Renderer::InitBuffers()
 			l_lights[i * 16 + j].color[1] = l_colors[rand() % 6].data[1];
 			l_lights[i * 16 + j].color[2] = l_colors[rand() % 6].data[2];
 			l_lights[i * 16 + j].color[3] = l_colors[rand() % 6].data[3];
-			l_lights[i * 16 + j].radius = 2.0;
-			l_lights[i * 16 + j].attenutation = RandomFloat_01();
+			l_lights[i * 16 + j].radius =2.0;
+			l_lights[i * 16 + j].attenutation = RandomFloat_01() ;
 
 			
 		}
@@ -286,6 +286,22 @@ void Renderer::D3D12Renderer::InitBuffers()
 	l_graphicsContext.End(true);
 	m_uploadBuffer->ResetBuffer();
 
+	std::vector<Vertex> l_vertices = {
+		{ {-1.0f, 1.0f,0.0f,1.0},{0.0f,0.0f,0.0},{0.0f,0.0f}} ,
+		{ {-1.0f,-1.0f,0.0f,1.0},{0.0f,0.0f,0.0},{0.0f,1.0f}} ,
+		{ { 1.0f,-1.0f,0.0f,1.0},{0.0f,0.0f,0.0},{1.0f,1.0f}} ,
+		{ { 1.0f, 1.0f,0.0f,1.0},{0.0f,0.0f,0.0},{1.0f,0.0f}} ,
+
+	};
+	std::vector<uint32_t> l_indices = 
+	{
+		0,1,2,
+		0,2,3
+	};
+
+
+	m_frameQuad.m_quadMesh = Mesh(std::move(l_vertices),std::move(l_indices));
+
 
 	UINT vertexBufferSize = 0;
 	for (auto i = 0; i < m_scene->m_actors.size(); ++i)
@@ -297,6 +313,9 @@ void Renderer::D3D12Renderer::InitBuffers()
 		   vertexBufferSize += l_vertexSize;
 	   }
 	}
+	m_frameQuad.m_quadVertexOffset = vertexBufferSize / sizeof(Vertex);
+	m_uploadBuffer->CopyData(l_vertices.data(), sizeof(Vertex)* l_vertices.size());
+	vertexBufferSize += sizeof(Vertex) * l_vertices.size();
 
 	UINT indexBufferSize = 0;
 	for (auto i = 0; i < m_scene->m_actors.size(); ++i)
@@ -308,6 +327,9 @@ void Renderer::D3D12Renderer::InitBuffers()
 		   indexBufferSize += l_indexSize;
 	   }
 	}
+	m_frameQuad.m_quadIndexOffset = indexBufferSize / sizeof(uint32_t);
+	m_uploadBuffer->CopyData(l_indices.data(), sizeof(uint32_t)* l_indices.size());
+	indexBufferSize += sizeof(uint32_t) * l_indices.size();
 
     //auto & l_graphicsContext = D3D12GraphicsCmdContext::GetContext();
     l_graphicsContext.Begin(nullptr);
@@ -419,8 +441,8 @@ void Renderer::D3D12Renderer::InitPipelineState()
     UINT compileFlags = 0;
 #endif
 
-    D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\forward_vs.hlsl", nullptr, nullptr, "main", "vs_5_0", compileFlags, 0, &vertexShader, nullptr);
-    D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\forward_ps.hlsl", nullptr, nullptr, "main", "ps_5_0", compileFlags, 0, &pixelShader, nullptr);
+    D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\forward_vs.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "vs_5_0", compileFlags, 0, &vertexShader, nullptr);
+    D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\forward_ps.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_0", compileFlags, 0, &pixelShader, nullptr);
 
     // Define the vertex input layout.
     D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
@@ -452,7 +474,7 @@ void Renderer::D3D12Renderer::InitPipelineState()
 	//Compute Pipieline state
 	{
 		ComPtr<ID3DBlob> computeShader;
-		D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\lightcull_cs.hlsl", nullptr, nullptr, "main", "cs_5_0", compileFlags, 0, &computeShader, nullptr);
+		D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\lightcull_cs.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "cs_5_0", compileFlags, 0, &computeShader, nullptr);
 		D3D12_COMPUTE_PIPELINE_STATE_DESC l_computePipelineStateDesc = {};
 		l_computePipelineStateDesc.pRootSignature = m_computeRootSignature;
 		l_computePipelineStateDesc.CS = CD3DX12_SHADER_BYTECODE(computeShader.Get());;
