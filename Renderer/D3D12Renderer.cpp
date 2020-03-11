@@ -2,7 +2,7 @@
 #include "D3D12Renderer.h"
 #include <D3Dcompiler.h>
 #include "../Utility/AssetLoader.h"
-
+#include "D3D12DescManager.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "../3dparty/include/stb_image.h"
@@ -10,6 +10,7 @@
 #define CAMERA_UNIFORM_ROOT_INDEX 0
 #define LIGHT_UAV_ROOT_INDEX 1
 #define LIGHT_BUFFER_ROOT_INDEX 2
+#define FINAL_OUTPUT_TEX_ROOT_INDEX 1
 
 
 Renderer::D3D12Renderer::D3D12Renderer():
@@ -20,7 +21,16 @@ Renderer::D3D12Renderer::D3D12Renderer():
 	m_computeCmd(new D3D12GraphicsCmd(Constants::COMPUTE_CMD_COUNT)),
 	m_VSUniform(nullptr),
 	m_renderCmdQueue(new D3D12CmdQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)),
-    m_lightList(nullptr)
+    m_lightList(nullptr),
+	m_width(0),
+	m_height(0),
+	m_quadPipelineState(nullptr),
+	m_computePipelineState(nullptr),
+	m_graphicsPipelineState(nullptr),
+	m_vertexBuffer(nullptr),
+	m_indexBuffer(nullptr),
+	m_uploadBuffer(nullptr),
+	m_clusterForwardRootSignature(nullptr)
 {
 }
 
@@ -34,6 +44,7 @@ void Renderer::D3D12Renderer::OnInit()
 	InitSwapChain();
     InitGraphicsContext();
     InitSyncPrimitive();
+	InitRenderpass();
     InitBuffers();
     InitRootSignature();
     InitPipelineState();
@@ -41,10 +52,7 @@ void Renderer::D3D12Renderer::OnInit()
 
 void Renderer::D3D12Renderer::OnUpdate()
 {
-	auto& l_graphicsContext = D3D12GraphicsContext::GetContext();
-    m_graphicsCmd->Reset(m_frameIndex, m_graphicsPipelineState);
-    // Indicate that the back buffer will be used as a render target.
-    l_graphicsContext.BeginRender(m_frameIndex);
+	
 	//Light cull 
 	{
 		using namespace Constants;
@@ -60,13 +68,20 @@ void Renderer::D3D12Renderer::OnUpdate()
 		m_computeCmd->Flush(true);
 	}
 	
-	
-	ID3D12GraphicsCommandList* l_graphicsCmdList = *m_graphicsCmd;
+
+	auto& l_graphicsContext = D3D12GraphicsContext::GetContext();
+	m_graphicsCmd->Reset(m_frameIndex, m_graphicsPipelineState);
+	// Indicate that the back buffer will be used as a render target.
+	l_graphicsContext.BeginRender(m_frameIndex);
+	l_graphicsContext.BeginRenderpass(m_clusterForwardPass.mrt, &m_clusterForwardPass.depth);
+	ID3D12GraphicsCommandList4* l_graphicsCmdList = *m_graphicsCmd;
 	//Forward Pass
 	{
+		//Resource Trasition
+		
 		l_graphicsCmdList->SetPipelineState(m_graphicsPipelineState);
 		// Set necessary state.
-		l_graphicsCmdList->SetGraphicsRootSignature(m_graphicsRootSignature);
+		l_graphicsCmdList->SetGraphicsRootSignature(m_clusterForwardRootSignature);
 		l_graphicsCmdList->IASetIndexBuffer(&m_indexBuffer->GetIndexBufferView());
 		l_graphicsCmdList->IASetVertexBuffers(0, 1, &m_vertexBuffer->GetVertexBufferView());
 		l_graphicsCmdList->SetGraphicsRootConstantBufferView(CAMERA_UNIFORM_ROOT_INDEX, m_VSUniform->GetGpuVirtualAddress());
@@ -82,6 +97,34 @@ void Renderer::D3D12Renderer::OnUpdate()
 			}
 		}
 	}
+	l_graphicsCmdList->EndRenderPass();
+
+	//Resource Trasition
+	l_graphicsContext.TransitRenderTarget(std::string("Light"),D3D12_RESOURCE_STATE_RENDER_TARGET,D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	l_graphicsContext.TransitRenderTarget(std::string("Normal"), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	l_graphicsContext.TransitRenderTarget(std::string("Specular"), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	
+	//Deferred Pass
+	l_graphicsContext.BeginSwapchainOutputPass(m_frameIndex);
+	l_graphicsCmdList->SetPipelineState(m_quadPipelineState);
+	l_graphicsCmdList->SetGraphicsRootSignature(m_clusterForwardRootSignature);
+	l_graphicsCmdList->IASetIndexBuffer(&m_indexBuffer->GetIndexBufferView());
+	l_graphicsCmdList->IASetVertexBuffers(0, 1, &m_vertexBuffer->GetVertexBufferView());
+	l_graphicsCmdList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	
+	ID3D12DescriptorHeap* l_srvHeap[] = { D3D12DescManager::GetDescManager().GetHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)->GetHeap() };
+	l_graphicsCmdList->SetGraphicsRootSignature(m_finalOutputRootSignature);
+	l_graphicsCmdList->SetDescriptorHeaps(1, l_srvHeap);
+	l_graphicsCmdList->SetGraphicsRootDescriptorTable(FINAL_OUTPUT_TEX_ROOT_INDEX, l_graphicsContext.GetRenderTarget("Light")->GetSRV()->gpuHandle);
+	l_graphicsCmdList->DrawIndexedInstanced(static_cast<uint32_t>(m_frameQuad.m_quadMesh.m_indices.size()), 1, m_frameQuad.m_quadIndexOffset, m_frameQuad.m_quadVertexOffset, 0);
+	l_graphicsContext.TransitRenderTarget(std::string("Light"), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	l_graphicsContext.TransitRenderTarget(std::string("Normal"), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	l_graphicsContext.TransitRenderTarget(std::string("Specular"), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+	
+	l_graphicsCmdList->EndRenderPass();
+
+
 	l_graphicsContext.EndRender();
 	m_graphicsCmd->Close();
     // Execute the command list.
@@ -159,9 +202,14 @@ void Renderer::D3D12Renderer::InitSyncPrimitive()
 
 void Renderer::D3D12Renderer::InitGraphicsContext()
 {
-	D3D12GraphicsContext::GetContext().InitRenderTargets(m_window->GetWidth(), m_window->GetHeight(), m_swapChain.Get());
-	D3D12GraphicsContext::GetContext().SetGraphicsCmdList(*m_graphicsCmd);
-
+	D3D12GraphicsContext& l_context = D3D12GraphicsContext::GetContext();
+	m_width = m_window->GetWidth();
+	m_height = m_window->GetHeight();
+	l_context.InitSwapchainOutputTarget(m_width, m_height, m_swapChain.Get());
+	l_context.SetGraphicsCmdList(*m_graphicsCmd);
+	l_context.AddRenderTargets("Light", m_width, m_height, nullptr, DXGI_FORMAT::DXGI_FORMAT_R10G10B10A2_UNORM);
+	l_context.AddRenderTargets("Normal", m_width, m_height, nullptr, DXGI_FORMAT::DXGI_FORMAT_R16G16B16A16_FLOAT);
+	l_context.AddRenderTargets("Specular", m_width, m_height, nullptr, DXGI_FORMAT::DXGI_FORMAT_R16G16B16A16_FLOAT);
 }
 
 void Renderer::D3D12Renderer::SyncFrame()
@@ -179,23 +227,9 @@ void Renderer::D3D12Renderer::SyncFrame()
     }
     m_fenceValues[currentBackBufferIndex] = m_fenceValues[m_frameIndex] + 1;
     m_frameIndex = currentBackBufferIndex;
-
-
 }
 
-static float RandomFloat_01()
-{
-	//return 0-1.0
-	return float(rand()) / float(RAND_MAX);
 
-}
-
-static float RandomFloat_11()
-{
-	//return 0.0-1.0
-	return 2.0f * RandomFloat_01() - 1.0f;
-
-}
 
 
 
@@ -255,7 +289,7 @@ void Renderer::D3D12Renderer::InitBuffers()
 	{
 		for (auto j = 0; j < 4; ++j)
 		{
-			auto lightPosView = m_uniformBuffer.m_view * glm::vec4(10 * RandomFloat_11(), 4.0 * RandomFloat_01(), 10 * RandomFloat_11(), 1.0);
+			auto lightPosView = m_uniformBuffer.m_view * glm::vec4(10 * Utility:: RandomFloat_11(), 4.0 * Utility::RandomFloat_01(), 10 * Utility::RandomFloat_11(), 1.0);
 			//auto lightPosView = m_uniformBuffer.m_view * glm::vec4(0, 0.5, 0, 1.0f);
 			l_lights[i * 16 + j].isActive = true;
 			l_lights[i * 16 + j].position[0] = lightPosView.x;
@@ -267,9 +301,7 @@ void Renderer::D3D12Renderer::InitBuffers()
 			l_lights[i * 16 + j].color[2] = l_colors[rand() % 6].data[2];
 			l_lights[i * 16 + j].color[3] = l_colors[rand() % 6].data[3];
 			l_lights[i * 16 + j].radius =2.0;
-			l_lights[i * 16 + j].attenutation = RandomFloat_01() ;
-
-			
+			l_lights[i * 16 + j].attenutation = Utility::RandomFloat_01() ;
 		}
 	}
 	
@@ -315,7 +347,7 @@ void Renderer::D3D12Renderer::InitBuffers()
 	}
 	m_frameQuad.m_quadVertexOffset = vertexBufferSize / sizeof(Vertex);
 	m_uploadBuffer->CopyData(l_vertices.data(), sizeof(Vertex)* l_vertices.size());
-	vertexBufferSize += sizeof(Vertex) * l_vertices.size();
+	vertexBufferSize += static_cast<uint32_t>(sizeof(Vertex) * l_vertices.size());
 
 	UINT indexBufferSize = 0;
 	for (auto i = 0; i < m_scene->m_actors.size(); ++i)
@@ -329,7 +361,7 @@ void Renderer::D3D12Renderer::InitBuffers()
 	}
 	m_frameQuad.m_quadIndexOffset = indexBufferSize / sizeof(uint32_t);
 	m_uploadBuffer->CopyData(l_indices.data(), sizeof(uint32_t)* l_indices.size());
-	indexBufferSize += sizeof(uint32_t) * l_indices.size();
+	indexBufferSize += static_cast<uint32_t>(sizeof(uint32_t) * l_indices.size());
 
     //auto & l_graphicsContext = D3D12GraphicsCmdContext::GetContext();
     l_graphicsContext.Begin(nullptr);
@@ -382,7 +414,50 @@ void Renderer::D3D12Renderer::InitRootSignature()
 		ComPtr<ID3DBlob> signature;
 		ComPtr<ID3DBlob> error;
 		D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error);
-		m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_graphicsRootSignature));
+		m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_clusterForwardRootSignature));
+
+	}
+
+	//Final Output
+	{
+		CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
+
+		D3D12_ROOT_PARAMETER l_cameraUniform = {};
+		l_cameraUniform.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+		l_cameraUniform.Descriptor = { 0,0 };
+		l_cameraUniform.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+		D3D12_ROOT_PARAMETER l_finalOutputTextures = {};
+		l_finalOutputTextures.DescriptorTable.NumDescriptorRanges = 1;
+		l_finalOutputTextures.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		D3D12_DESCRIPTOR_RANGE l_range = {};
+		l_range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		l_range.NumDescriptors = m_clusterForwardPass.mrt.size();
+		l_range.BaseShaderRegister = 0;
+		l_range.RegisterSpace = 0;
+		l_range.OffsetInDescriptorsFromTableStart = 0;
+		l_finalOutputTextures.DescriptorTable.pDescriptorRanges = &l_range;
+		l_finalOutputTextures.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+		std::vector<D3D12_ROOT_PARAMETER> l_rootParameters =
+		{
+			l_cameraUniform,
+			l_finalOutputTextures
+		};
+
+		//STATIC SAMPLER DESC
+		D3D12_STATIC_SAMPLER_DESC l_defaultSampler = {};
+		l_defaultSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+		l_defaultSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+		l_defaultSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+		l_defaultSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+		l_defaultSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+
+		rootSignatureDesc.Init(static_cast<uint32_t>(l_rootParameters.size()), l_rootParameters.data(), 1, &l_defaultSampler, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+		ComPtr<ID3DBlob> signature;
+		ComPtr<ID3DBlob> error;
+		D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error);
+		m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_finalOutputRootSignature));
 
 	}
    
@@ -433,6 +508,8 @@ void Renderer::D3D12Renderer::InitPipelineState()
     // Create the pipeline state, which includes compiling and loading shaders.
     ComPtr<ID3DBlob> vertexShader;
     ComPtr<ID3DBlob> pixelShader;
+	ComPtr<ID3DBlob> quadShader_vs;
+	ComPtr<ID3DBlob> quadShader_ps;
 
 #if defined(_DEBUG)
     // Enable better shader debugging with the graphics debugging tools.
@@ -443,6 +520,8 @@ void Renderer::D3D12Renderer::InitPipelineState()
 
     D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\forward_vs.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "vs_5_0", compileFlags, 0, &vertexShader, nullptr);
     D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\forward_ps.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_0", compileFlags, 0, &pixelShader, nullptr);
+	D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\frame_quad_vs.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "vs_5_0", compileFlags, 0, &quadShader_vs, nullptr);
+	D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\frame_quad_ps.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_0", compileFlags, 0, &quadShader_ps, nullptr);
 
     // Define the vertex input layout.
     D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
@@ -456,7 +535,7 @@ void Renderer::D3D12Renderer::InitPipelineState()
     // Describe and create the graphics pipeline state object (PSO).
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
     psoDesc.InputLayout = { inputElementDescs, _countof(inputElementDescs) };
-    psoDesc.pRootSignature = m_graphicsRootSignature;
+    psoDesc.pRootSignature = m_clusterForwardRootSignature;
     psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.Get());
     psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader.Get());
     psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
@@ -464,11 +543,22 @@ void Renderer::D3D12Renderer::InitPipelineState()
     psoDesc.DepthStencilState= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
     psoDesc.SampleMask = UINT_MAX;
     psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    psoDesc.NumRenderTargets = 1;
+    psoDesc.NumRenderTargets = 3;
     psoDesc.RTVFormats[0] = DXGI_FORMAT_R10G10B10A2_UNORM;
+	psoDesc.RTVFormats[1] = DXGI_FORMAT_R16G16B16A16_FLOAT;
+	psoDesc.RTVFormats[2] = DXGI_FORMAT_R16G16B16A16_FLOAT;
 	psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
     psoDesc.SampleDesc.Count = 1;
     m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_graphicsPipelineState));
+
+	psoDesc.VS = CD3DX12_SHADER_BYTECODE(quadShader_vs.Get());
+	psoDesc.PS = CD3DX12_SHADER_BYTECODE(quadShader_ps.Get());
+	psoDesc.pRootSignature = m_finalOutputRootSignature;
+	psoDesc.NumRenderTargets = 1;
+	psoDesc.RTVFormats[1] = DXGI_FORMAT_UNKNOWN;
+	psoDesc.RTVFormats[2] = DXGI_FORMAT_UNKNOWN;
+	psoDesc.DepthStencilState.DepthEnable = false;
+	m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_quadPipelineState));
 
 
 	//Compute Pipieline state
@@ -480,6 +570,53 @@ void Renderer::D3D12Renderer::InitPipelineState()
 		l_computePipelineStateDesc.CS = CD3DX12_SHADER_BYTECODE(computeShader.Get());;
 		m_device->CreateComputePipelineState(&l_computePipelineStateDesc, MY_IID_PPV_ARGS(&m_computePipelineState));
 	}
+}
+
+void Renderer::D3D12Renderer::InitRenderpass()
+{
+	auto& l_graphicsContext = D3D12GraphicsContext::GetContext();
+	
+	D3D12_RENDER_PASS_RENDER_TARGET_DESC l_lightRT = {};
+	l_lightRT.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
+	l_lightRT.BeginningAccess.Clear.ClearValue.Color[0] = Constants::CLEAR_COLOR[0];
+	l_lightRT.BeginningAccess.Clear.ClearValue.Color[1] = Constants::CLEAR_COLOR[1];
+	l_lightRT.BeginningAccess.Clear.ClearValue.Color[2] = Constants::CLEAR_COLOR[2];
+	l_lightRT.BeginningAccess.Clear.ClearValue.Color[3] = Constants::CLEAR_COLOR[3];
+	l_lightRT.BeginningAccess.Clear.ClearValue.Format = DXGI_FORMAT_R10G10B10A2_UNORM;
+	l_lightRT.cpuDescriptor = l_graphicsContext.GetRenderTarget("Light")->GetRTV()->cpuHandle;
+	l_lightRT.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+
+	D3D12_RENDER_PASS_RENDER_TARGET_DESC l_normalRT = {};
+	l_normalRT.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
+	l_normalRT.BeginningAccess.Clear.ClearValue.Color[0] = Constants::CLEAR_COLOR[0];
+	l_normalRT.BeginningAccess.Clear.ClearValue.Color[1] = Constants::CLEAR_COLOR[1];
+	l_normalRT.BeginningAccess.Clear.ClearValue.Color[2] = Constants::CLEAR_COLOR[2];
+	l_normalRT.BeginningAccess.Clear.ClearValue.Color[3] = Constants::CLEAR_COLOR[3];
+	l_normalRT.BeginningAccess.Clear.ClearValue.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+	l_normalRT.cpuDescriptor = l_graphicsContext.GetRenderTarget("Normal")->GetRTV()->cpuHandle;
+	l_normalRT.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+
+	D3D12_RENDER_PASS_RENDER_TARGET_DESC l_specularRT = {};
+	l_specularRT.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
+	l_specularRT.BeginningAccess.Clear.ClearValue.Color[0] = Constants::CLEAR_COLOR[0];
+	l_specularRT.BeginningAccess.Clear.ClearValue.Color[1] = Constants::CLEAR_COLOR[1];
+	l_specularRT.BeginningAccess.Clear.ClearValue.Color[2] = Constants::CLEAR_COLOR[2];
+	l_specularRT.BeginningAccess.Clear.ClearValue.Color[3] = Constants::CLEAR_COLOR[3];
+	l_specularRT.BeginningAccess.Clear.ClearValue.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+	l_specularRT.cpuDescriptor = l_graphicsContext.GetRenderTarget("Specular")->GetRTV()->cpuHandle;
+	l_specularRT.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+
+	D3D12_RENDER_PASS_DEPTH_STENCIL_DESC l_depthRT = {};
+	l_depthRT.cpuDescriptor = l_graphicsContext.GetDepthBuffer()->cpuHandle;
+	l_depthRT.DepthBeginningAccess.Clear.ClearValue.DepthStencil = { 1.0f,0 };
+	l_depthRT.DepthBeginningAccess.Clear.ClearValue.Format = Constants::DepthFormat;
+
+	m_clusterForwardPass.mrt = { l_lightRT ,l_normalRT ,l_specularRT };
+	m_clusterForwardPass.depth = l_depthRT;
+
+
+
+
 }
 
 void Renderer::D3D12Renderer::LoadScene(Renderer::Scene*)

@@ -79,14 +79,29 @@ namespace Renderer {
 
 		void InitPipelineState();
 
+		void InitRenderpass();
+
 		//Default texture
 		void CreateDefaultTexture();
 
 		Renderer::Scene* m_scene;
 
-		ID3D12RootSignature* m_graphicsRootSignature;
+
+		typedef struct RenderPass
+		{
+			std::vector<D3D12_RENDER_PASS_RENDER_TARGET_DESC> mrt;
+			D3D12_RENDER_PASS_DEPTH_STENCIL_DESC depth;
+		}RenderPass;
+
+		RenderPass m_clusterForwardPass;
+
+		ID3D12RootSignature* m_clusterForwardRootSignature;
+
+		ID3D12RootSignature* m_finalOutputRootSignature;
 
 		ID3D12PipelineState* m_graphicsPipelineState;
+
+		ID3D12PipelineState* m_quadPipelineState;
 
 		ID3D12RootSignature* m_computeRootSignature;
 
@@ -140,6 +155,9 @@ namespace Renderer {
 
 		}m_frameQuad;
 
+
+		uint32_t m_width;
+		uint32_t m_height;
 
 	};
 };

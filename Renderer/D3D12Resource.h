@@ -43,6 +43,16 @@ namespace Renderer
 
         D3D12_GPU_VIRTUAL_ADDRESS GetGpuVirtualAddress() const { return m_GpuVirtualAddress; }
 
+        void SetName(LPCWSTR p_name)
+        {
+            m_pResource->SetName(p_name);
+        }
+
+        void SetName(std::wstring p_name)
+        {
+            m_pResource->SetName(p_name.c_str());
+        }
+        
     protected:
 
         Microsoft::WRL::ComPtr<ID3D12Resource> m_pResource;

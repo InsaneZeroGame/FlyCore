@@ -8,7 +8,8 @@ Renderer::D3D12Texture::D3D12Texture(
 	const D3D12_RESOURCE_DESC& p_desc,
 	D3D12_HEAP_FLAGS p_flag,
 	D3D12_CLEAR_VALUE p_clearValue,
-	ID3D12Resource* p_resource):
+	ID3D12Resource* p_resource,
+	D3D12_RESOURCE_STATES p_state):
 	m_resourceDesc(p_desc)
 {
 
@@ -27,7 +28,7 @@ Renderer::D3D12Texture::D3D12Texture(
 		l_heapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 		l_heapProperties.CreationNodeMask = 0;
 		l_heapProperties.VisibleNodeMask = 0;
-		ASSERT_SUCCEEDED(l_device->CreateCommittedResource(&l_heapProperties, p_flag, &m_resourceDesc, D3D12_RESOURCE_STATE_COMMON, &p_clearValue, MY_IID_PPV_ARGS(&m_pResource)));
+		ASSERT_SUCCEEDED(l_device->CreateCommittedResource(&l_heapProperties, p_flag, &m_resourceDesc, p_state, &p_clearValue, MY_IID_PPV_ARGS(&m_pResource)));
 	}
 }
 
@@ -43,12 +44,12 @@ Renderer::D3D12DepthBuffer::D3D12DepthBuffer(uint32_t p_width,uint32_t p_height)
 		p_height,
 		1,
 		1,
-		DXGI_FORMAT_D32_FLOAT,
+		Constants::DepthFormat,
 		{1,0},
 		D3D12_TEXTURE_LAYOUT_UNKNOWN ,
 		D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL }, 
 		D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE,
-		{ DXGI_FORMAT_D32_FLOAT,{1.0f,0} })
+		{ Constants::DepthFormat,{1.0f,0} })
 {
 	CreateViews();
 	//Transit resource state to depth_write using graphics cmd context
@@ -75,7 +76,7 @@ Renderer::D3D12DepthBuffer::~D3D12DepthBuffer()
 {
 }
 
-Renderer::D3D12RenderTarget::D3D12RenderTarget(uint32_t p_width,uint32_t p_height,ID3D12Resource* p_resource):
+Renderer::D3D12RenderTarget::D3D12RenderTarget(uint32_t p_width,uint32_t p_height,ID3D12Resource* p_resource,DXGI_FORMAT p_format):
 	D3D12Texture(
 		{
 		 D3D12_RESOURCE_DIMENSION_TEXTURE2D,
@@ -84,15 +85,16 @@ Renderer::D3D12RenderTarget::D3D12RenderTarget(uint32_t p_width,uint32_t p_heigh
 		 p_height,
 		 1,
 		 0,
-		 Constants::SwapChainFormat,
+		 p_format,
 		{1,
 		 0},
 		 D3D12_TEXTURE_LAYOUT_UNKNOWN,
 		D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
 		},
-		D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES,
-		{},
-		p_resource)
+		D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE,
+		{p_format},
+		p_resource, D3D12_RESOURCE_STATE_RENDER_TARGET)
+		
 {
 	CreateViews();
 }
@@ -107,4 +109,7 @@ void Renderer::D3D12RenderTarget::CreateViews()
 	m_rtv = D3D12DescManager::GetDescManager().RequestDesc(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	ID3D12Device* l_device = (D3D12Device::GetDevice());
 	l_device->CreateRenderTargetView(m_pResource.Get(), nullptr, m_rtv->cpuHandle);
+
+	m_srv = D3D12DescManager::GetDescManager().RequestDesc(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	l_device->CreateShaderResourceView(m_pResource.Get(), nullptr, m_srv->cpuHandle);
 }

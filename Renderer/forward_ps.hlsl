@@ -29,8 +29,15 @@ static float4 sliceColor[16] = {
 
 };
 
+struct MRT
+{
+	float4 LightOut : COLOR0;
+	float4 NormalOut : COLOR1;
+	float4 SpecularOut:COLOR2;
+};
 
-float4 main(PSInput input) : SV_TARGET
+
+MRT main(PSInput input) : SV_TARGET
 {
 	float zNear = zNearFar.x;
 	float zFar = zNearFar.y;
@@ -46,6 +53,7 @@ float4 main(PSInput input) : SV_TARGET
 	float4 colorStep = 1.0/256.0;
 
 	float4 diffuseDebug = 0.0f;
+	MRT l_res;
 
 	for (uint i = 0; i < 256; ++i)
 	{
@@ -65,7 +73,10 @@ float4 main(PSInput input) : SV_TARGET
 		}
 	}
 	//return spec;
-	return (diffuse + spec) * 0.75 + float4(0.25, 0.25, 0.25, 1.0);
+	l_res.LightOut = (diffuse + spec) * 0.75 + float4(0.25, 0.25, 0.25, 1.0);
+	l_res.NormalOut = float4(input.normal,1.0f);
+	l_res.SpecularOut = float4(1.0f, 0.0f, 0.0f, 1.0f);
+	return l_res;
 
 #ifdef DEBUG_SHADER
 

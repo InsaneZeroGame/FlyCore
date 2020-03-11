@@ -38,7 +38,7 @@ namespace Renderer
 
 		void Reset(const uint32_t& p_index,ID3D12PipelineState* p_state = nullptr) const;
 
-		__forceinline ID3D12GraphicsCommandList* GetCmd()
+		__forceinline ID3D12GraphicsCommandList4* GetCmd()
 		{
 			return m_cmdList;
 		}
@@ -47,9 +47,9 @@ namespace Renderer
 			return m_cmdQueue->GetQueue();
 		}
 
-		operator ID3D12GraphicsCommandList* () { return m_cmdList; }
+		operator ID3D12GraphicsCommandList4* () { return m_cmdList; }
 	private:
-		ID3D12GraphicsCommandList* m_cmdList;
+		ID3D12GraphicsCommandList4* m_cmdList;
 
 		static D3D12CmdQueue* m_cmdQueue;
 

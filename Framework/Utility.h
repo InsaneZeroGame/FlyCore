@@ -12,16 +12,30 @@
 //
 
 #pragma once
-
+#include <string>
+#include <Windows.h>
 
 namespace Utility
 {
+
 	//Align to 256
 	static uint64_t AlignTo256(uint64_t i)
 	{
 		return ((i >> 8) + 1) << 8;
 	}
 
+    static float RandomFloat_01()
+    {
+        //return 0-1.0
+        return float(rand()) / float(RAND_MAX);
+    }
+
+    static float RandomFloat_11()
+    {
+        //return 0.0-1.0
+        return 2.0f * RandomFloat_01() - 1.0f;
+
+    }
 
     inline void Print( const char* msg ) { printf("%s", msg); }
     inline void Print( const wchar_t* msg ) { wprintf(L"%ws", msg); }

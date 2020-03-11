@@ -1,7 +1,8 @@
 #include "stdafx.h"
 #include "D3D12Device.h"
 
-Renderer::D3D12Device::D3D12Device()
+Renderer::D3D12Device::D3D12Device():
+    m_features({})
 {
     Microsoft::WRL::ComPtr<ID3D12Device> pDevice;
 
@@ -46,7 +47,13 @@ Renderer::D3D12Device::D3D12Device()
         if (MaxSize > 0)
             m_device = pDevice.Detach();
     }
+
+    m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &m_features, sizeof(m_features));
+
+
+
 }
+
 
 Renderer::D3D12Device::~D3D12Device()
 {

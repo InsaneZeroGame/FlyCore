@@ -16,7 +16,7 @@ namespace Renderer
 		
 		~D3D12DescHeap();
 
-		__forceinline ID3D12DescriptorHeap* GetHeap() { return m_descHeap; }
+		__forceinline ID3D12DescriptorHeap * GetHeap() { return m_descHeap; }
 
 		D3D12Descriptor* RequestDesc();
 

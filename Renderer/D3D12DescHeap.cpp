@@ -44,6 +44,8 @@ Renderer::D3D12Descriptor* Renderer::D3D12DescHeap::RequestDesc()
 	}
 	else
 	{
+
+		//assert(0 && "Todo:Wrong offset");
 		//Need to allocate new one
 		if (m_allocatedCount < m_maxDescCount)
 		{
@@ -51,7 +53,7 @@ Renderer::D3D12Descriptor* Renderer::D3D12DescHeap::RequestDesc()
 			auto* l_desc = new D3D12Descriptor;
 			l_desc->type = m_type;
 			l_desc->cpuHandle.ptr = m_descHeap->GetCPUDescriptorHandleForHeapStart().ptr + m_descOffset;
-			l_desc->gpuHandle.ptr = m_descHeap->GetCPUDescriptorHandleForHeapStart().ptr + m_descOffset;
+			l_desc->gpuHandle.ptr = m_descHeap->GetGPUDescriptorHandleForHeapStart().ptr + m_descOffset;
 			m_descOffset += m_descHandleIncrementSize;
 			m_allocatedCount++;
 			return l_desc;

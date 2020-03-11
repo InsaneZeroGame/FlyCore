@@ -2,7 +2,7 @@ struct PSInput
 {
 	float4 position : SV_POSITION;
 	float4 scenePositionView : positionView;
-	float4 color : COLOR0;
+	float2 uv : TEXCOORD0;
 	float3 normal:NORMAL;
 
 };

@@ -15,6 +15,7 @@ namespace Renderer
 		static const uint64_t VERTEX_BUFFER_SIZE = 10 * 1024 * 1024;
 		static const uint32_t SWAPCHAIN_BUFFER_COUNT = 3;
 		static DXGI_FORMAT SwapChainFormat = DXGI_FORMAT_R10G10B10A2_UNORM;
+		static DXGI_FORMAT DepthFormat = DXGI_FORMAT_D32_FLOAT;
 		static const float CLEAR_COLOR[] = { 0.15F, 0.35F, 0.75F, 1.0f };
 		static bool TypedUAVLoadSupport_R11G11B10_FLOAT = false;
 		static bool TypedUAVLoadSupport_R16G16B16A16_FLOAT = false;

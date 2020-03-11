@@ -4,7 +4,8 @@ set(ShaderSource
 "forward_vs.hlsl"
 "lightcull_cs.hlsl"
 "shader_common.hlsli"
-"frame_quad.hlsl"
+"frame_quad_ps.hlsl"
+"frame_quad_vs.hlsl"
 )
 
 source_group(Shaders FILES ${ShaderSource})

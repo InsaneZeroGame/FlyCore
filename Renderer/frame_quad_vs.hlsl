@@ -16,8 +16,8 @@ PSInput main(float4 position : POSITION, float3 normal : NORMAL0,float2 tex_uv :
 {
 	PSInput result;
 	result.scenePositionView = mul(view, position);
-	result.position = mul(project, result.scenePositionView);
-	result.normal = normalize(mul(view,float4(normal,0.0))).xyz;
+	result.position = position;
+	result.normal = normal;
 	result.uv = tex_uv;
 	return result;
 }

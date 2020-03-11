@@ -28,6 +28,6 @@ namespace Renderer
 
 		ID3D12Device* m_device = nullptr;
 
-
+		D3D12_FEATURE_DATA_D3D12_OPTIONS5 m_features;
 	};
 }

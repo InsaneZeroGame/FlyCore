@@ -8,7 +8,7 @@ Renderer::D3D12DescManager::D3D12DescManager()
 	{
 		if (i == D3D12_DESCRIPTOR_HEAP_TYPE_RTV || i == D3D12_DESCRIPTOR_HEAP_TYPE_DSV)
 		{
-			m_descHeaps[i] = new D3D12DescHeap(D3D12_DESCRIPTOR_HEAP_TYPE(i),Constants::SWAPCHAIN_BUFFER_COUNT, D3D12_DESCRIPTOR_HEAP_FLAG_NONE);
+			m_descHeaps[i] = new D3D12DescHeap(D3D12_DESCRIPTOR_HEAP_TYPE(i),Constants::SWAPCHAIN_BUFFER_COUNT * 3, D3D12_DESCRIPTOR_HEAP_FLAG_NONE);
 			continue;
 		}
 		m_descHeaps[i] = new D3D12DescHeap(D3D12_DESCRIPTOR_HEAP_TYPE(i));
