@@ -31,7 +31,7 @@ namespace Renderer
 			m_graphicsCmdList->EndRenderPass();
 		};
 
-		void TransitRenderTargets(std::vector<std::string> p_names, D3D12_RESOURCE_STATES p_stateBefore, D3D12_RESOURCE_STATES p_stateAfter);
+		void TransitRenderTargets(std::vector<std::string>&& p_names, D3D12_RESOURCE_STATES p_stateBefore, D3D12_RESOURCE_STATES p_stateAfter);
 		
 		void TransitRenderTarget(const std::string& p_names, D3D12_RESOURCE_STATES p_stateBefore, D3D12_RESOURCE_STATES p_stateAfter);
 

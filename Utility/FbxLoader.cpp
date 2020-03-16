@@ -37,7 +37,7 @@ Utility::FbxLoader::FbxLoader():
 
 
 
-void Utility::FbxLoader::LoadFile(const std::string p_fileName, Renderer::Scene* p_scene)
+void Utility::FbxLoader::LoadSceneFromFile(const std::string p_fileName, Renderer::Scene* p_scene)
 {
     m_currentGameScene = p_scene;
     // Prepare the FBX SDK.
@@ -1154,7 +1154,7 @@ void DestroySdkObjects(FbxManager* pManager, bool pExitStatus)
 {
     //Delete the FBX Manager. All the objects that have been allocated using the FBX Manager and that haven't been explicitly destroyed are also automatically destroyed.
     if (pManager) pManager->Destroy();
-    if (pExitStatus);//FBXSDK_printf("Program Success!\n");
+    //if (pExitStatus);//FBXSDK_printf("Program Success!\n");
 }
 
 

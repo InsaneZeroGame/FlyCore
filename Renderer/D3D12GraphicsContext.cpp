@@ -11,16 +11,15 @@ Renderer::D3D12GraphicsContext::D3D12GraphicsContext():
 {
 }
 
-void Renderer::D3D12GraphicsContext::TransitRenderTargets(std::vector<std::string> p_names, D3D12_RESOURCE_STATES p_stateBefore, D3D12_RESOURCE_STATES p_stateAfter)
+void Renderer::D3D12GraphicsContext::TransitRenderTargets(std::vector<std::string>&& p_names, D3D12_RESOURCE_STATES p_stateBefore, D3D12_RESOURCE_STATES p_stateAfter)
 {
 	std::vector<D3D12_RESOURCE_BARRIER> l_barriers;
-
+	l_barriers.resize(p_names.size());
 
 	for (auto i = 0; i < p_names.size(); ++i)
 	{
-		D3D12_RESOURCE_BARRIER l_barrier;
-		l_barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		//l_barrier.Transition = { m_renderTargets[p_names[i]]->GetResource(), 0,p_stateBefore,p_stateAfter };
+		l_barriers[i].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		l_barriers[i].Transition = { m_renderTargets[p_names[i]]->GetResource(), 0,p_stateBefore,p_stateAfter };
 	}
 	m_graphicsCmdList->ResourceBarrier(l_barriers.size(),l_barriers.data());
 

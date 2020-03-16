@@ -113,3 +113,37 @@ void Renderer::D3D12RenderTarget::CreateViews()
 	m_srv = D3D12DescManager::GetDescManager().RequestDesc(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	l_device->CreateShaderResourceView(m_pResource.Get(), nullptr, m_srv->cpuHandle);
 }
+
+Renderer::D3D12Texture2D::D3D12Texture2D(uint32_t p_width, uint32_t p_height,DXGI_FORMAT p_format)
+	:D3D12Texture(
+		{
+		 D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+		 0,
+		 p_width,
+		 p_height,
+		 1,
+		 0,
+		 p_format,
+		{1,
+		 0},
+		 D3D12_TEXTURE_LAYOUT_UNKNOWN,
+		D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
+		},
+		D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE,
+		{ p_format },
+		nullptr, D3D12_RESOURCE_STATE_COPY_DEST)
+{
+	CreateViews();
+}
+
+Renderer::D3D12Texture2D::~D3D12Texture2D()
+{
+}
+
+void Renderer::D3D12Texture2D::CreateViews()
+{
+	ID3D12Device* l_device = (D3D12Device::GetDevice());
+	m_srv = D3D12DescManager::GetDescManager().RequestDesc(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	l_device->CreateShaderResourceView(m_pResource.Get(), nullptr, m_srv->cpuHandle);
+
+}

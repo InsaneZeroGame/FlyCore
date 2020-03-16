@@ -24,7 +24,17 @@ namespace Renderer
 		
 		virtual void CreateViews() {};
 	};
-	
+
+	class D3D12Texture2D : public D3D12Texture
+	{
+	public:
+		D3D12Texture2D(uint32_t p_width, uint32_t p_height,DXGI_FORMAT p_format = DXGI_FORMAT_R8G8B8A8_UNORM);
+		~D3D12Texture2D();
+
+	private:
+		void CreateViews() override;
+	};
+
 
 	class D3D12RenderTarget : public D3D12Texture
 	{

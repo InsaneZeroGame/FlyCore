@@ -5,6 +5,23 @@
 namespace Renderer
 {
 
+	struct Texture
+	{
+		int width;//Max to 4096
+		int height;//Max to 4096
+		int componentSize;
+		unsigned char* data;
+		int size;
+
+		~Texture() {
+			if (data)
+			{
+				delete[] data;
+				data = nullptr;
+			}
+		}
+	};
+
 	struct Vertex
 	{
 		std::array<float,4> position;

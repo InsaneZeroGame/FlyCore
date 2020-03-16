@@ -13,7 +13,7 @@ namespace Utility
 
 		~FbxLoader();
 
-		void LoadFile(const std::string p_fileName, Renderer::Scene* p_scene);
+		void LoadSceneFromFile(const std::string p_fileName, Renderer::Scene* p_scene);
 
 
 	private:

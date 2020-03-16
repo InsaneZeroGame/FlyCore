@@ -155,9 +155,11 @@ namespace Renderer {
 
 		}m_frameQuad;
 
-
 		uint32_t m_width;
+
 		uint32_t m_height;
+
+		D3D12Texture2D* m_defaultTexture;
 
 	};
 };

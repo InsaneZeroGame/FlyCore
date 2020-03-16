@@ -16,8 +16,10 @@ namespace Utility
 
 		__forceinline void LoadFbx(const std::string p_fileName, Renderer::Scene* p_scene)
 		{
-			m_fbxLoader->LoadFile(p_fileName, p_scene);
+			m_fbxLoader->LoadSceneFromFile(p_fileName, p_scene);
 		};
+
+		static bool LoadTextureFromFile(const std::string& p_fileName, Renderer::Texture& p_texture);
 
 		FbxLoader* m_fbxLoader;
 

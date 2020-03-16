@@ -7,6 +7,8 @@ float linstep(float min, float max, float v)
 
 StructuredBuffer<LightList> LightBuffer : register(t1);
 StructuredBuffer<PointLight> PointLights : register(t2);
+Texture2D <float4> Alebdo : register(t3);
+SamplerState DefaultSampler :register(s0);
 
 static uint2  SCREEN_DIMENSION = uint2(1920, 1080);
 static float4 sliceColor[16] = {
@@ -73,7 +75,9 @@ MRT main(PSInput input) : SV_TARGET
 		}
 	}
 	//return spec;
-	l_res.LightOut = (diffuse + spec) * 0.75 + float4(0.25, 0.25, 0.25, 1.0);
+	//l_res.LightOut = Alebdo.Sample(DefaultSampler, input.uv);
+	l_res.LightOut = (diffuse * Alebdo.Sample(DefaultSampler,input.uv) + spec) * 0.75 + float4(0.25, 0.25, 0.25, 1.0);
+	//l_res.LightOut = (diffuse + spec) * 0.75 + float4(0.25, 0.25, 0.25, 1.0);
 	l_res.NormalOut = float4(input.normal,1.0f);
 	l_res.SpecularOut = float4(1.0f, 0.0f, 0.0f, 1.0f);
 	return l_res;

@@ -21,7 +21,8 @@ namespace Utility
 	//Align to 256
 	static uint64_t AlignTo256(uint64_t i)
 	{
-		return ((i >> 8) + 1) << 8;
+        
+		return i % 256 == 0? i : ((i >> 8) + 1) << 8;
 	}
 
     static float RandomFloat_01()

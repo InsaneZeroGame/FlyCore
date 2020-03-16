@@ -48,6 +48,10 @@ namespace Renderer
 			UINT64 SrcOffset,
 			UINT64 NumBytes);
 
+		void CopyTextureData(ID3D12Resource* pDstBuffer,
+			ID3D12Resource* pSrcBuffers,uint32_t p_width,uint32_t p_height, DXGI_FORMAT p_format);
+
+
 		void TransitResourceState(ID3D12Resource* pResource,
 		D3D12_RESOURCE_STATES StateBefore,
 		D3D12_RESOURCE_STATES StateAfter,

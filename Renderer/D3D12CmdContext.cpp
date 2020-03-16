@@ -68,6 +68,35 @@ void Renderer::D3D12GraphicsCmdContext::CopyBufferData(ID3D12Resource* pDstBuffe
 	m_graphicsCmdList->CopyBufferRegion(pDstBuffer, DstOffset, pSrcBuffer,SrcOffset, NumBytes);
 }
 
+void Renderer::D3D12GraphicsCmdContext::CopyTextureData(
+	ID3D12Resource* pDstBuffer, 
+	ID3D12Resource* pSrcBuffers, 
+	uint32_t p_width,
+	uint32_t p_height,
+	DXGI_FORMAT p_format)
+{
+	D3D12_TEXTURE_COPY_LOCATION l_destLocation = {};
+	l_destLocation.pResource = pDstBuffer;
+	l_destLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+	l_destLocation.SubresourceIndex = 0;
+
+	D3D12_TEXTURE_COPY_LOCATION l_srcLocation = {};
+	l_srcLocation.pResource = pSrcBuffers;
+	l_srcLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+	auto texelInByte = GetFormatInByte(p_format);
+	l_srcLocation.PlacedFootprint.Footprint = { p_format ,p_width,p_height,1,static_cast<uint32_t>(Utility::AlignTo256(p_width  * texelInByte))};
+	l_srcLocation.PlacedFootprint.Offset = 0;
+
+	D3D12_BOX l_box = {};
+	l_box.left = 0;
+	l_box.top = 0;
+	l_box.front = 0;
+	l_box.right = p_width;
+	l_box.bottom = p_height;
+	l_box.back = 1;
+	m_graphicsCmdList->CopyTextureRegion(&l_destLocation, 0, 0, 0, &l_srcLocation, &l_box);
+}
+
 void Renderer::D3D12GraphicsCmdContext::TransitResourceState(ID3D12Resource* pResource,
 	D3D12_RESOURCE_STATES StateBefore,
 	D3D12_RESOURCE_STATES StateAfter,

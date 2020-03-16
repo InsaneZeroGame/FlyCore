@@ -4,14 +4,11 @@
 #include "../Utility/AssetLoader.h"
 #include "D3D12DescManager.h"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "../3dparty/include/stb_image.h"
-
 #define CAMERA_UNIFORM_ROOT_INDEX 0
 #define LIGHT_UAV_ROOT_INDEX 1
 #define LIGHT_BUFFER_ROOT_INDEX 2
 #define FINAL_OUTPUT_TEX_ROOT_INDEX 1
-
+#define DIFFUSE_MAP 3
 
 Renderer::D3D12Renderer::D3D12Renderer():
     m_device(D3D12Device::GetDevice()),
@@ -87,6 +84,9 @@ void Renderer::D3D12Renderer::OnUpdate()
 		l_graphicsCmdList->SetGraphicsRootConstantBufferView(CAMERA_UNIFORM_ROOT_INDEX, m_VSUniform->GetGpuVirtualAddress());
 		l_graphicsCmdList->SetGraphicsRootShaderResourceView(LIGHT_UAV_ROOT_INDEX, m_lightList->GetGpuVirtualAddress());
 		l_graphicsCmdList->SetGraphicsRootShaderResourceView(LIGHT_BUFFER_ROOT_INDEX, m_lightBuffer->GetGpuVirtualAddress());
+		ID3D12DescriptorHeap* l_srvHeap[] = { D3D12DescManager::GetDescManager().GetHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)->GetHeap() };
+		l_graphicsCmdList->SetDescriptorHeaps(1, l_srvHeap);
+		l_graphicsCmdList->SetGraphicsRootDescriptorTable(DIFFUSE_MAP, m_defaultTexture->GetSRV()->gpuHandle);
 		l_graphicsCmdList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		
 		for (auto& l_actor = m_scene->m_actors.begin(); l_actor < m_scene->m_actors.end(); ++l_actor)
@@ -100,10 +100,7 @@ void Renderer::D3D12Renderer::OnUpdate()
 	l_graphicsCmdList->EndRenderPass();
 
 	//Resource Trasition
-	l_graphicsContext.TransitRenderTarget(std::string("Light"),D3D12_RESOURCE_STATE_RENDER_TARGET,D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-	l_graphicsContext.TransitRenderTarget(std::string("Normal"), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-	l_graphicsContext.TransitRenderTarget(std::string("Specular"), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-	
+	l_graphicsContext.TransitRenderTargets({ "Light","Normal","Specular" }, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 	//Deferred Pass
 	l_graphicsContext.BeginSwapchainOutputPass(m_frameIndex);
 	l_graphicsCmdList->SetPipelineState(m_quadPipelineState);
@@ -117,9 +114,7 @@ void Renderer::D3D12Renderer::OnUpdate()
 	l_graphicsCmdList->SetDescriptorHeaps(1, l_srvHeap);
 	l_graphicsCmdList->SetGraphicsRootDescriptorTable(FINAL_OUTPUT_TEX_ROOT_INDEX, l_graphicsContext.GetRenderTarget("Light")->GetSRV()->gpuHandle);
 	l_graphicsCmdList->DrawIndexedInstanced(static_cast<uint32_t>(m_frameQuad.m_quadMesh.m_indices.size()), 1, m_frameQuad.m_quadIndexOffset, m_frameQuad.m_quadVertexOffset, 0);
-	l_graphicsContext.TransitRenderTarget(std::string("Light"), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	l_graphicsContext.TransitRenderTarget(std::string("Normal"), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	l_graphicsContext.TransitRenderTarget(std::string("Specular"), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	l_graphicsContext.TransitRenderTargets({ "Light","Normal","Specular" }, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 	
 	l_graphicsCmdList->EndRenderPass();
@@ -238,7 +233,7 @@ void Renderer::D3D12Renderer::InitBuffers()
     auto& loader = Utility::AssetLoader::GetLoader();
     
     m_scene = new Renderer::Scene;
-    loader.LoadFbx("D:\\Dev\\FlyCore\\scene1.fbx", m_scene);
+    loader.LoadFbx("C:\\Dev\\FlyCore\\scene1.fbx", m_scene);
 
     m_vertexBuffer = new D3D12VertexBuffer(Constants::VERTEX_BUFFER_SIZE);
     m_uploadBuffer = new D3D12UploadBuffer(Constants::MAX_CONST_BUFFER_VIEW_SIZE);
@@ -253,7 +248,7 @@ void Renderer::D3D12Renderer::InitBuffers()
 	m_uniformBuffer.m_proj = glm::perspectiveFovLH(45.0f, 30.0f, 30.0f, m_uniformBuffer.zNearFar[0], m_uniformBuffer.zNearFar[1]);
 	//m_uniformBuffer.m_proj = glm::orthoLH(-20.0f, 20.0f, -20.0f, 20.0f, m_uniformBuffer.zNearFar[2], -m_uniformBuffer.zNearFar[2]);
 	m_uniformBuffer.m_inverProj = glm::inverse(m_uniformBuffer.m_proj);
-	m_uniformBuffer.m_view = glm::lookAtLH(glm::vec3(15.1, 20.0, 15.0), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	m_uniformBuffer.m_view = glm::lookAtLH(glm::vec3(10.0f, 20.0, -10.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	m_VSUniform->CopyData(&m_uniformBuffer, Utility::AlignTo256(sizeof(SceneUniformBuffer)));
 
 	std::array<PointLight, 256> l_lights;
@@ -287,7 +282,7 @@ void Renderer::D3D12Renderer::InitBuffers()
 
 	for (auto i = 0; i < 16; ++i)
 	{
-		for (auto j = 0; j < 4; ++j)
+		for (auto j = 0; j < 16; ++j)
 		{
 			auto lightPosView = m_uniformBuffer.m_view * glm::vec4(10 * Utility:: RandomFloat_11(), 4.0 * Utility::RandomFloat_01(), 10 * Utility::RandomFloat_11(), 1.0);
 			//auto lightPosView = m_uniformBuffer.m_view * glm::vec4(0, 0.5, 0, 1.0f);
@@ -376,12 +371,39 @@ void Renderer::D3D12Renderer::InitBuffers()
         D3D12_RESOURCE_STATE_INDEX_BUFFER);
     l_graphicsContext.End(true);
 
+	Texture l_texture;
+	
+	Utility::AssetLoader::LoadTextureFromFile("C:\\Dev\\FlyCore\\uv_texture.png", l_texture);
+	m_uploadBuffer->ResetBuffer();
+	m_defaultTexture = new D3D12Texture2D(l_texture.width, l_texture.height);
+	m_defaultTexture->SetName(L"Default Texture");
+	m_uploadBuffer->CopyData(l_texture.data, l_texture.size);
+	l_graphicsContext.Begin(nullptr);
+	l_graphicsContext.CopyTextureData(
+		m_defaultTexture->GetResource(), 
+		m_uploadBuffer->GetResource(), 
+		l_texture.width,l_texture.height,DXGI_FORMAT_R8G8B8A8_UNORM);
+	l_graphicsContext.TransitResourceState(m_defaultTexture->GetResource(),
+		D3D12_RESOURCE_STATE_COPY_DEST,
+		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	l_graphicsContext.End(true);
+
+
     m_lightList = new D3D12StructBuffer(1024, sizeof(LightList));
 }
 
 void Renderer::D3D12Renderer::InitRootSignature()
 {
-    using namespace Microsoft::WRL;
+	using namespace Microsoft::WRL;
+
+	//STATIC SAMPLER DESC
+	D3D12_STATIC_SAMPLER_DESC l_defaultSampler = {};
+	l_defaultSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	l_defaultSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+	l_defaultSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+	l_defaultSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+	l_defaultSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+
     // Create Graphics RS
 	{
 		CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
@@ -401,15 +423,28 @@ void Renderer::D3D12Renderer::InitRootSignature()
 		l_lightBuffer.Descriptor = { 2,0 };
 		l_lightBuffer.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
+		D3D12_ROOT_PARAMETER l_diffuseMap = {};
+		l_diffuseMap.DescriptorTable.NumDescriptorRanges = 1;
+		l_diffuseMap.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		D3D12_DESCRIPTOR_RANGE l_range = {};
+		l_range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		l_range.NumDescriptors = 1;
+		l_range.BaseShaderRegister = 3;
+		l_range.RegisterSpace = 0;
+		l_range.OffsetInDescriptorsFromTableStart = 0;
+		l_diffuseMap.DescriptorTable.pDescriptorRanges = &l_range;
+		l_diffuseMap.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
 
 		std::vector<D3D12_ROOT_PARAMETER> l_rootParameters =
 		{
 			l_cameraUniform,
 			l_lightUAV,
-			l_lightBuffer
+			l_lightBuffer,
+			l_diffuseMap
 		};
 
-		rootSignatureDesc.Init(static_cast<uint32_t>(l_rootParameters.size()), l_rootParameters.data(), 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+		rootSignatureDesc.Init(static_cast<uint32_t>(l_rootParameters.size()), l_rootParameters.data(), 1, &l_defaultSampler, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 		ComPtr<ID3DBlob> signature;
 		ComPtr<ID3DBlob> error;
@@ -444,13 +479,7 @@ void Renderer::D3D12Renderer::InitRootSignature()
 			l_finalOutputTextures
 		};
 
-		//STATIC SAMPLER DESC
-		D3D12_STATIC_SAMPLER_DESC l_defaultSampler = {};
-		l_defaultSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-		l_defaultSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-		l_defaultSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-		l_defaultSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-		l_defaultSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+		
 
 		rootSignatureDesc.Init(static_cast<uint32_t>(l_rootParameters.size()), l_rootParameters.data(), 1, &l_defaultSampler, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
@@ -518,10 +547,10 @@ void Renderer::D3D12Renderer::InitPipelineState()
     UINT compileFlags = 0;
 #endif
 
-    D3DCompileFromFile(L"D:\\Dev\\FlyCore\\Renderer\\forward_vs.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "vs_5_0", compileFlags, 0, &vertexShader, nullptr);
-    D3DCompileFromFile(L"D:\\Dev\\FlyCore\\Renderer\\forward_ps.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_0", compileFlags, 0, &pixelShader, nullptr);
-	D3DCompileFromFile(L"D:\\Dev\\FlyCore\\Renderer\\frame_quad_vs.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "vs_5_0", compileFlags, 0, &quadShader_vs, nullptr);
-	D3DCompileFromFile(L"D:\\Dev\\FlyCore\\Renderer\\frame_quad_ps.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_0", compileFlags, 0, &quadShader_ps, nullptr);
+    D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\forward_vs.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "vs_5_0", compileFlags, 0, &vertexShader, nullptr);
+    D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\forward_ps.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_0", compileFlags, 0, &pixelShader, nullptr);
+	D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\frame_quad_vs.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "vs_5_0", compileFlags, 0, &quadShader_vs, nullptr);
+	D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\frame_quad_ps.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_0", compileFlags, 0, &quadShader_ps, nullptr);
 
     // Define the vertex input layout.
     D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
@@ -564,7 +593,7 @@ void Renderer::D3D12Renderer::InitPipelineState()
 	//Compute Pipieline state
 	{
 		ComPtr<ID3DBlob> computeShader;
-		D3DCompileFromFile(L"D:\\Dev\\FlyCore\\Renderer\\lightcull_cs.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "cs_5_0", compileFlags, 0, &computeShader, nullptr);
+		D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\lightcull_cs.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "cs_5_0", compileFlags, 0, &computeShader, nullptr);
 		D3D12_COMPUTE_PIPELINE_STATE_DESC l_computePipelineStateDesc = {};
 		l_computePipelineStateDesc.pRootSignature = m_computeRootSignature;
 		l_computePipelineStateDesc.CS = CD3DX12_SHADER_BYTECODE(computeShader.Get());;
