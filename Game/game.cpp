@@ -13,7 +13,7 @@ int main() {
 	renderer->SetTargetWindow(window);
 	renderer->OnInit();
 	window->SetRendererCallback(std::bind(&Renderer::D3D12Renderer::OnUpdate,renderer));
-	
+	window->SetScrollCallback(std::bind(&Renderer::D3D12Renderer::OnMouseWheelScroll, renderer, std::placeholders::_1, std::placeholders::_2));
 	while (1)
 	{
 		window->OnUpdate();

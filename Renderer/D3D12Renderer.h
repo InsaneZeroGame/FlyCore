@@ -63,6 +63,9 @@ namespace Renderer {
 
 		void LoadScene(Renderer::Scene*) override;
 
+		void OnMouseWheelScroll(double x,double y);
+
+		float fov = 45.0;
 
 	private:
 		void InitSwapChain();

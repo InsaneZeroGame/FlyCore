@@ -12,12 +12,16 @@
 #include "shader_common.hlsli"
 
 
-PSInput main(float4 position : POSITION, float3 normal : NORMAL0,float2 tex_uv : TEXCOORD0)
+
+
+SSRPSinput main(float4 position : POSITION, float3 normal : NORMAL0,float2 tex_uv : TEXCOORD0)
 {
-	PSInput result;
-	result.scenePositionView = mul(view, position);
+	SSRPSinput result;
 	result.position = position;
-	result.normal = normal;
+
+	result.cameraRay = float4(tex_uv * 2.0f - 1.0f,1.0f,1.0f);
+	result.cameraRay = mul(projInverse,  result.cameraRay);
+	result.cameraRay = result.cameraRay / result.cameraRay.w;
 	result.uv = tex_uv;
 	return result;
 }

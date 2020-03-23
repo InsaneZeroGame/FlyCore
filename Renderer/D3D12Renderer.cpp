@@ -49,6 +49,12 @@ void Renderer::D3D12Renderer::OnInit()
 
 void Renderer::D3D12Renderer::OnUpdate()
 {
+	m_VSUniform->ResetBuffer();
+	m_uniformBuffer.m_proj = glm::perspectiveFovLH(fov, 30.0f, 30.0f, m_uniformBuffer.zNearFar[0], m_uniformBuffer.zNearFar[1]);
+	//m_uniformBuffer.m_proj = glm::orthoLH(-20.0f, 20.0f, -20.0f, 20.0f, m_uniformBuffer.zNearFar[2], -m_uniformBuffer.zNearFar[2]);
+	m_uniformBuffer.m_inverProj = glm::inverse(m_uniformBuffer.m_proj);	
+	m_VSUniform->CopyData(&m_uniformBuffer, Utility::AlignTo256(sizeof(SceneUniformBuffer)));
+
 	
 	//Light cull 
 	{
@@ -248,7 +254,7 @@ void Renderer::D3D12Renderer::InitBuffers()
 	m_uniformBuffer.m_proj = glm::perspectiveFovLH(45.0f, 30.0f, 30.0f, m_uniformBuffer.zNearFar[0], m_uniformBuffer.zNearFar[1]);
 	//m_uniformBuffer.m_proj = glm::orthoLH(-20.0f, 20.0f, -20.0f, 20.0f, m_uniformBuffer.zNearFar[2], -m_uniformBuffer.zNearFar[2]);
 	m_uniformBuffer.m_inverProj = glm::inverse(m_uniformBuffer.m_proj);
-	m_uniformBuffer.m_view = glm::lookAtLH(glm::vec3(10.0f, 20.0, -10.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	m_uniformBuffer.m_view = glm::lookAtLH(glm::vec3(15.0f, 5.0, 15.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	m_VSUniform->CopyData(&m_uniformBuffer, Utility::AlignTo256(sizeof(SceneUniformBuffer)));
 
 	std::array<PointLight, 256> l_lights;
@@ -282,7 +288,7 @@ void Renderer::D3D12Renderer::InitBuffers()
 
 	for (auto i = 0; i < 16; ++i)
 	{
-		for (auto j = 0; j < 16; ++j)
+		for (auto j = 0; j < 8; ++j)
 		{
 			auto lightPosView = m_uniformBuffer.m_view * glm::vec4(10 * Utility:: RandomFloat_11(), 4.0 * Utility::RandomFloat_01(), 10 * Utility::RandomFloat_11(), 1.0);
 			//auto lightPosView = m_uniformBuffer.m_view * glm::vec4(0, 0.5, 0, 1.0f);
@@ -650,6 +656,17 @@ void Renderer::D3D12Renderer::InitRenderpass()
 
 void Renderer::D3D12Renderer::LoadScene(Renderer::Scene*)
 {
+}
+
+void Renderer::D3D12Renderer::OnMouseWheelScroll(double x, double y)
+{
+	fov -= y * 0.03;
+
+	//if (fov > 1.0f && fov < 45.0f)
+	//else if (fov <= 1.0f)
+	//	fov = 1.0f;
+	//else if (fov >= 45.0f)
+	//	fov = 45.0f;
 }
 
 void Renderer::D3D12Renderer::OnDestory()

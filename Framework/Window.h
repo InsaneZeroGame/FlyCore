@@ -30,9 +30,14 @@ namespace Framework
 
 		~Window();
 
-		void SetRendererCallback(std::function<void(void)> p_callback)
+		__forceinline void SetRendererCallback(std::function<void(void)> p_callback)
 		{
 			m_renderCallback = p_callback;
+		}
+
+		__forceinline void SetScrollCallback(std::function<void(double, double)> p_callback)
+		{
+			m_scrollCallback = p_callback;
 		}
 	private:
 		WindowDescriptor m_descriptor;
@@ -40,6 +45,10 @@ namespace Framework
 		GLFWwindow* m_window;
 
 		std::function<void(void)> m_renderCallback;
+
+		static std::function<void(double, double)> m_scrollCallback;
+
+		static void m_scrollCallbackFp(GLFWwindow* p_window,double x, double y);
 
 	public:
 		// Inherited via IModule
@@ -54,5 +63,11 @@ namespace Framework
 		__forceinline uint32_t GetHeight() const { return m_descriptor.height; }
 
 		__forceinline HWND GetWin32Window() { return GetActiveWindow(); }
+
+		struct MouseWheel
+		{
+			double x;
+			double y;
+		}m_mouseWheel;
 	};
 }

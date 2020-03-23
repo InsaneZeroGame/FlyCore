@@ -1,5 +1,8 @@
 #include "stdafx.h"
 #include "Window.h"
+
+std::function<void(double, double)> Framework::Window::m_scrollCallback = nullptr;
+
 Framework::Window::Window(const WindowDescriptor& p_desc):
 	m_descriptor(p_desc),
     m_window(nullptr)
@@ -9,6 +12,10 @@ Framework::Window::Window(const WindowDescriptor& p_desc):
 Framework::Window::~Window()
 {
 
+}
+void Framework::Window::m_scrollCallbackFp(GLFWwindow* p_window, double x, double y)
+{
+    m_scrollCallback(x, y);
 }
 void Framework::Window::OnInit()
 {
@@ -27,7 +34,7 @@ void Framework::Window::OnInit()
     }
 
     //glfwSetKeyCallback(window, key_callback);
-
+    glfwSetScrollCallback(m_window, &m_scrollCallbackFp);
     glfwMakeContextCurrent(m_window);
     glfwSwapInterval(1);
     

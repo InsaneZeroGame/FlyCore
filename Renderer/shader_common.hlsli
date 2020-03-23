@@ -7,6 +7,13 @@ struct PSInput
 
 };
 
+struct SSRPSinput
+{
+	float4 position : SV_POSITION;
+	float4 cameraRay : TEXCOORD0;
+	float2 uv:TEXCOORD1;
+};
+
 
 struct PointLight
 {

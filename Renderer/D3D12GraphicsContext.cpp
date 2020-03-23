@@ -72,7 +72,7 @@ void Renderer::D3D12GraphicsContext::InitSwapchainOutputTarget(uint32_t p_width,
 		ASSERT_SUCCEEDED(p_swapChain->GetBuffer(i, MY_IID_PPV_ARGS(&DisplayPlane)));
 		m_swapChainOutputTargets[i] = new D3D12RenderTarget(p_width,p_height, DisplayPlane,Constants::SwapChainFormat);
 		
-		m_swapChainOutputPass.mrt[i].BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
+		m_swapChainOutputPass.mrt[i].BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD;
 		m_swapChainOutputPass.mrt[i].BeginningAccess.Clear.ClearValue.Color[0] = Constants::CLEAR_COLOR[0];
 		m_swapChainOutputPass.mrt[i].BeginningAccess.Clear.ClearValue.Color[1] = Constants::CLEAR_COLOR[1];
 		m_swapChainOutputPass.mrt[i].BeginningAccess.Clear.ClearValue.Color[2] = Constants::CLEAR_COLOR[2];
