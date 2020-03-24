@@ -18,11 +18,20 @@ Gameplay::BaseCamera::~BaseCamera()
 
 void Gameplay::BaseCamera::UpdateCamera()
 {
+	UpdateTransform();
 	m_proj = glm::perspectiveFovLH(m_fov, m_width, m_height, m_near, m_far);
 	m_inverseProj = glm::inverse(m_proj);
+	m_view = m_model * m_view;
 }
 
 void Gameplay::BaseCamera::OnMouseWheelScroll(double x, double y)
 {
-	m_fov -= y * 0.03;
+	m_fov -= float(y) * 0.03f;
+}
+
+void Gameplay::BaseCamera::OnMouseMove(double x, double y)
+{
+	m_yaw = m_mouseX < x ? 0.008f : -0.008f;
+	m_mouseX = x;
+	m_mouseY = y;
 }

@@ -77,11 +77,12 @@ Renderer::D3D12UploadBuffer::D3D12UploadBuffer(uint64_t p_size):
 
 Renderer::D3D12UploadBuffer::~D3D12UploadBuffer()
 {
-	D3D12_RANGE l_mapRange = {};
-	l_mapRange.Begin = 0;
-	l_mapRange.End = m_bufferSize;
-	void* l_dataPtr = m_data;
-	m_pResource->Unmap(0, &l_mapRange);
+	//if (!m_pResource) return;
+	//D3D12_RANGE l_mapRange = {};
+	//l_mapRange.Begin = 0;
+	//l_mapRange.End = m_bufferSize;
+	//void* l_dataPtr = m_data;
+	//m_pResource->Unmap(0, &l_mapRange);
 }
 
 void Renderer::D3D12UploadBuffer::CopyData(void* p_src, uint64_t p_size)

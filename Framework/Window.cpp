@@ -2,8 +2,8 @@
 #include "Window.h"
 
 std::function<void(double, double)> Framework::Window::m_scrollCallback = nullptr;
-std::function<void(double, double)> Framework::Window::m_MouseMoveCallback = nullptr;
-
+std::function<void(double, double)> Framework::Window::m_mouseMoveCallback = nullptr;
+bool Framework::Window::m_exit = false;
 Framework::Window::Window(const WindowDescriptor& p_desc):
 	m_descriptor(p_desc),
     m_window(nullptr)
@@ -18,6 +18,21 @@ void Framework::Window::m_scrollCallbackFp(GLFWwindow* p_window, double x, doubl
 {
     m_scrollCallback(x, y);
 }
+void Framework::Window::m_mouseMoveCallbackFp(GLFWwindow* p_window, double x, double y)
+{
+    m_mouseMoveCallback(x, y);
+}
+
+
+void Framework::Window::key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+    {
+        m_exit = true;
+    }
+}
+
+
 void Framework::Window::OnInit()
 {
 
@@ -35,7 +50,10 @@ void Framework::Window::OnInit()
     }
 
     //glfwSetKeyCallback(window, key_callback);
+    glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetScrollCallback(m_window, &m_scrollCallbackFp);
+    glfwSetKeyCallback(m_window, &key_callback);
+    glfwSetCursorPosCallback(m_window, &m_mouseMoveCallbackFp);
     glfwMakeContextCurrent(m_window);
     glfwSwapInterval(1);
     
@@ -43,7 +61,7 @@ void Framework::Window::OnInit()
 
 void Framework::Window::OnUpdate()
 {
-    if (!glfwWindowShouldClose(m_window))
+    while (!glfwWindowShouldClose(m_window) && !m_exit)
     {
         m_renderCallback();
         glfwPollEvents();

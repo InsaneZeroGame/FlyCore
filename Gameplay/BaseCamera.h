@@ -29,6 +29,7 @@ namespace Gameplay
 		// Inherited via InputComponent
 		virtual void OnMouseWheelScroll(double x, double y) override;
 
+		virtual void OnMouseMove(double x, double y) override;
 
 	protected:
 		glm::mat4 m_proj;
@@ -46,10 +47,5 @@ namespace Gameplay
 		float m_width;
 
 		float m_height;
-
-
-
-
-		
 	};
 }

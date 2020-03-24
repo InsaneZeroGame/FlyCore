@@ -18,13 +18,11 @@ int main() {
 	renderer->SetCamera(mainCamera);
 	window->SetRendererCallback(std::bind(&Renderer::D3D12Renderer::OnUpdate,renderer));
 	window->SetScrollCallback(std::bind(&Gameplay::BaseCamera::OnMouseWheelScroll, mainCamera, std::placeholders::_1, std::placeholders::_2));
-	while (1)
-	{
-		window->OnUpdate();
-	}
+	window->SetMouseMoveCallback(std::bind(&Gameplay::BaseCamera::OnMouseMove, mainCamera, std::placeholders::_1, std::placeholders::_2));
+	window->OnUpdate();
+	window->OnDestory();
 
 	renderer->OnDestory();
-	window->OnDestory();
 
 	return 0;
 }

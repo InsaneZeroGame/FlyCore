@@ -39,6 +39,11 @@ namespace Framework
 		{
 			m_scrollCallback = p_callback;
 		}
+
+		__forceinline void SetMouseMoveCallback(std::function<void(double, double)> p_callback)
+		{
+			m_mouseMoveCallback = p_callback;
+		}
 	private:
 		WindowDescriptor m_descriptor;
 
@@ -48,11 +53,15 @@ namespace Framework
 
 		static std::function<void(double, double)> m_scrollCallback;
 
-		static std::function<void(double, double)> m_MouseMoveCallback;
+		static std::function<void(double, double)> m_mouseMoveCallback;
 
 		static void m_scrollCallbackFp(GLFWwindow* p_window,double x, double y);
 
+		static void m_mouseMoveCallbackFp(GLFWwindow* p_window, double x, double y);
 
+		static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+
+		static bool m_exit;
 	public:
 		// Inherited via IModule
 		virtual void OnInit() override;
@@ -72,5 +81,6 @@ namespace Framework
 			double x;
 			double y;
 		}m_mouseWheel;
+
 	};
 }

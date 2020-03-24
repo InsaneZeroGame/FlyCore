@@ -74,31 +74,28 @@ MRT main(PSInput input) : SV_TARGET
 		diffuseDebug += colorStep;
 		}
 	}
-	//return spec;
-	//l_res.LightOut = Alebdo.Sample(DefaultSampler, input.uv);
 	l_res.LightOut = (diffuse * Alebdo.Sample(DefaultSampler,input.uv) + spec) * 0.85 + 0.15;
-	//l_res.LightOut = (diffuse + spec) * 0.75 + float4(0.25, 0.25, 0.25, 1.0);
 	l_res.NormalOut = float4(input.normal,1.0f);
 	l_res.SpecularOut = float4(1.0f, 0.0f, 0.0f, 1.0f);
 	l_res.SpecularOut.a = input.scenePositionView.z;
 	return l_res;
 
-#ifdef DEBUG_SHADER
-
-	if (screenPosition.x > 0.0 && screenPosition.x < 0.6)
-	{
-		return (diffuse + spec) * 0.75 + float4(0.25, 0.25, 0.25, 1.0);
-	}
-	else if(screenPosition.x > 0.6 && screenPosition.x < 1.0)
-	{
-		return diffuseDebug;
-
-	}
-	else
-	{
-		return sliceColor[clusterPosition.z];
-
-	}
-#endif
+//#ifdef DEBUG_SHADER
+//
+//	if (screenPosition.x > 0.0 && screenPosition.x < 0.6)
+//	{
+//		return (diffuse + spec) * 0.75 + float4(0.25, 0.25, 0.25, 1.0);
+//	}
+//	else if(screenPosition.x > 0.6 && screenPosition.x < 1.0)
+//	{
+//		return diffuseDebug;
+//
+//	}
+//	else
+//	{
+//		return sliceColor[clusterPosition.z];
+//
+//	}
+//#endif
 
 }
