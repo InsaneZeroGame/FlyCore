@@ -95,7 +95,7 @@ namespace Renderer
 		std::vector<Actor> m_actors;
 
 
-	private:
+	protected:
 		
 	};
 }

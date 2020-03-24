@@ -48,7 +48,10 @@ namespace Framework
 
 		static std::function<void(double, double)> m_scrollCallback;
 
+		static std::function<void(double, double)> m_MouseMoveCallback;
+
 		static void m_scrollCallbackFp(GLFWwindow* p_window,double x, double y);
+
 
 	public:
 		// Inherited via IModule

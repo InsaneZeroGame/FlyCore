@@ -50,10 +50,16 @@ void Renderer::D3D12Renderer::OnInit()
 void Renderer::D3D12Renderer::OnUpdate()
 {
 	m_VSUniform->ResetBuffer();
-	m_uniformBuffer.m_proj = glm::perspectiveFovLH(fov, 30.0f, 30.0f, m_uniformBuffer.zNearFar[0], m_uniformBuffer.zNearFar[1]);
-	//m_uniformBuffer.m_proj = glm::orthoLH(-20.0f, 20.0f, -20.0f, 20.0f, m_uniformBuffer.zNearFar[2], -m_uniformBuffer.zNearFar[2]);
-	m_uniformBuffer.m_inverProj = glm::inverse(m_uniformBuffer.m_proj);	
-	m_VSUniform->CopyData(&m_uniformBuffer, Utility::AlignTo256(sizeof(SceneUniformBuffer)));
+	m_mainCamera->UpdateCamera();
+
+	SceneUniformData l_data = {
+		m_mainCamera->GetProj(),
+		m_mainCamera->GetView(),
+		m_mainCamera->GetInverseProj(),
+		{m_mainCamera->GetNear(),m_mainCamera->GetFar(),0.0,0.0}
+	};
+
+	m_VSUniform->CopyData(&l_data, Utility::AlignTo256(sizeof(SceneUniformData)));
 
 	
 	//Light cull 
@@ -230,7 +236,71 @@ void Renderer::D3D12Renderer::SyncFrame()
     m_frameIndex = currentBackBufferIndex;
 }
 
+void Renderer::D3D12Renderer::SetCamera(Gameplay::BaseCamera* p_camera)
+{
+	m_uploadBuffer->ResetBuffer();
 
+	m_mainCamera = p_camera;
+	std::array<PointLight, 256> l_lights;
+	m_lightBuffer = new D3D12StructBuffer(l_lights.size(), sizeof(PointLight));
+
+	for (auto i = 0; i < l_lights.size(); ++i)
+	{
+		l_lights[i] = PointLight();
+		l_lights[i].isActive = false;
+	}
+
+	struct Color
+	{
+		float data[4];
+	};
+
+
+	Color l_colors[] =
+	{
+		{1.0f,0.0f,0.0f,1.0f},
+		{0.0f,1.0f,0.0f,1.0f},
+		{0.0f,0.0f,1.0f,1.0f},
+		{1.0f,0.0f,1.0f,1.0f},
+		{0.0f,1.0f,1.0f,1.0f},
+		{1.0f,0.0f,1.0f,1.0f},
+
+	};
+	float step = 10.0f / 16;
+
+	for (auto i = 0; i < 16; ++i)
+	{
+		for (auto j = 0; j < 8; ++j)
+		{
+			auto lightPosView = m_mainCamera->GetView() * glm::vec4(10 * Utility::RandomFloat_11(), 4.0 * Utility::RandomFloat_01(), 10 * Utility::RandomFloat_11(), 1.0);
+			//auto lightPosView = m_uniformBuffer.m_view * glm::vec4(0, 0.5, 0, 1.0f);
+			l_lights[i * 16 + j].isActive = true;
+			l_lights[i * 16 + j].position[0] = lightPosView.x;
+			l_lights[i * 16 + j].position[1] = lightPosView.y;
+			l_lights[i * 16 + j].position[2] = lightPosView.z;
+			l_lights[i * 16 + j].position[3] = lightPosView.w;
+			l_lights[i * 16 + j].color[0] = l_colors[rand() % 6].data[0];
+			l_lights[i * 16 + j].color[1] = l_colors[rand() % 6].data[1];
+			l_lights[i * 16 + j].color[2] = l_colors[rand() % 6].data[2];
+			l_lights[i * 16 + j].color[3] = l_colors[rand() % 6].data[3];
+			l_lights[i * 16 + j].radius = 2.0;
+			l_lights[i * 16 + j].attenutation = Utility::RandomFloat_01();
+		}
+	}
+
+	m_uploadBuffer->CopyData(l_lights.data(), l_lights.size() * sizeof(PointLight));
+	auto& l_graphicsContext = D3D12GraphicsCmdContext::GetContext();
+	l_graphicsContext.Begin(nullptr);
+	l_graphicsContext.TransitResourceState(m_lightBuffer->GetResource(),
+		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+		D3D12_RESOURCE_STATE_COPY_DEST);
+	l_graphicsContext.CopyBufferData(m_lightBuffer->GetResource(), 0, m_uploadBuffer->GetResource(), 0, sizeof(PointLight) * l_lights.size());
+	l_graphicsContext.TransitResourceState(m_lightBuffer->GetResource(),
+		D3D12_RESOURCE_STATE_COPY_DEST,
+		D3D12_RESOURCE_STATE_GENERIC_READ);
+	l_graphicsContext.End(true);
+	m_uploadBuffer->ResetBuffer();
+}
 
 
 
@@ -244,81 +314,8 @@ void Renderer::D3D12Renderer::InitBuffers()
     m_vertexBuffer = new D3D12VertexBuffer(Constants::VERTEX_BUFFER_SIZE);
     m_uploadBuffer = new D3D12UploadBuffer(Constants::MAX_CONST_BUFFER_VIEW_SIZE);
     m_indexBuffer = new D3D12IndexBuffer(Constants::VERTEX_BUFFER_SIZE);
-	m_VSUniform = new D3D12UploadBuffer(Utility::AlignTo256(sizeof(SceneUniformBuffer)));
+	m_VSUniform = new D3D12UploadBuffer(Utility::AlignTo256(sizeof(SceneUniformData)));
 	
-	
-	
-	m_uniformBuffer.zNearFar[1] = 50.0f;
-	m_uniformBuffer.zNearFar[0] = 0.01f;
-
-	m_uniformBuffer.m_proj = glm::perspectiveFovLH(45.0f, 30.0f, 30.0f, m_uniformBuffer.zNearFar[0], m_uniformBuffer.zNearFar[1]);
-	//m_uniformBuffer.m_proj = glm::orthoLH(-20.0f, 20.0f, -20.0f, 20.0f, m_uniformBuffer.zNearFar[2], -m_uniformBuffer.zNearFar[2]);
-	m_uniformBuffer.m_inverProj = glm::inverse(m_uniformBuffer.m_proj);
-	m_uniformBuffer.m_view = glm::lookAtLH(glm::vec3(15.0f, 5.0, 15.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	m_VSUniform->CopyData(&m_uniformBuffer, Utility::AlignTo256(sizeof(SceneUniformBuffer)));
-
-	std::array<PointLight, 256> l_lights;
-	m_lightBuffer = new D3D12StructBuffer(l_lights.size(), sizeof(PointLight));
-
-	for (auto i = 0; i <l_lights.size(); ++i)
-	{
-		l_lights[i] = PointLight();
-		l_lights[i].isActive = false;
-	}
-
-	struct Color
-	{
-		float data[4];
-	};
-
-
-	Color l_colors[] = 
-	{
-		{1.0f,0.0f,0.0f,1.0f},
-		{0.0f,1.0f,0.0f,1.0f},
-		{0.0f,0.0f,1.0f,1.0f},
-		{1.0f,0.0f,1.0f,1.0f},
-		{0.0f,1.0f,1.0f,1.0f},
-		{1.0f,0.0f,1.0f,1.0f},
-
-	};
-
-
-	float step = 10.0f / 16;
-
-	for (auto i = 0; i < 16; ++i)
-	{
-		for (auto j = 0; j < 8; ++j)
-		{
-			auto lightPosView = m_uniformBuffer.m_view * glm::vec4(10 * Utility:: RandomFloat_11(), 4.0 * Utility::RandomFloat_01(), 10 * Utility::RandomFloat_11(), 1.0);
-			//auto lightPosView = m_uniformBuffer.m_view * glm::vec4(0, 0.5, 0, 1.0f);
-			l_lights[i * 16 + j].isActive = true;
-			l_lights[i * 16 + j].position[0] = lightPosView.x;
-			l_lights[i * 16 + j].position[1] = lightPosView.y;
-			l_lights[i * 16 + j].position[2] = lightPosView.z;
-			l_lights[i * 16 + j].position[3] = lightPosView.w;
-			l_lights[i * 16 + j].color[0] = l_colors[rand() % 6].data[0];
-			l_lights[i * 16 + j].color[1] = l_colors[rand() % 6].data[1];
-			l_lights[i * 16 + j].color[2] = l_colors[rand() % 6].data[2];
-			l_lights[i * 16 + j].color[3] = l_colors[rand() % 6].data[3];
-			l_lights[i * 16 + j].radius =2.0;
-			l_lights[i * 16 + j].attenutation = Utility::RandomFloat_01() ;
-		}
-	}
-	
-	m_uploadBuffer->CopyData(l_lights.data(), l_lights.size() * sizeof(PointLight));
-	auto& l_graphicsContext = D3D12GraphicsCmdContext::GetContext();
-	l_graphicsContext.Begin(nullptr);
-	l_graphicsContext.TransitResourceState(m_lightBuffer->GetResource(),
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-		D3D12_RESOURCE_STATE_COPY_DEST);
-	l_graphicsContext.CopyBufferData(m_lightBuffer->GetResource(), 0, m_uploadBuffer->GetResource(), 0, sizeof(PointLight) * l_lights.size());
-	l_graphicsContext.TransitResourceState(m_lightBuffer->GetResource(),
-		D3D12_RESOURCE_STATE_COPY_DEST,
-		D3D12_RESOURCE_STATE_GENERIC_READ);
-	l_graphicsContext.End(true);
-	m_uploadBuffer->ResetBuffer();
-
 	std::vector<Vertex> l_vertices = {
 		{ {-1.0f, 1.0f,0.0f,1.0},{0.0f,0.0f,0.0},{0.0f,0.0f}} ,
 		{ {-1.0f,-1.0f,0.0f,1.0},{0.0f,0.0f,0.0},{0.0f,1.0f}} ,
@@ -364,8 +361,8 @@ void Renderer::D3D12Renderer::InitBuffers()
 	m_uploadBuffer->CopyData(l_indices.data(), sizeof(uint32_t)* l_indices.size());
 	indexBufferSize += static_cast<uint32_t>(sizeof(uint32_t) * l_indices.size());
 
-    //auto & l_graphicsContext = D3D12GraphicsCmdContext::GetContext();
-    l_graphicsContext.Begin(nullptr);
+	auto& l_graphicsContext = D3D12GraphicsCmdContext::GetContext();
+	l_graphicsContext.Begin(nullptr);
     l_graphicsContext.UploadVertexBuffer(m_vertexBuffer, 0, m_uploadBuffer, 0, vertexBufferSize);
     l_graphicsContext.UploadVertexBuffer(m_indexBuffer, 0, m_uploadBuffer, vertexBufferSize, indexBufferSize);
     l_graphicsContext.TransitResourceState(m_vertexBuffer->GetResource(),
@@ -377,24 +374,7 @@ void Renderer::D3D12Renderer::InitBuffers()
         D3D12_RESOURCE_STATE_INDEX_BUFFER);
     l_graphicsContext.End(true);
 
-	Texture l_texture;
-	
-	Utility::AssetLoader::LoadTextureFromFile("C:\\Dev\\FlyCore\\uv_texture.png", l_texture);
-	m_uploadBuffer->ResetBuffer();
-	m_defaultTexture = new D3D12Texture2D(l_texture.width, l_texture.height);
-	m_defaultTexture->SetName(L"Default Texture");
-	m_uploadBuffer->CopyData(l_texture.data, l_texture.size);
-	l_graphicsContext.Begin(nullptr);
-	l_graphicsContext.CopyTextureData(
-		m_defaultTexture->GetResource(), 
-		m_uploadBuffer->GetResource(), 
-		l_texture.width,l_texture.height,DXGI_FORMAT_R8G8B8A8_UNORM);
-	l_graphicsContext.TransitResourceState(m_defaultTexture->GetResource(),
-		D3D12_RESOURCE_STATE_COPY_DEST,
-		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-	l_graphicsContext.End(true);
-
-
+	CreateDefaultTexture();
     m_lightList = new D3D12StructBuffer(1024, sizeof(LightList));
 }
 
@@ -533,6 +513,22 @@ void Renderer::D3D12Renderer::InitRootSignature()
 
 void Renderer::D3D12Renderer::CreateDefaultTexture()
 {
+	auto& l_graphicsContext = D3D12GraphicsCmdContext::GetContext();
+	Texture l_texture;
+	Utility::AssetLoader::LoadTextureFromFile("C:\\Dev\\FlyCore\\uv_texture.png", l_texture);
+	m_uploadBuffer->ResetBuffer();
+	m_defaultTexture = new D3D12Texture2D(l_texture.width, l_texture.height);
+	m_defaultTexture->SetName(L"Default Texture");
+	m_uploadBuffer->CopyData(l_texture.data, l_texture.size);
+	l_graphicsContext.Begin(nullptr);
+	l_graphicsContext.CopyTextureData(
+		m_defaultTexture->GetResource(),
+		m_uploadBuffer->GetResource(),
+		l_texture.width, l_texture.height, DXGI_FORMAT_R8G8B8A8_UNORM);
+	l_graphicsContext.TransitResourceState(m_defaultTexture->GetResource(),
+		D3D12_RESOURCE_STATE_COPY_DEST,
+		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	l_graphicsContext.End(true);
 }
 
 void Renderer::D3D12Renderer::InitPipelineState()
@@ -648,25 +644,10 @@ void Renderer::D3D12Renderer::InitRenderpass()
 	l_depthRT.DepthBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
 	m_clusterForwardPass.mrt = { l_lightRT ,l_normalRT ,l_specularRT };
 	m_clusterForwardPass.depth = l_depthRT;
-
-
-
-
 }
 
 void Renderer::D3D12Renderer::LoadScene(Renderer::Scene*)
 {
-}
-
-void Renderer::D3D12Renderer::OnMouseWheelScroll(double x, double y)
-{
-	fov -= y * 0.03;
-
-	//if (fov > 1.0f && fov < 45.0f)
-	//else if (fov <= 1.0f)
-	//	fov = 1.0f;
-	//else if (fov >= 45.0f)
-	//	fov = 45.0f;
 }
 
 void Renderer::D3D12Renderer::OnDestory()
@@ -679,4 +660,7 @@ void Renderer::D3D12Renderer::OnDestory()
     SAFE_DELETE(m_vertexBuffer); 
     SAFE_DELETE(m_indexBuffer);
     SAFE_DELETE(m_uploadBuffer);
+	SAFE_DELETE(m_mainCamera);
 }
+
+

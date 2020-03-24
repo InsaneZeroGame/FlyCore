@@ -35,13 +35,7 @@ namespace Renderer {
 		uint32_t isActive[256];
 	};
 
-	struct SceneUniformBuffer
-	{
-		glm::mat4x4 m_proj;
-		glm::mat4x4 m_view;
-		glm::mat4x4 m_inverProj;
-		std::array<float,4> zNearFar;
-	};
+	
 
 
 	class D3D12Renderer : public Interface::IRenderer, public Interface::IModule
@@ -58,14 +52,13 @@ namespace Renderer {
 
 		virtual void OnDestory() override;
 
+		virtual void SetCamera(Gameplay::BaseCamera* p_camera) override;
+
 		// Inherited via IRenderer
 		void RenderScene() override;
 
 		void LoadScene(Renderer::Scene*) override;
 
-		void OnMouseWheelScroll(double x,double y);
-
-		float fov = 45.0;
 
 	private:
 		void InitSwapChain();
@@ -139,7 +132,6 @@ namespace Renderer {
 		D3D12GraphicsCmd* m_computeCmd = nullptr;
 
 		uint32_t m_frameIndex;
-		SceneUniformBuffer m_uniformBuffer;
 
 		//CmdQueue for renderer,associate with swapchain
 		//So thast cmdlist write to swapchain can be flushed

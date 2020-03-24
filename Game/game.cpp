@@ -1,6 +1,7 @@
 #include <iostream>
 #include "../Framework/Window.h"
 #include "../Renderer/D3D12Renderer.h"
+#include "../Gameplay/BaseCamera.h"
 #include <functional>
 
 
@@ -9,11 +10,14 @@ int main() {
 	auto window = new Framework::Window({ 1920,1080,"Ang's Game" });
 	window->OnInit();
 
+	auto mainCamera = new Gameplay::BaseCamera(glm::vec3(15.0f, 5.0, 15.0f), glm::vec3(0.0f));
+
 	auto renderer = new Renderer::D3D12Renderer();
 	renderer->SetTargetWindow(window);
 	renderer->OnInit();
+	renderer->SetCamera(mainCamera);
 	window->SetRendererCallback(std::bind(&Renderer::D3D12Renderer::OnUpdate,renderer));
-	window->SetScrollCallback(std::bind(&Renderer::D3D12Renderer::OnMouseWheelScroll, renderer, std::placeholders::_1, std::placeholders::_2));
+	window->SetScrollCallback(std::bind(&Gameplay::BaseCamera::OnMouseWheelScroll, mainCamera, std::placeholders::_1, std::placeholders::_2));
 	while (1)
 	{
 		window->OnUpdate();

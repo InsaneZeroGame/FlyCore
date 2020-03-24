@@ -2,6 +2,7 @@
 #include "Window.h"
 
 std::function<void(double, double)> Framework::Window::m_scrollCallback = nullptr;
+std::function<void(double, double)> Framework::Window::m_MouseMoveCallback = nullptr;
 
 Framework::Window::Window(const WindowDescriptor& p_desc):
 	m_descriptor(p_desc),
