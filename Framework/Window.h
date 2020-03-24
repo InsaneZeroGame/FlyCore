@@ -79,6 +79,7 @@ namespace Framework
 		struct MouseWheel
 		{
 			double x;
+
 			double y;
 		}m_mouseWheel;
 

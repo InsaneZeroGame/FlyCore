@@ -91,6 +91,8 @@ namespace Renderer {
 
 		RenderPass m_clusterForwardPass;
 
+		ID3D12RootSignature* m_shadowPassRootSignature;
+
 		ID3D12RootSignature* m_clusterForwardRootSignature;
 
 		ID3D12RootSignature* m_finalOutputRootSignature;
@@ -102,6 +104,8 @@ namespace Renderer {
 		ID3D12RootSignature* m_computeRootSignature;
 
 		ID3D12PipelineState* m_computePipelineState;
+
+		ID3D12PipelineState* m_shadowPassPipelineState;
 
 		D3D12VertexBuffer* m_vertexBuffer;
 

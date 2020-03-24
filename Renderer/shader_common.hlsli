@@ -7,6 +7,11 @@ struct PSInput
 
 };
 
+struct ShadowOut
+{
+	float4 position:SV_POSITION;
+};
+
 struct SSRPSinput
 {
 	float4 position : SV_POSITION;
@@ -29,6 +34,7 @@ cbuffer CDataBuffer : register(b0)
 	float4x4 project;
 	float4x4 view;
 	float4x4 projInverse;
+	float4x4 shadowMatrix;
 	float4 zNearFar;
 };
 

@@ -279,5 +279,6 @@ namespace Renderer
         default:
             break;
 		}
+        return 0;
 	}
 }

@@ -32,9 +32,8 @@ namespace Gameplay
 		float m_roll;
 
 		double m_mouseX;
+
 		double m_mouseY;
-		double m_mouseXMax;
-		double m_mouseYMax;
 
 	};
 }

@@ -27,7 +27,8 @@ Renderer::D3D12Renderer::D3D12Renderer():
 	m_vertexBuffer(nullptr),
 	m_indexBuffer(nullptr),
 	m_uploadBuffer(nullptr),
-	m_clusterForwardRootSignature(nullptr)
+	m_clusterForwardRootSignature(nullptr),
+	m_shadowPassRootSignature(nullptr)
 {
 }
 
@@ -52,14 +53,19 @@ void Renderer::D3D12Renderer::OnUpdate()
 	m_VSUniform->ResetBuffer();
 	m_mainCamera->UpdateCamera();
 
+	auto shadowMatrix = glm::lookAtLH(glm::vec3(-15.0f, 5.0, -15.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+
 	SceneUniformData l_data = {
 		m_mainCamera->GetProj(),
 		m_mainCamera->GetView(),
 		m_mainCamera->GetInverseProj(),
+		shadowMatrix,
 		{m_mainCamera->GetNear(),m_mainCamera->GetFar(),0.0,0.0}
 	};
 
 	m_VSUniform->CopyData(&l_data, Utility::AlignTo256(sizeof(SceneUniformData)));
+
+
 
 	
 	//Light cull 
@@ -80,10 +86,43 @@ void Renderer::D3D12Renderer::OnUpdate()
 
 	auto& l_graphicsContext = D3D12GraphicsContext::GetContext();
 	m_graphicsCmd->Reset(m_frameIndex, m_graphicsPipelineState);
-	// Indicate that the back buffer will be used as a render target.
-	l_graphicsContext.BeginRender(m_frameIndex);
-	l_graphicsContext.BeginRenderpass(m_clusterForwardPass.mrt, &m_clusterForwardPass.depth);
 	ID3D12GraphicsCommandList4* l_graphicsCmdList = *m_graphicsCmd;
+	l_graphicsContext.BeginRender(m_frameIndex);
+
+	//Shadow pass
+	{
+		l_graphicsCmdList->SetPipelineState(m_shadowPassPipelineState);
+		l_graphicsCmdList->OMSetRenderTargets(0, nullptr, false, &l_graphicsContext.GetShadowMap()->GetDSV()->cpuHandle);
+		
+		D3D12_RECT l_rect = {};
+		l_rect.bottom = 1080;
+		l_rect.left = 0;
+		l_rect.right = 1920;
+		l_rect.top = 0;
+
+		l_graphicsCmdList->ClearDepthStencilView(
+			l_graphicsContext.GetShadowMap()->GetDSV()->cpuHandle,
+			D3D12_CLEAR_FLAG_DEPTH,
+			1.0f,
+			0,
+			1, &l_rect);
+		l_graphicsCmdList->IASetIndexBuffer(&m_indexBuffer->GetIndexBufferView());
+		l_graphicsCmdList->SetGraphicsRootSignature(m_shadowPassRootSignature);
+		l_graphicsCmdList->IASetVertexBuffers(0, 1, &m_vertexBuffer->GetVertexBufferView());
+		l_graphicsCmdList->SetGraphicsRootConstantBufferView(CAMERA_UNIFORM_ROOT_INDEX, m_VSUniform->GetGpuVirtualAddress());
+		l_graphicsCmdList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		for (auto& l_actor = m_scene->m_actors.begin(); l_actor < m_scene->m_actors.end(); ++l_actor)
+		{
+			for (auto& l_mesh = l_actor->m_meshes.begin(); l_mesh < l_actor->m_meshes.end(); l_mesh++)
+			{
+				l_graphicsCmdList->DrawIndexedInstanced(static_cast<uint32_t>(l_mesh->m_indices.size()), 1, l_mesh->m_indexOffset, l_mesh->m_vertexOffset, 0);
+			}
+		}
+	}
+
+
+	// Indicate that the back buffer will be used as a render target.
+	l_graphicsContext.BeginRenderpass(m_clusterForwardPass.mrt, &m_clusterForwardPass.depth);
 	//Forward Pass
 	{
 		//Resource Trasition
@@ -99,7 +138,6 @@ void Renderer::D3D12Renderer::OnUpdate()
 		ID3D12DescriptorHeap* l_srvHeap[] = { D3D12DescManager::GetDescManager().GetHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)->GetHeap() };
 		l_graphicsCmdList->SetDescriptorHeaps(1, l_srvHeap);
 		l_graphicsCmdList->SetGraphicsRootDescriptorTable(DIFFUSE_MAP, m_defaultTexture->GetSRV()->gpuHandle);
-		l_graphicsCmdList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		
 		for (auto& l_actor = m_scene->m_actors.begin(); l_actor < m_scene->m_actors.end(); ++l_actor)
 		{
@@ -283,7 +321,7 @@ void Renderer::D3D12Renderer::SetCamera(Gameplay::BaseCamera* p_camera)
 			l_lights[i * 16 + j].color[1] = l_colors[rand() % 6].data[1];
 			l_lights[i * 16 + j].color[2] = l_colors[rand() % 6].data[2];
 			l_lights[i * 16 + j].color[3] = l_colors[rand() % 6].data[3];
-			l_lights[i * 16 + j].radius = 2.0;
+			l_lights[i * 16 + j].radius = 2.5;
 			l_lights[i * 16 + j].attenutation = Utility::RandomFloat_01();
 		}
 	}
@@ -439,6 +477,29 @@ void Renderer::D3D12Renderer::InitRootSignature()
 
 	}
 
+	//Shadow Map Pass
+	{
+		CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
+
+		D3D12_ROOT_PARAMETER l_cameraUniform = {};
+		l_cameraUniform.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+		l_cameraUniform.Descriptor = { 0,0 };
+		l_cameraUniform.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+		std::vector<D3D12_ROOT_PARAMETER> l_rootParameters =
+		{
+			l_cameraUniform,
+		};
+
+		rootSignatureDesc.Init(static_cast<uint32_t>(l_rootParameters.size()), l_rootParameters.data(), 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+		ComPtr<ID3DBlob> signature;
+		ComPtr<ID3DBlob> error;
+		D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error);
+		m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_shadowPassRootSignature));
+
+	}
+
 	//Final Output
 	{
 		CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
@@ -453,7 +514,7 @@ void Renderer::D3D12Renderer::InitRootSignature()
 		l_finalOutputTextures.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 		D3D12_DESCRIPTOR_RANGE l_range = {};
 		l_range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-		l_range.NumDescriptors = m_clusterForwardPass.mrt.size();
+		l_range.NumDescriptors = static_cast<uint32_t>(m_clusterForwardPass.mrt.size());
 		l_range.BaseShaderRegister = 0;
 		l_range.RegisterSpace = 0;
 		l_range.OffsetInDescriptorsFromTableStart = 0;
@@ -541,6 +602,8 @@ void Renderer::D3D12Renderer::InitPipelineState()
     ComPtr<ID3DBlob> pixelShader;
 	ComPtr<ID3DBlob> quadShader_vs;
 	ComPtr<ID3DBlob> quadShader_ps;
+	ComPtr<ID3DBlob> shadow_pass_vs;
+	ComPtr<ID3DBlob> shadow_pass_ps;
 
 #if defined(_DEBUG)
     // Enable better shader debugging with the graphics debugging tools.
@@ -553,6 +616,8 @@ void Renderer::D3D12Renderer::InitPipelineState()
     D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\forward_ps.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_0", compileFlags, 0, &pixelShader, nullptr);
 	D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\frame_quad_vs.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "vs_5_0", compileFlags, 0, &quadShader_vs, nullptr);
 	D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\frame_quad_ps.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_0", compileFlags, 0, &quadShader_ps, nullptr);
+	D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\shadow_pass_vs.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "vs_5_0", compileFlags, 0, &shadow_pass_vs, nullptr);
+	D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\shadow_pass_ps.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_0", compileFlags, 0, &shadow_pass_ps, nullptr);
 
     // Define the vertex input layout.
     D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
@@ -590,6 +655,16 @@ void Renderer::D3D12Renderer::InitPipelineState()
 	psoDesc.RTVFormats[2] = DXGI_FORMAT_UNKNOWN;
 	psoDesc.DepthStencilState.DepthEnable = false;
 	m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_quadPipelineState));
+
+	psoDesc.VS = CD3DX12_SHADER_BYTECODE(shadow_pass_vs.Get());
+	psoDesc.PS = {};
+	psoDesc.pRootSignature = m_shadowPassRootSignature;
+	psoDesc.NumRenderTargets = 0;
+	psoDesc.RTVFormats[0] = DXGI_FORMAT_UNKNOWN;
+	psoDesc.RTVFormats[1] = DXGI_FORMAT_UNKNOWN;
+	psoDesc.RTVFormats[2] = DXGI_FORMAT_UNKNOWN;
+	psoDesc.DepthStencilState.DepthEnable = true;
+	m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_shadowPassPipelineState));
 
 
 	//Compute Pipieline state

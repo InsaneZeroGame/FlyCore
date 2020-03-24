@@ -6,6 +6,8 @@ set(ShaderSource
 "shader_common.hlsli"
 "frame_quad_ps.hlsl"
 "frame_quad_vs.hlsl"
+"shadow_pass_vs.hlsl"
+"shadow_pass_ps.hlsl"
 )
 
 source_group(Shaders FILES ${ShaderSource})

@@ -32,6 +32,7 @@ namespace Interface
 			glm::mat4x4 m_proj;
 			glm::mat4x4 m_view;
 			glm::mat4x4 m_inverProj;
+			glm::mat4x4 m_shadowMatrix;
 			std::array<float, 4> zNearFar;
 		}; //m_uniformBuffer;
 	};

@@ -31,7 +31,15 @@ void Gameplay::BaseCamera::OnMouseWheelScroll(double x, double y)
 
 void Gameplay::BaseCamera::OnMouseMove(double x, double y)
 {
-	m_yaw = m_mouseX < x ? 0.008f : -0.008f;
+	if (abs(m_mouseX - x) < abs(m_mouseY - y))
+	{
+		m_pitch = m_mouseY < y ? 0.016f : -0.016f;
+	}
+	else
+	{
+		m_yaw = m_mouseX < x ? 0.01f : -0.01f;
+	}
+
 	m_mouseX = x;
 	m_mouseY = y;
 }

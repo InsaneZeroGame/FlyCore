@@ -21,7 +21,7 @@ void Renderer::D3D12GraphicsContext::TransitRenderTargets(std::vector<std::strin
 		l_barriers[i].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 		l_barriers[i].Transition = { m_renderTargets[p_names[i]]->GetResource(), 0,p_stateBefore,p_stateAfter };
 	}
-	m_graphicsCmdList->ResourceBarrier(l_barriers.size(),l_barriers.data());
+	m_graphicsCmdList->ResourceBarrier(static_cast<uint32_t>(l_barriers.size()),l_barriers.data());
 
 }
 
@@ -83,8 +83,11 @@ void Renderer::D3D12GraphicsContext::InitSwapchainOutputTarget(uint32_t p_width,
 	}
 
 	//Create depth buffer resource
-	m_depthBuffer = new D3D12DepthBuffer(p_width, p_width);
+	m_depthBuffer = new D3D12DepthBuffer(p_width, p_height);
 	m_depthBuffer->SetName(L"Depth Buffer");
+
+	m_shadowMap = new D3D12DepthBuffer(p_width, p_height);
+	m_shadowMap->SetName(L"Shadow Map");
 }
 
 Renderer::D3D12GraphicsContext::~D3D12GraphicsContext()
