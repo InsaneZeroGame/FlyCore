@@ -70,6 +70,15 @@ void Renderer::D3D12DepthBuffer::CreateViews()
 	m_dsv = D3D12DescManager::GetDescManager().RequestDesc(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 	ID3D12Device* l_device = (D3D12Device::GetDevice());
 	l_device->CreateDepthStencilView(m_pResource.Get(), &l_viewDesc, m_dsv->cpuHandle);
+
+
+	D3D12_SHADER_RESOURCE_VIEW_DESC l_srvDesc = {};
+	l_srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
+	l_srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	l_srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	l_srvDesc.Texture2D = {0,1,0,0};
+	m_srv = D3D12DescManager::GetDescManager().RequestDesc(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	l_device->CreateShaderResourceView(m_pResource.Get(), &l_srvDesc, m_srv->cpuHandle);
 }
 
 Renderer::D3D12DepthBuffer::~D3D12DepthBuffer()

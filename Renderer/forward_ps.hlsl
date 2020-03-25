@@ -8,7 +8,9 @@ float linstep(float min, float max, float v)
 StructuredBuffer<LightList> LightBuffer : register(t1);
 StructuredBuffer<PointLight> PointLights : register(t2);
 Texture2D <float4> Alebdo : register(t3);
+Texture2D <float4> ShadowMap : register(t4);
 SamplerState DefaultSampler :register(s0);
+SamplerState ShadowSampler :register(s1);
 
 static uint2  SCREEN_DIMENSION = uint2(1920, 1080);
 static float4 sliceColor[16] = {
@@ -74,9 +76,12 @@ MRT main(PSInput input) : SV_TARGET
 		diffuseDebug += colorStep;
 		}
 	}
+
+	float shadow = ShadowMap.Sample(ShadowSampler, input.uv);
+
 	l_res.LightOut = (diffuse * Alebdo.Sample(DefaultSampler,input.uv) + spec) * 0.85 + 0.15;
 	l_res.NormalOut = float4(input.normal,1.0f);
-	l_res.SpecularOut = float4(1.0f, 0.0f, 0.0f, 1.0f);
+	l_res.SpecularOut = float4(shadow, 0.0f, 0.0f, 1.0f);
 	l_res.SpecularOut.a = input.scenePositionView.z;
 	return l_res;
 

@@ -9,7 +9,7 @@
 #define LIGHT_BUFFER_ROOT_INDEX 2
 #define FINAL_OUTPUT_TEX_ROOT_INDEX 1
 #define DIFFUSE_MAP 3
-
+#define SHADOW_MAP 4
 Renderer::D3D12Renderer::D3D12Renderer():
     m_device(D3D12Device::GetDevice()),
     m_swapChain(nullptr),
@@ -91,6 +91,8 @@ void Renderer::D3D12Renderer::OnUpdate()
 
 	//Shadow pass
 	{
+		
+
 		l_graphicsCmdList->SetPipelineState(m_shadowPassPipelineState);
 		l_graphicsCmdList->OMSetRenderTargets(0, nullptr, false, &l_graphicsContext.GetShadowMap()->GetDSV()->cpuHandle);
 		
@@ -119,7 +121,15 @@ void Renderer::D3D12Renderer::OnUpdate()
 			}
 		}
 	}
+	D3D12_RESOURCE_BARRIER l_dsv_to_srv = {};
+	l_dsv_to_srv.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	l_dsv_to_srv.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+	l_dsv_to_srv.Transition.pResource = l_graphicsContext.GetShadowMap()->GetResource();
+	l_dsv_to_srv.Transition.Subresource = 0;
+	l_dsv_to_srv.Transition.StateBefore = D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_DEPTH_WRITE;
+	l_dsv_to_srv.Transition.StateAfter = D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 
+	l_graphicsCmdList->ResourceBarrier(1, &l_dsv_to_srv);
 
 	// Indicate that the back buffer will be used as a render target.
 	l_graphicsContext.BeginRenderpass(m_clusterForwardPass.mrt, &m_clusterForwardPass.depth);
@@ -138,7 +148,8 @@ void Renderer::D3D12Renderer::OnUpdate()
 		ID3D12DescriptorHeap* l_srvHeap[] = { D3D12DescManager::GetDescManager().GetHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)->GetHeap() };
 		l_graphicsCmdList->SetDescriptorHeaps(1, l_srvHeap);
 		l_graphicsCmdList->SetGraphicsRootDescriptorTable(DIFFUSE_MAP, m_defaultTexture->GetSRV()->gpuHandle);
-		
+		l_graphicsCmdList->SetGraphicsRootDescriptorTable(SHADOW_MAP, l_graphicsContext.GetShadowMap()->GetSRV()->gpuHandle);
+
 		for (auto& l_actor = m_scene->m_actors.begin(); l_actor < m_scene->m_actors.end(); ++l_actor)
 		{
 			for (auto& l_mesh = l_actor->m_meshes.begin(); l_mesh < l_actor->m_meshes.end(); l_mesh++)
@@ -150,6 +161,17 @@ void Renderer::D3D12Renderer::OnUpdate()
 	l_graphicsCmdList->EndRenderPass();
 
 	//Resource Trasition
+	D3D12_RESOURCE_BARRIER l_srv_to_dsv = {};
+	l_srv_to_dsv.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	l_srv_to_dsv.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+	l_srv_to_dsv.Transition.pResource = l_graphicsContext.GetShadowMap()->GetResource();
+	l_srv_to_dsv.Transition.Subresource = 0;
+	l_srv_to_dsv.Transition.StateBefore = D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+	l_srv_to_dsv.Transition.StateAfter = D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_DEPTH_WRITE;
+
+	l_graphicsCmdList->ResourceBarrier(1, &l_srv_to_dsv);
+
+
 	l_graphicsContext.TransitRenderTargets({ "Light","Normal","Specular" }, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 	//Deferred Pass
 	l_graphicsContext.BeginSwapchainOutputPass(m_frameIndex);
@@ -428,6 +450,8 @@ void Renderer::D3D12Renderer::InitRootSignature()
 	l_defaultSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
 	l_defaultSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
 
+
+
     // Create Graphics RS
 	{
 		CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
@@ -460,15 +484,41 @@ void Renderer::D3D12Renderer::InitRootSignature()
 		l_diffuseMap.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 
+		D3D12_ROOT_PARAMETER l_shadowMap = {};
+		l_shadowMap.DescriptorTable.NumDescriptorRanges = 1;
+		l_shadowMap.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		D3D12_DESCRIPTOR_RANGE l_shadow_map_range = {};
+		l_shadow_map_range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		l_shadow_map_range.NumDescriptors = 1;
+		l_shadow_map_range.BaseShaderRegister = 4;
+		l_shadow_map_range.RegisterSpace = 0;
+		l_shadow_map_range.OffsetInDescriptorsFromTableStart = 0;
+		l_shadowMap.DescriptorTable.pDescriptorRanges = &l_shadow_map_range;
+		l_shadowMap.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+
 		std::vector<D3D12_ROOT_PARAMETER> l_rootParameters =
 		{
 			l_cameraUniform,
 			l_lightUAV,
 			l_lightBuffer,
-			l_diffuseMap
+			l_diffuseMap,
+			l_shadowMap
 		};
 
-		rootSignatureDesc.Init(static_cast<uint32_t>(l_rootParameters.size()), l_rootParameters.data(), 1, &l_defaultSampler, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+		D3D12_STATIC_SAMPLER_DESC l_shadowSampler = {};
+		l_shadowSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+		l_shadowSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+		l_shadowSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+		l_shadowSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+		l_shadowSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS;
+		l_shadowSampler.ShaderRegister = 1;
+
+		std::vector<D3D12_STATIC_SAMPLER_DESC> samplers = { l_defaultSampler ,l_shadowSampler };
+
+
+
+		rootSignatureDesc.Init(static_cast<uint32_t>(l_rootParameters.size()), l_rootParameters.data(), samplers.size(), samplers.data(), D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 		ComPtr<ID3DBlob> signature;
 		ComPtr<ID3DBlob> error;
