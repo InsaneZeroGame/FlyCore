@@ -43,3 +43,8 @@ struct LightList
 {
 	uint isActive[256];
 };
+
+//Group Count
+static uint GROUP_SIZE_X = 8;
+static uint GROUP_SIZE_Y = 8;
+static uint GROUP_SIZE_Z = 16;

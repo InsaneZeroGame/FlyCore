@@ -9,6 +9,7 @@ Gameplay::BaseCamera::BaseCamera(const glm::vec3& p_pos, const glm::vec3& p_look
 	m_far(50.0f)
 {
 	m_proj = glm::perspectiveFovLH(m_fov, m_width, m_height, m_near, m_far);
+	m_shadowProj = glm::perspectiveFovLH(m_fov, m_width, m_height, m_near, m_far);
 	m_view = glm::lookAtLH(m_pos, m_lookAt, Y_UP);
 }
 

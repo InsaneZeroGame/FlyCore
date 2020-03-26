@@ -14,6 +14,8 @@ namespace Gameplay
 
 		void Zoom(float p_zoom);
 
+		__forceinline const glm::mat4& GetShadowProj() const { return m_shadowProj; }
+
 		__forceinline const glm::mat4& GetProj() const { return m_proj; }
 
 		__forceinline const glm::mat4& GetView() const { return m_view; }
@@ -33,6 +35,8 @@ namespace Gameplay
 
 	protected:
 		glm::mat4 m_proj;
+
+		glm::mat4 m_shadowProj;
 
 		glm::mat4 m_view;
 

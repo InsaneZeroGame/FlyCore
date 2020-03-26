@@ -3,10 +3,7 @@
 #define WORK_GROUP_SIZE_Y 8 
 #define WORK_GROUP_SIZE_Z 4
 
-//Group Count
-static uint GROUP_SIZE_X = 8;
-static uint GROUP_SIZE_Y = 8;
-static uint GROUP_SIZE_Z = 16;
+
 
 static uint2  SCREEN_DIMENSION = uint2(1920,1080);
 
@@ -64,7 +61,7 @@ void main(
 	{
 
 		[unroll] for (uint i = 0; i < 6; ++i) {
-			float d = dot(frustumPlanes[i], float4(light.pos));
+			float d = dot(frustumPlanes[i], mul(view , float4(light.pos)));
 			inFrustum = inFrustum && (d > -light.radius / light.attenutation);
 		}
 

@@ -48,10 +48,10 @@ MRT main(PSInput input) : SV_TARGET
 	float zPosition = (input.scenePositionView.z - zNear) / (zFar - zNear);
 	//float zPosition = log(input.scenePositionView.z)
 	float2 screenPosition = input.position.xy / SCREEN_DIMENSION.xy;
-	uint3 clusterPosition = uint3(screenPosition * uint2(8,8), zPosition * 16);
+	uint3 clusterPosition = uint3(screenPosition * uint2(GROUP_SIZE_X, GROUP_SIZE_Y), zPosition * 16);
 
 	float4 res_color = float4(0.0f, 0.0f, 0.0f, 1.0f);
-	uint ClusterIndex = clusterPosition.z * (8 * 8) + clusterPosition.y * 8 + clusterPosition.x;
+	uint ClusterIndex = clusterPosition.z * (GROUP_SIZE_X * GROUP_SIZE_Y) + clusterPosition.y * GROUP_SIZE_X + clusterPosition.x;
 	float4 diffuse = float4(0.0, 0.0, 0.0, 1.0);
 	float4 spec = 0.0f;
 	float4 colorStep = 1.0/256.0;
@@ -63,7 +63,7 @@ MRT main(PSInput input) : SV_TARGET
 	{
 		if (LightBuffer[ClusterIndex].isActive[i] == 1)
 		{
-		float3 lightDir = PointLights[i].pos.xyz - input.scenePositionView.xyz;
+		float3 lightDir = mul(view,PointLights[i].pos).xyz - input.scenePositionView.xyz;
 		float3 lightDirNormalized = normalize(lightDir);
 		float3 viewDir = normalize(float3(0.0,0.0,0.0) - input.scenePositionView.xyz);
 		float3 halfwarDir = normalize(lightDir + viewDir);
@@ -88,7 +88,7 @@ MRT main(PSInput input) : SV_TARGET
 	shadow *= 0.25;
 
 
-	l_res.LightOut = (spec + diffuse) * 0.9 * shadow + 0.1;
+	l_res.LightOut = (spec + diffuse) * 0.85 * shadow + 0.15;
 	l_res.LightOut *= Alebdo.Sample(DefaultSampler, input.uv);
 	l_res.NormalOut = float4(input.normal,1.0f);
 	l_res.SpecularOut = float4(input.shadowUV.xy, 0.0f, 1.0f);
