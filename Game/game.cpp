@@ -10,7 +10,7 @@ int main() {
 	auto window = new Framework::Window({ 1920,1080,"Ang's Game" });
 	window->OnInit();
 
-	auto mainCamera = new Gameplay::BaseCamera(glm::vec3(15.0f, 5.0, 15.0f), glm::vec3(0.0f));
+	auto mainCamera = new Gameplay::BaseCamera(glm::vec3(15.0f, 15.0, 15.0f), glm::vec3(0.0f));
 
 	auto renderer = new Renderer::D3D12Renderer();
 	renderer->SetTargetWindow(window);

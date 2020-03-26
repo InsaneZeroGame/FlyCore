@@ -53,7 +53,7 @@ void Renderer::D3D12Renderer::OnUpdate()
 	m_VSUniform->ResetBuffer();
 	m_mainCamera->UpdateCamera();
 
-	auto shadowMatrix = glm::lookAtLH(glm::vec3(-15.0f, 5.0, -15.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	auto shadowMatrix = glm::lookAtLH(glm::vec3(15.0f, 15.0, -15.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
 	SceneUniformData l_data = {
 		m_mainCamera->GetProj(),
@@ -127,7 +127,7 @@ void Renderer::D3D12Renderer::OnUpdate()
 	l_dsv_to_srv.Transition.pResource = l_graphicsContext.GetShadowMap()->GetResource();
 	l_dsv_to_srv.Transition.Subresource = 0;
 	l_dsv_to_srv.Transition.StateBefore = D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_DEPTH_WRITE;
-	l_dsv_to_srv.Transition.StateAfter = D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+	l_dsv_to_srv.Transition.StateAfter = D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_DEPTH_READ;
 
 	l_graphicsCmdList->ResourceBarrier(1, &l_dsv_to_srv);
 
@@ -166,7 +166,7 @@ void Renderer::D3D12Renderer::OnUpdate()
 	l_srv_to_dsv.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
 	l_srv_to_dsv.Transition.pResource = l_graphicsContext.GetShadowMap()->GetResource();
 	l_srv_to_dsv.Transition.Subresource = 0;
-	l_srv_to_dsv.Transition.StateBefore = D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+	l_srv_to_dsv.Transition.StateBefore = D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_DEPTH_READ;
 	l_srv_to_dsv.Transition.StateAfter = D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_DEPTH_WRITE;
 
 	l_graphicsCmdList->ResourceBarrier(1, &l_srv_to_dsv);
@@ -505,13 +505,15 @@ void Renderer::D3D12Renderer::InitRootSignature()
 			l_diffuseMap,
 			l_shadowMap
 		};
+		
 
 		D3D12_STATIC_SAMPLER_DESC l_shadowSampler = {};
 		l_shadowSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 		l_shadowSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
 		l_shadowSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
 		l_shadowSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
-		l_shadowSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS;
+		l_shadowSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+		l_shadowSampler.Filter = D3D12_FILTER_COMPARISON_MIN_MAG_MIP_POINT;
 		l_shadowSampler.ShaderRegister = 1;
 
 		std::vector<D3D12_STATIC_SAMPLER_DESC> samplers = { l_defaultSampler ,l_shadowSampler };
@@ -714,6 +716,9 @@ void Renderer::D3D12Renderer::InitPipelineState()
 	psoDesc.RTVFormats[1] = DXGI_FORMAT_UNKNOWN;
 	psoDesc.RTVFormats[2] = DXGI_FORMAT_UNKNOWN;
 	psoDesc.DepthStencilState.DepthEnable = true;
+	psoDesc.RasterizerState.DepthBias = 150;
+	psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_FRONT;
+	psoDesc.RasterizerState.SlopeScaledDepthBias = 1.5;
 	m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_shadowPassPipelineState));
 
 

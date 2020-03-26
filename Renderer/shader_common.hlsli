@@ -3,6 +3,7 @@ struct PSInput
 	float4 position : SV_POSITION;
 	float4 scenePositionView : positionView;
 	float2 uv : TEXCOORD0;
+	float3 shadowUV : TEXCOORD1;
 	float3 normal:NORMAL;
 
 };
