@@ -3,5 +3,4 @@
 Features : 
 	1.Cluster Forward 
 	2.Shadow Mapping
-
-	![Alt text](https://raw.githubusercontent.com/InsaneZeroGame/FlyCore/master/readme1.png?raw=true "Cluster Forward")
+	<img align="right" width="600" height="200" src="https://github.com/InsaneZeroGame/FlyCore/blob/master/readme1.png">
