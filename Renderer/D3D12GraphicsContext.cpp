@@ -86,7 +86,7 @@ void Renderer::D3D12GraphicsContext::InitSwapchainOutputTarget(uint32_t p_width,
 	m_depthBuffer = new D3D12DepthBuffer(p_width, p_height);
 	m_depthBuffer->SetName(L"Depth Buffer");
 
-	m_shadowMap = new D3D12DepthBuffer(p_width, p_height);
+	m_shadowMap = new D3D12DepthBuffer(ShadowMapWidth, ShadowMapHeight);
 	m_shadowMap->SetName(L"Shadow Map");
 }
 

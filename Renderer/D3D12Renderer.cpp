@@ -53,7 +53,7 @@ void Renderer::D3D12Renderer::OnUpdate()
 	m_VSUniform->ResetBuffer();
 	m_mainCamera->UpdateCamera();
 
-	auto shadowMatrix = glm::lookAtLH(glm::vec3(15.0f, 15.0, -15.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	auto shadowMatrix = glm::lookAtLH(glm::vec3(-0.01, 20.0, 0.0), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
 	SceneUniformData l_data = {
 		m_mainCamera->GetProj(),
@@ -64,8 +64,6 @@ void Renderer::D3D12Renderer::OnUpdate()
 	};
 
 	m_VSUniform->CopyData(&l_data, Utility::AlignTo256(sizeof(SceneUniformData)));
-
-
 
 	
 	//Light cull 
@@ -85,29 +83,17 @@ void Renderer::D3D12Renderer::OnUpdate()
 	
 
 	auto& l_graphicsContext = D3D12GraphicsContext::GetContext();
-	m_graphicsCmd->Reset(m_frameIndex, m_graphicsPipelineState);
 	ID3D12GraphicsCommandList4* l_graphicsCmdList = *m_graphicsCmd;
-	l_graphicsContext.BeginRender(m_frameIndex);
+	m_graphicsCmd->Reset(m_frameIndex, m_graphicsPipelineState);
+
 
 	//Shadow pass
 	{
-		
-
 		l_graphicsCmdList->SetPipelineState(m_shadowPassPipelineState);
 		l_graphicsCmdList->OMSetRenderTargets(0, nullptr, false, &l_graphicsContext.GetShadowMap()->GetDSV()->cpuHandle);
-		
-		D3D12_RECT l_rect = {};
-		l_rect.bottom = 1080;
-		l_rect.left = 0;
-		l_rect.right = 1920;
-		l_rect.top = 0;
-
-		l_graphicsCmdList->ClearDepthStencilView(
-			l_graphicsContext.GetShadowMap()->GetDSV()->cpuHandle,
-			D3D12_CLEAR_FLAG_DEPTH,
-			1.0f,
-			0,
-			1, &l_rect);
+		l_graphicsCmdList->RSSetViewports(1, &ShadowPassViewPort);
+		l_graphicsCmdList->RSSetScissorRects(1, &ShadowPassRect);
+		l_graphicsCmdList->ClearDepthStencilView(l_graphicsContext.GetShadowMap()->GetDSV()->cpuHandle,D3D12_CLEAR_FLAG_DEPTH,1.0f,0,1, &ShadowPassRect);
 		l_graphicsCmdList->IASetIndexBuffer(&m_indexBuffer->GetIndexBufferView());
 		l_graphicsCmdList->SetGraphicsRootSignature(m_shadowPassRootSignature);
 		l_graphicsCmdList->IASetVertexBuffers(0, 1, &m_vertexBuffer->GetVertexBufferView());
@@ -120,23 +106,15 @@ void Renderer::D3D12Renderer::OnUpdate()
 				l_graphicsCmdList->DrawIndexedInstanced(static_cast<uint32_t>(l_mesh->m_indices.size()), 1, l_mesh->m_indexOffset, l_mesh->m_vertexOffset, 0);
 			}
 		}
+		DepthToShaderResource.Transition.pResource = l_graphicsContext.GetShadowMap()->GetResource();
+		l_graphicsCmdList->ResourceBarrier(1, &DepthToShaderResource);
 	}
-	D3D12_RESOURCE_BARRIER l_dsv_to_srv = {};
-	l_dsv_to_srv.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	l_dsv_to_srv.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-	l_dsv_to_srv.Transition.pResource = l_graphicsContext.GetShadowMap()->GetResource();
-	l_dsv_to_srv.Transition.Subresource = 0;
-	l_dsv_to_srv.Transition.StateBefore = D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_DEPTH_WRITE;
-	l_dsv_to_srv.Transition.StateAfter = D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_DEPTH_READ;
 
-	l_graphicsCmdList->ResourceBarrier(1, &l_dsv_to_srv);
-
-	// Indicate that the back buffer will be used as a render target.
-	l_graphicsContext.BeginRenderpass(m_clusterForwardPass.mrt, &m_clusterForwardPass.depth);
+	l_graphicsContext.BeginRender(m_frameIndex);
 	//Forward Pass
 	{
 		//Resource Trasition
-		
+		l_graphicsContext.BeginRenderpass(m_clusterForwardPass.mrt, &m_clusterForwardPass.depth);
 		l_graphicsCmdList->SetPipelineState(m_graphicsPipelineState);
 		// Set necessary state.
 		l_graphicsCmdList->SetGraphicsRootSignature(m_clusterForwardRootSignature);
@@ -157,40 +135,33 @@ void Renderer::D3D12Renderer::OnUpdate()
 				l_graphicsCmdList->DrawIndexedInstanced(static_cast<uint32_t>(l_mesh->m_indices.size()), 1, l_mesh->m_indexOffset, l_mesh->m_vertexOffset, 0);
 			}
 		}
+		l_graphicsCmdList->EndRenderPass();
+		//Resource Trasition
+		ShaderResourceToDepth.Transition.pResource = l_graphicsContext.GetShadowMap()->GetResource();
+		l_graphicsCmdList->ResourceBarrier(1, &ShaderResourceToDepth);
 	}
-	l_graphicsCmdList->EndRenderPass();
 
-	//Resource Trasition
-	D3D12_RESOURCE_BARRIER l_srv_to_dsv = {};
-	l_srv_to_dsv.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	l_srv_to_dsv.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-	l_srv_to_dsv.Transition.pResource = l_graphicsContext.GetShadowMap()->GetResource();
-	l_srv_to_dsv.Transition.Subresource = 0;
-	l_srv_to_dsv.Transition.StateBefore = D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_DEPTH_READ;
-	l_srv_to_dsv.Transition.StateAfter = D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_DEPTH_WRITE;
+	//Frame Quad
+	{
+		l_graphicsContext.TransitRenderTargets({ "Light","Normal","Specular" }, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		//Deferred Pass
+		l_graphicsContext.BeginSwapchainOutputPass(m_frameIndex);
+		l_graphicsCmdList->SetPipelineState(m_quadPipelineState);
+		l_graphicsCmdList->SetGraphicsRootSignature(m_clusterForwardRootSignature);
+		l_graphicsCmdList->IASetIndexBuffer(&m_indexBuffer->GetIndexBufferView());
+		l_graphicsCmdList->IASetVertexBuffers(0, 1, &m_vertexBuffer->GetVertexBufferView());
+		l_graphicsCmdList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	l_graphicsCmdList->ResourceBarrier(1, &l_srv_to_dsv);
+		ID3D12DescriptorHeap* l_srvHeap[] = { D3D12DescManager::GetDescManager().GetHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)->GetHeap() };
+		l_graphicsCmdList->SetGraphicsRootSignature(m_finalOutputRootSignature);
+		l_graphicsCmdList->SetDescriptorHeaps(1, l_srvHeap);
+		l_graphicsCmdList->SetGraphicsRootDescriptorTable(FINAL_OUTPUT_TEX_ROOT_INDEX, l_graphicsContext.GetRenderTarget("Light")->GetSRV()->gpuHandle);
+		l_graphicsCmdList->DrawIndexedInstanced(static_cast<uint32_t>(m_frameQuad.m_quadMesh.m_indices.size()), 1, m_frameQuad.m_quadIndexOffset, m_frameQuad.m_quadVertexOffset, 0);
+		l_graphicsContext.TransitRenderTargets({ "Light","Normal","Specular" }, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 
-	l_graphicsContext.TransitRenderTargets({ "Light","Normal","Specular" }, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-	//Deferred Pass
-	l_graphicsContext.BeginSwapchainOutputPass(m_frameIndex);
-	l_graphicsCmdList->SetPipelineState(m_quadPipelineState);
-	l_graphicsCmdList->SetGraphicsRootSignature(m_clusterForwardRootSignature);
-	l_graphicsCmdList->IASetIndexBuffer(&m_indexBuffer->GetIndexBufferView());
-	l_graphicsCmdList->IASetVertexBuffers(0, 1, &m_vertexBuffer->GetVertexBufferView());
-	l_graphicsCmdList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	
-	ID3D12DescriptorHeap* l_srvHeap[] = { D3D12DescManager::GetDescManager().GetHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)->GetHeap() };
-	l_graphicsCmdList->SetGraphicsRootSignature(m_finalOutputRootSignature);
-	l_graphicsCmdList->SetDescriptorHeaps(1, l_srvHeap);
-	l_graphicsCmdList->SetGraphicsRootDescriptorTable(FINAL_OUTPUT_TEX_ROOT_INDEX, l_graphicsContext.GetRenderTarget("Light")->GetSRV()->gpuHandle);
-	l_graphicsCmdList->DrawIndexedInstanced(static_cast<uint32_t>(m_frameQuad.m_quadMesh.m_indices.size()), 1, m_frameQuad.m_quadIndexOffset, m_frameQuad.m_quadVertexOffset, 0);
-	l_graphicsContext.TransitRenderTargets({ "Light","Normal","Specular" }, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
-
-	
-	l_graphicsCmdList->EndRenderPass();
-
+		l_graphicsCmdList->EndRenderPass();
+	}
 
 	l_graphicsContext.EndRender();
 	m_graphicsCmd->Close();
@@ -513,14 +484,14 @@ void Renderer::D3D12Renderer::InitRootSignature()
 		l_shadowSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
 		l_shadowSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
 		l_shadowSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
-		l_shadowSampler.Filter = D3D12_FILTER_COMPARISON_MIN_MAG_MIP_POINT;
+		l_shadowSampler.Filter = D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
 		l_shadowSampler.ShaderRegister = 1;
 
 		std::vector<D3D12_STATIC_SAMPLER_DESC> samplers = { l_defaultSampler ,l_shadowSampler };
 
 
 
-		rootSignatureDesc.Init(static_cast<uint32_t>(l_rootParameters.size()), l_rootParameters.data(), samplers.size(), samplers.data(), D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+		rootSignatureDesc.Init(static_cast<uint32_t>(l_rootParameters.size()), l_rootParameters.data(), static_cast<uint32_t>(samplers.size()), samplers.data(), D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 		ComPtr<ID3DBlob> signature;
 		ComPtr<ID3DBlob> error;

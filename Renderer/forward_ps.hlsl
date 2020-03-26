@@ -79,13 +79,17 @@ MRT main(PSInput input) : SV_TARGET
 	float2 shadowCoord;
 	shadowCoord.x = input.shadowUV.x * 0.5 + 0.5;
 	shadowCoord.y = -input.shadowUV.y * 0.5 + 0.5;
+	float shadow = 0.0f;
 
-	float shadow = ShadowMap.SampleCmpLevelZero(ShadowSampler, shadowCoord,input.shadowUV.z);
+	shadow += ShadowMap.SampleCmpLevelZero(ShadowSampler, shadowCoord, input.shadowUV.z,int2(0,0));
+	shadow += ShadowMap.SampleCmpLevelZero(ShadowSampler, shadowCoord, input.shadowUV.z,int2(0,1));
+	shadow += ShadowMap.SampleCmpLevelZero(ShadowSampler, shadowCoord, input.shadowUV.z,int2(1,0));
+	shadow += ShadowMap.SampleCmpLevelZero(ShadowSampler, shadowCoord, input.shadowUV.z,int2(1,1));
 
 
 
 	l_res.LightOut = (diffuse * Alebdo.Sample(DefaultSampler,input.uv) + spec) * 0.85 + 0.15;
-	l_res.LightOut *= shadow;
+	l_res.LightOut *= shadow / 4;
 	l_res.NormalOut = float4(input.normal,1.0f);
 	l_res.SpecularOut = float4(input.shadowUV.xy, 0.0f, 1.0f);
 	l_res.SpecularOut.a = input.scenePositionView.z;

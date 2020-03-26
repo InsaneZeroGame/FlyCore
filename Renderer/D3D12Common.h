@@ -31,6 +31,43 @@ namespace Renderer
 		D3D12_DESCRIPTOR_HEAP_TYPE type;
 	};
 
+    static D3D12_RESOURCE_BARRIER DepthToShaderResource =
+    {
+        D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+        D3D12_RESOURCE_BARRIER_FLAG_NONE,
+        {   
+            nullptr,
+            0,
+            D3D12_RESOURCE_STATE_DEPTH_WRITE,
+            D3D12_RESOURCE_STATE_DEPTH_READ
+        }
+    };
+
+    static D3D12_RESOURCE_BARRIER ShaderResourceToDepth =
+    {
+        D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+        D3D12_RESOURCE_BARRIER_FLAG_NONE,
+        {
+            nullptr,
+            0,
+            D3D12_RESOURCE_STATE_DEPTH_READ,
+            D3D12_RESOURCE_STATE_DEPTH_WRITE
+        }
+    };
+    static LONG ShadowMapWidth = 800;
+    static LONG ShadowMapHeight = 600;
+
+
+    static D3D12_RECT ShadowPassRect = 
+    {
+        0,0,ShadowMapWidth,ShadowMapHeight
+    };
+
+    static D3D12_VIEWPORT ShadowPassViewPort =
+    {
+        0.0f,0.0f,float(ShadowMapWidth),float(ShadowMapHeight),0.0f,1.0f
+    };
+    
 	static uint32_t GetFormatInByte(DXGI_FORMAT p_format)
 	{
 		switch (p_format)
