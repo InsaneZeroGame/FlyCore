@@ -53,7 +53,7 @@ void Renderer::D3D12Renderer::OnUpdate()
 	m_VSUniform->ResetBuffer();
 	m_mainCamera->UpdateCamera();
 
-	auto shadowMatrix = glm::lookAtLH(glm::vec3(-0.01, 20.0, 0.0), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	auto shadowMatrix = glm::lookAtLH(glm::vec3(-10.01, 15.0, 10.0), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
 	SceneUniformData l_data = {
 		m_mainCamera->GetProj(),
@@ -301,7 +301,7 @@ void Renderer::D3D12Renderer::SetCamera(Gameplay::BaseCamera* p_camera)
 
 	for (auto i = 0; i < 16; ++i)
 	{
-		for (auto j = 0; j < 8; ++j)
+		for (auto j = 0; j < 16; ++j)
 		{
 			auto lightPosView = m_mainCamera->GetView() * glm::vec4(10 * Utility::RandomFloat_11(), 4.0 * Utility::RandomFloat_01(), 10 * Utility::RandomFloat_11(), 1.0);
 			//auto lightPosView = m_uniformBuffer.m_view * glm::vec4(0, 0.5, 0, 1.0f);
