@@ -486,7 +486,7 @@ void Renderer::D3D12Renderer::InitRootSignature()
 		l_shadowSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
 		l_shadowSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
 		l_shadowSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
-		l_shadowSampler.Filter = D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+		l_shadowSampler.Filter = D3D12_FILTER_COMPARISON_MIN_MAG_MIP_POINT;
 		l_shadowSampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
 		l_shadowSampler.ShaderRegister = 1;
 
@@ -690,7 +690,7 @@ void Renderer::D3D12Renderer::InitPipelineState()
 	psoDesc.RTVFormats[1] = DXGI_FORMAT_UNKNOWN;
 	psoDesc.RTVFormats[2] = DXGI_FORMAT_UNKNOWN;
 	psoDesc.DepthStencilState.DepthEnable = true;
-	psoDesc.RasterizerState.DepthBias = 55;
+	psoDesc.RasterizerState.DepthBias = 50;
 	//psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_FRONT;
 	psoDesc.RasterizerState.SlopeScaledDepthBias = 2.5;
 	m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_shadowPassPipelineState));
