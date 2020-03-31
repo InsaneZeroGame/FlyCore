@@ -3,6 +3,7 @@
 #include "D3D12CmdManager.h"
 #include "D3D12CmdAllocatorPool.h"
 #include "D3D12Buffer.h"
+#include "D3D12Texture.h"
 
 namespace Renderer
 {
@@ -51,6 +52,11 @@ namespace Renderer
 		void CopyTextureData(ID3D12Resource* pDstBuffer,
 			ID3D12Resource* pSrcBuffers,uint32_t p_width,uint32_t p_height, DXGI_FORMAT p_format);
 
+		void CopyTextureCubeData(ID3D12Resource* pDstBuffer,
+			ID3D12Resource* pSrcBuffers, uint32_t p_width, uint32_t p_height, DXGI_FORMAT p_format);
+
+		void CopyTextureCubeData(Renderer::D3D12Texture* p_texture,
+			ID3D12Resource* pSrcBuffers);
 
 		void TransitResourceState(ID3D12Resource* pResource,
 		D3D12_RESOURCE_STATES StateBefore,

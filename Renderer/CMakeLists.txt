@@ -8,6 +8,8 @@ set(ShaderSource
 "frame_quad_vs.hlsl"
 "shadow_pass_vs.hlsl"
 "shadow_pass_ps.hlsl"
+"skybox_ps.hlsl"
+"skybox_vs.hlsl"
 )
 
 source_group(Shaders FILES ${ShaderSource})

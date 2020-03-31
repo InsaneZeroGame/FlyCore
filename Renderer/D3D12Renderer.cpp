@@ -61,7 +61,7 @@ void Renderer::D3D12Renderer::OnUpdate()
 		m_mainCamera->GetProj(),
 		m_mainCamera->GetView(),
 		m_mainCamera->GetInverseProj(),
-		shadowMatrix,
+		m_mainCamera->GetShadowProj() * shadowMatrix,
 		{m_mainCamera->GetNear(),m_mainCamera->GetFar(),0.0,0.0}
 	};
 
@@ -88,7 +88,7 @@ void Renderer::D3D12Renderer::OnUpdate()
 	ID3D12GraphicsCommandList4* l_graphicsCmdList = *m_graphicsCmd;
 	m_graphicsCmd->Reset(m_frameIndex, m_graphicsPipelineState);
 
-
+	
 	//Shadow pass
 	{
 		l_graphicsCmdList->SetPipelineState(m_shadowPassPipelineState);
@@ -113,11 +113,29 @@ void Renderer::D3D12Renderer::OnUpdate()
 	}
 
 	l_graphicsContext.BeginRender(m_frameIndex);
+
+	//Skybox pass
+	{
+		l_graphicsCmdList->SetPipelineState(m_skyboxPipelineState);
+		l_graphicsCmdList->SetGraphicsRootSignature(m_skyboxRootSignature);
+		l_graphicsCmdList->OMSetRenderTargets(1, &l_graphicsContext.GetRenderTarget("Light")->GetRTV()->cpuHandle, false, nullptr);
+		l_graphicsCmdList->IASetIndexBuffer(&m_indexBuffer->GetIndexBufferView());
+		l_graphicsCmdList->IASetVertexBuffers(1, 1, &m_vertexBuffer->GetVertexBufferView());
+		l_graphicsCmdList->SetGraphicsRootConstantBufferView(CAMERA_UNIFORM_ROOT_INDEX, m_VSUniform->GetGpuVirtualAddress());
+		ID3D12DescriptorHeap* l_srvHeap[] = { D3D12DescManager::GetDescManager().GetHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)->GetHeap() };
+		l_graphicsCmdList->SetDescriptorHeaps(1, l_srvHeap);
+		l_graphicsCmdList->SetGraphicsRootDescriptorTable(1, m_skyBox->GetSRV()->gpuHandle);
+		l_graphicsCmdList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		l_graphicsCmdList->DrawIndexedInstanced(static_cast<uint32_t>(m_skyBoxMesh.m_quadMesh.m_indices.size()), 1, m_skyBoxMesh.m_quadIndexOffset, m_skyBoxMesh.m_quadVertexOffset, 0);
+	}
+
+
 	//Forward Pass
 	{
 		//Resource Trasition
 		l_graphicsContext.BeginRenderpass(m_clusterForwardPass.mrt, &m_clusterForwardPass.depth);
 		l_graphicsCmdList->SetPipelineState(m_graphicsPipelineState);
+		l_graphicsCmdList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		// Set necessary state.
 		l_graphicsCmdList->SetGraphicsRootSignature(m_clusterForwardRootSignature);
 		l_graphicsCmdList->IASetIndexBuffer(&m_indexBuffer->GetIndexBufferView());
@@ -303,7 +321,7 @@ void Renderer::D3D12Renderer::SetCamera(Gameplay::BaseCamera* p_camera)
 
 	for (auto i = 0; i < 16; ++i)
 	{
-		for (auto j = 0; j < 16; ++j)
+		for (auto j = 0; j < 4; ++j)
 		{
 			auto lightPosView = glm::vec4(10 * Utility::RandomFloat_11(), 4.0 * Utility::RandomFloat_01(), 10 * Utility::RandomFloat_11(), 1.0);
 			//auto lightPosView = m_uniformBuffer.m_view * glm::vec4(0, 0.5, 0, 1.0f);
@@ -317,7 +335,7 @@ void Renderer::D3D12Renderer::SetCamera(Gameplay::BaseCamera* p_camera)
 			l_lights[i * 16 + j].color[2] = l_colors[rand() % 6].data[2];
 			l_lights[i * 16 + j].color[3] = l_colors[rand() % 6].data[3];
 			l_lights[i * 16 + j].radius = 2.5;
-			l_lights[i * 16 + j].attenutation = Utility::RandomFloat_01();
+			l_lights[i * 16 + j].attenutation = Utility::RandomFloat_01() * 0.4;
 		}
 	}
 
@@ -342,7 +360,7 @@ void Renderer::D3D12Renderer::InitBuffers()
     auto& loader = Utility::AssetLoader::GetLoader();
     
     m_scene = new Renderer::Scene;
-    loader.LoadFbx("C:\\Dev\\FlyCore\\scene1.fbx", m_scene);
+    loader.LoadFbx("C:\\Dev\\FlyCore\\Assets\\scene1.fbx", m_scene);
 
     m_vertexBuffer = new D3D12VertexBuffer(Constants::VERTEX_BUFFER_SIZE);
     m_uploadBuffer = new D3D12UploadBuffer(Constants::MAX_CONST_BUFFER_VIEW_SIZE);
@@ -361,9 +379,61 @@ void Renderer::D3D12Renderer::InitBuffers()
 		0,2,1,
 		0,3,2
 	};
+	//-1 1  0,0         1  1  1,0
+	//-1-1	0,1	   	    1 -1  1,1
+	std::vector<Vertex> l_skybox_vertices = {
+		// positions      
+		{{-1.0f,  1.0f, 1.0f,  1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f}},
+		{{-1.0f, -1.0f, 1.0f,  1.0f},{0.0f,0.0f,0.0f},{0.0f,1.0f}},
+		{{1.0f,  -1.0f, 1.0f,  1.0f},{0.0f,0.0f,0.0f},{1.0f,1.0f}},
+		{{1.0f,   1.0f, 1.0f,  1.0f},{0.0f,0.0f,0.0f},{1.0f,0.0f}},
 
+		{{-1.0f,  1.0f, -1.0f,  1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f}},
+		{{-1.0f, -1.0f, -1.0f,  1.0f},{0.0f,0.0f,0.0f},{0.0f,1.0f}},
+		{{1.0f,  -1.0f, -1.0f,  1.0f},{0.0f,0.0f,0.0f},{1.0f,1.0f}},
+		{{1.0f,   1.0f, -1.0f,  1.0f},{0.0f,0.0f,0.0f},{1.0f,0.0f}},
 
+		{{-1.0f, 1.0f, 1.0f,   1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f}},
+		{{-1.0f, 1.0f,-1.0f,   1.0f},{0.0f,0.0f,0.0f},{0.0f,1.0f}},
+		{{1.0f,  1.0f,-1.0f,   1.0f},{0.0f,0.0f,0.0f},{1.0f,1.0f}},
+		{{1.0f,  1.0f, 1.0f,   1.0f},{0.0f,0.0f,0.0f},{1.0f,0.0f}},
+
+		{{-1.0f, -1.0f, 1.0f,   1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f}},
+		{{-1.0f, -1.0f,-1.0f,   1.0f},{0.0f,0.0f,0.0f},{0.0f,1.0f}},
+		{{1.0f,  -1.0f,-1.0f,   1.0f},{0.0f,0.0f,0.0f},{1.0f,1.0f}},
+		{{1.0f,  -1.0f, 1.0f,   1.0f},{0.0f,0.0f,0.0f},{1.0f,0.0f}},
+
+		{{1.0f,-1.0f,  1.0f,   1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f}},
+		{{1.0f,-1.0f, -1.0f,   1.0f},{0.0f,0.0f,0.0f},{0.0f,1.0f}},
+		{{1.0f,1.0f,  -1.0f,   1.0f},{0.0f,0.0f,0.0f},{1.0f,1.0f}},
+		{{1.0f,1.0f,   1.0f,   1.0f},{0.0f,0.0f,0.0f},{1.0f,0.0f}},
+
+		{{-1.0f,-1.0f,  1.0f,   1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f}},
+		{{-1.0f,-1.0f, -1.0f,   1.0f},{0.0f,0.0f,0.0f},{0.0f,1.0f}},
+		{{-1.0f,1.0f,  -1.0f,   1.0f},{0.0f,0.0f,0.0f},{1.0f,1.0f}},
+		{{-1.0f,1.0f,   1.0f,   1.0f},{0.0f,0.0f,0.0f},{1.0f,0.0f}},
+
+		//{{-1.0f, -1.0f, -1.0f, 1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f}},
+		//{{-1.0f,  1.0f, -1.0f, 1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f}},
+		//{{1.0f, -1.0f, -1.0f,  1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f}},
+		//{{1.0f,  1.0f, -1.0f,  1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f}},
+	};
+
+	std::vector<uint32_t> l_skybox_indices =
+	{
+		 //0, 1, 2, 3, 6, 7, 4, 5,         // First strip
+		//2, 6, 0, 4, 1, 5, 3, 7          // Second strip
+		0 + 0 * 4,1 + 0 * 4,2 + 0 * 4,0 + 0 * 4,2 + 0 * 4,3 + 0 * 4,
+		0 + 1 * 4,1 + 1 * 4,2 + 1 * 4,0 + 1 * 4,2 + 1 * 4,3 + 1 * 4,
+		0 + 2 * 4,1 + 2 * 4,2 + 2 * 4,0 + 2 * 4,2 + 2 * 4,3 + 2 * 4,
+		0 + 3 * 4,1 + 3 * 4,2 + 3 * 4,0 + 3 * 4,2 + 3 * 4,3 + 3 * 4,
+		0 + 4 * 4,1 + 4 * 4,2 + 4 * 4,0 + 4 * 4,2 + 4 * 4,3 + 4 * 4,
+		0 + 5 * 4,1 + 5 * 4,2 + 5 * 4,0 + 5 * 4,2 + 5 * 4,3 + 5 * 4,
+
+	};
 	m_frameQuad.m_quadMesh = Mesh(std::move(l_vertices),std::move(l_indices));
+
+	m_skyBoxMesh.m_quadMesh = Mesh(std::move(l_skybox_vertices), std::move(l_skybox_indices));
 
 
 	UINT vertexBufferSize = 0;
@@ -380,6 +450,10 @@ void Renderer::D3D12Renderer::InitBuffers()
 	m_uploadBuffer->CopyData(l_vertices.data(), sizeof(Vertex)* l_vertices.size());
 	vertexBufferSize += static_cast<uint32_t>(sizeof(Vertex) * l_vertices.size());
 
+	m_skyBoxMesh.m_quadVertexOffset = vertexBufferSize / sizeof(Vertex);
+	m_uploadBuffer->CopyData(l_skybox_vertices.data(), sizeof(Vertex) * l_skybox_vertices.size());
+	vertexBufferSize += static_cast<uint32_t>(sizeof(Vertex) * l_skybox_vertices.size());
+
 	UINT indexBufferSize = 0;
 	for (auto i = 0; i < m_scene->m_actors.size(); ++i)
 	{
@@ -393,6 +467,10 @@ void Renderer::D3D12Renderer::InitBuffers()
 	m_frameQuad.m_quadIndexOffset = indexBufferSize / sizeof(uint32_t);
 	m_uploadBuffer->CopyData(l_indices.data(), sizeof(uint32_t)* l_indices.size());
 	indexBufferSize += static_cast<uint32_t>(sizeof(uint32_t) * l_indices.size());
+
+	m_skyBoxMesh.m_quadIndexOffset = indexBufferSize / sizeof(uint32_t);
+	m_uploadBuffer->CopyData(l_skybox_indices.data(), sizeof(uint32_t) * l_skybox_indices.size());
+	indexBufferSize += static_cast<uint32_t>(sizeof(uint32_t) * l_skybox_indices.size());
 
 	auto& l_graphicsContext = D3D12GraphicsCmdContext::GetContext();
 	l_graphicsContext.Begin(nullptr);
@@ -422,7 +500,52 @@ void Renderer::D3D12Renderer::InitRootSignature()
 	l_defaultSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
 	l_defaultSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
 	l_defaultSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+	
+	//Skybox
 
+	{
+		CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
+
+		D3D12_ROOT_PARAMETER l_cameraUniform = {};
+		l_cameraUniform.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+		l_cameraUniform.Descriptor = { 0,0 };
+		l_cameraUniform.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+		
+
+		D3D12_ROOT_PARAMETER l_skyboxTexture = {};
+		l_skyboxTexture.DescriptorTable.NumDescriptorRanges = 1;
+		l_skyboxTexture.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		D3D12_DESCRIPTOR_RANGE l_range = {};
+		l_range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		l_range.NumDescriptors = 1;
+		l_range.BaseShaderRegister = 0;
+		l_range.RegisterSpace = 0;
+		l_range.OffsetInDescriptorsFromTableStart = 0;
+		l_skyboxTexture.DescriptorTable.pDescriptorRanges = &l_range;
+		l_skyboxTexture.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+		std::vector<D3D12_ROOT_PARAMETER> l_rootParameters =
+		{
+			l_cameraUniform,l_skyboxTexture
+		};
+
+		D3D12_STATIC_SAMPLER_DESC l_CubeSampler = {};
+		l_CubeSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+		l_CubeSampler.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+		l_CubeSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+		l_CubeSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+		l_CubeSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+		l_CubeSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+
+		rootSignatureDesc.Init(static_cast<uint32_t>(l_rootParameters.size()), l_rootParameters.data(), 1, &l_CubeSampler, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+		ComPtr<ID3DBlob> signature;
+		ComPtr<ID3DBlob> error;
+		D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error);
+		m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_skyboxRootSignature));
+
+	}
 
 
     // Create Graphics RS
@@ -602,7 +725,7 @@ void Renderer::D3D12Renderer::CreateDefaultTexture()
 {
 	auto& l_graphicsContext = D3D12GraphicsCmdContext::GetContext();
 	Texture l_texture;
-	Utility::AssetLoader::LoadTextureFromFile("C:\\Dev\\FlyCore\\uv_texture.png", l_texture);
+	Utility::AssetLoader::LoadTextureFromFile("C:\\Dev\\FlyCore\\Assets\\uv_texture.png", l_texture);
 	m_uploadBuffer->ResetBuffer();
 	m_defaultTexture = new D3D12Texture2D(l_texture.width, l_texture.height);
 	m_defaultTexture->SetName(L"Default Texture");
@@ -616,6 +739,43 @@ void Renderer::D3D12Renderer::CreateDefaultTexture()
 		D3D12_RESOURCE_STATE_COPY_DEST,
 		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 	l_graphicsContext.End(true);
+
+	m_uploadBuffer->ResetBuffer();
+	std::array<Texture, 6> l_skybox_textures;
+	Utility::AssetLoader::LoadTextureFromFile("C:\\Dev\\FlyCore\\Assets\\skybox\\left.jpg", l_skybox_textures[0]);
+	Utility::AssetLoader::LoadTextureFromFile("C:\\Dev\\FlyCore\\Assets\\skybox\\right.jpg", l_skybox_textures[1]);
+	Utility::AssetLoader::LoadTextureFromFile("C:\\Dev\\FlyCore\\Assets\\skybox\\top.jpg", l_skybox_textures[2]);
+	Utility::AssetLoader::LoadTextureFromFile("C:\\Dev\\FlyCore\\Assets\\skybox\\bottom.jpg", l_skybox_textures[3]);
+	Utility::AssetLoader::LoadTextureFromFile("C:\\Dev\\FlyCore\\Assets\\skybox\\back.jpg", l_skybox_textures[4]);
+	Utility::AssetLoader::LoadTextureFromFile("C:\\Dev\\FlyCore\\Assets\\skybox\\front.jpg", l_skybox_textures[5]);
+	m_skyBox = new D3D12TextureCube(l_skybox_textures[0].width, l_skybox_textures[0].height);
+	m_uploadBuffer->CopyData(l_skybox_textures[0].data, l_skybox_textures[0].size);
+	m_uploadBuffer->CopyData(l_skybox_textures[1].data, l_skybox_textures[1].size);
+	m_uploadBuffer->CopyData(l_skybox_textures[2].data, l_skybox_textures[2].size);
+	m_uploadBuffer->CopyData(l_skybox_textures[3].data, l_skybox_textures[3].size);
+	m_uploadBuffer->CopyData(l_skybox_textures[4].data, l_skybox_textures[4].size);
+	m_uploadBuffer->CopyData(l_skybox_textures[5].data, l_skybox_textures[5].size);
+	//m_uploadBuffer->CopyData(l_texture.data, l_texture.size);
+	//m_uploadBuffer->CopyData(l_texture.data, l_texture.size);
+	//m_uploadBuffer->CopyData(l_texture.data, l_texture.size);
+	//m_uploadBuffer->CopyData(l_texture.data, l_texture.size);
+	//m_uploadBuffer->CopyData(l_texture.data, l_texture.size);
+	//m_uploadBuffer->CopyData(l_texture.data, l_texture.size);
+
+	m_skyBox->SetName(L"Skybox Texture");
+
+
+	l_graphicsContext.Begin(nullptr);
+	l_graphicsContext.CopyTextureCubeData(m_skyBox, m_uploadBuffer->GetResource());
+	//l_graphicsContext.CopyTextureCubeData(
+	//	m_skyBox,
+	//	m_uploadBuffer->GetResource(),
+	//	l_texture.width, l_texture.height, DXGI_FORMAT_R8G8B8A8_UNORM);
+	l_graphicsContext.TransitResourceState(m_skyBox->GetResource(),
+		D3D12_RESOURCE_STATE_COPY_DEST,
+		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	l_graphicsContext.End(true);
+
 }
 
 void Renderer::D3D12Renderer::InitPipelineState()
@@ -630,6 +790,9 @@ void Renderer::D3D12Renderer::InitPipelineState()
 	ComPtr<ID3DBlob> quadShader_ps;
 	ComPtr<ID3DBlob> shadow_pass_vs;
 	ComPtr<ID3DBlob> shadow_pass_ps;
+	ComPtr<ID3DBlob> skybox_vs;
+	ComPtr<ID3DBlob> skybox_ps;
+
 
 #if defined(_DEBUG)
     // Enable better shader debugging with the graphics debugging tools.
@@ -644,6 +807,8 @@ void Renderer::D3D12Renderer::InitPipelineState()
 	D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\frame_quad_ps.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_0", compileFlags, 0, &quadShader_ps, nullptr);
 	D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\shadow_pass_vs.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "vs_5_0", compileFlags, 0, &shadow_pass_vs, nullptr);
 	D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\shadow_pass_ps.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_0", compileFlags, 0, &shadow_pass_ps, nullptr);
+	D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\skybox_vs.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "vs_5_0", compileFlags, 0, &skybox_vs, nullptr);
+	D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\skybox_ps.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_0", compileFlags, 0, &skybox_ps, nullptr);
 
     // Define the vertex input layout.
     D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
@@ -682,6 +847,17 @@ void Renderer::D3D12Renderer::InitPipelineState()
 	psoDesc.DepthStencilState.DepthEnable = false;
 	m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_quadPipelineState));
 
+	psoDesc.VS = CD3DX12_SHADER_BYTECODE(skybox_vs.Get());
+	psoDesc.PS = CD3DX12_SHADER_BYTECODE(skybox_ps.Get());
+	psoDesc.pRootSignature = m_skyboxRootSignature;
+	psoDesc.NumRenderTargets = 1;
+	psoDesc.RTVFormats[1] = DXGI_FORMAT_UNKNOWN;
+	psoDesc.RTVFormats[2] = DXGI_FORMAT_UNKNOWN;
+	psoDesc.DepthStencilState.DepthEnable = false;
+	psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+	m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_skyboxPipelineState));
+
+
 	psoDesc.VS = CD3DX12_SHADER_BYTECODE(shadow_pass_vs.Get());
 	psoDesc.PS = {};
 	psoDesc.pRootSignature = m_shadowPassRootSignature;
@@ -691,7 +867,7 @@ void Renderer::D3D12Renderer::InitPipelineState()
 	psoDesc.RTVFormats[2] = DXGI_FORMAT_UNKNOWN;
 	psoDesc.DepthStencilState.DepthEnable = true;
 	psoDesc.RasterizerState.DepthBias = 50;
-	//psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_FRONT;
+	psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
 	psoDesc.RasterizerState.SlopeScaledDepthBias = 2.5;
 	m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_shadowPassPipelineState));
 
@@ -712,7 +888,7 @@ void Renderer::D3D12Renderer::InitRenderpass()
 	auto& l_graphicsContext = D3D12GraphicsContext::GetContext();
 	
 	D3D12_RENDER_PASS_RENDER_TARGET_DESC l_lightRT = {};
-	l_lightRT.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
+	l_lightRT.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
 	l_lightRT.BeginningAccess.Clear.ClearValue.Color[0] = Constants::CLEAR_COLOR[0];
 	l_lightRT.BeginningAccess.Clear.ClearValue.Color[1] = Constants::CLEAR_COLOR[1];
 	l_lightRT.BeginningAccess.Clear.ClearValue.Color[2] = Constants::CLEAR_COLOR[2];
@@ -757,6 +933,7 @@ void Renderer::D3D12Renderer::LoadScene(Renderer::Scene*)
 void Renderer::D3D12Renderer::OnDestory()
 {
 	SAFE_DELETE(m_VSUniform);
+	SAFE_DELETE(m_PSUniform);
     SAFE_DELETE(m_lightList);
 	SAFE_DELETE(m_renderCmdQueue);
 	SAFE_DELETE(m_computeCmd);
@@ -764,7 +941,10 @@ void Renderer::D3D12Renderer::OnDestory()
     SAFE_DELETE(m_vertexBuffer); 
     SAFE_DELETE(m_indexBuffer);
     SAFE_DELETE(m_uploadBuffer);
+	SAFE_DELETE(m_lightBuffer);
 	SAFE_DELETE(m_mainCamera);
+	SAFE_DELETE(m_defaultTexture);
+	SAFE_DELETE(m_skyBox);
 }
 
 

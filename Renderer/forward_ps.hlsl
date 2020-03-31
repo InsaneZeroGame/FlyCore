@@ -2,7 +2,7 @@
 
 #define PCF_SAMPLE_COUNT 64
 #define BLOCKER_SEARCH_COUNT 64
-#define LIGHT_SIZE 1.5
+#define LIGHT_SIZE 1.50
 
 float linstep(float min, float max, float v)
 {
@@ -184,7 +184,7 @@ float PCSS(float3 shadowCoord,float zEye)
 	float filterRadiusUV = penumbraRatio * LIGHT_SIZE * zNearFar[0] / zEye;
 	//return filterRadiusUV;
 	//PCF Filter
-	return PCF_Filter(shadowCoord.xy, shadowCoord.z, filterRadiusUV);
+	return PCF_Filter(shadowCoord.xy, shadowCoord.z - 0.005, filterRadiusUV);
 
 }
 
@@ -211,9 +211,9 @@ MRT main(PSInput input) : SV_TARGET
 	{
 		if (LightBuffer[ClusterIndex].isActive[i] == 1)
 		{
-		float3 lightDir = mul(view,PointLights[i].pos).xyz - input.scenePositionView.xyz;
+		float3 lightDir = mul(view,PointLights[i].pos).xyz - input.scenePositionView.xyz/ input.scenePositionView.w;
 		float3 lightDirNormalized = normalize(lightDir);
-		float3 viewDir = normalize(float3(0.0,0.0,0.0) - input.scenePositionView.xyz);
+		float3 viewDir = normalize(-float3(0.0,0.0,0.0) + input.scenePositionView.xyz);
 		float3 halfwarDir = normalize(lightDir + viewDir);
 
 		float lightDistSq = dot(lightDir, lightDir);
@@ -236,7 +236,7 @@ MRT main(PSInput input) : SV_TARGET
 	//shadow /= 4.0;
 
 
-	l_res.LightOut = (spec + diffuse) * 0.85 * shadow + 0.15;
+	l_res.LightOut = (spec + diffuse) * 0.75 * shadow + 0.25;
 	l_res.LightOut *= Alebdo.Sample(DefaultSampler, input.uv);
 	l_res.NormalOut = float4(input.normal,1.0f);
 	l_res.SpecularOut = float4(input.shadowUV.xy, 0.0f, 1.0f);

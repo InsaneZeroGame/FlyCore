@@ -14,6 +14,11 @@ namespace Renderer
 			return m_srv;
 		}
 
+		__forceinline const D3D12_RESOURCE_DESC* GetDesc()
+		{
+			return &m_resourceDesc;
+		}
+
 	protected:
 
 		D3D12Texture(const D3D12_RESOURCE_DESC& p_desc, D3D12_HEAP_FLAGS p_flag, D3D12_CLEAR_VALUE p_clearValue = {}, ID3D12Resource* p_resource = nullptr, D3D12_RESOURCE_STATES p_state = D3D12_RESOURCE_STATE_COMMON);
@@ -28,13 +33,24 @@ namespace Renderer
 	class D3D12Texture2D : public D3D12Texture
 	{
 	public:
-		D3D12Texture2D(uint32_t p_width, uint32_t p_height,DXGI_FORMAT p_format = DXGI_FORMAT_R8G8B8A8_UNORM);
-		~D3D12Texture2D();
+		D3D12Texture2D(uint32_t p_width, uint32_t p_height,uint32_t p_depth = 1,DXGI_FORMAT p_format = DXGI_FORMAT_R8G8B8A8_UNORM);
+		virtual ~D3D12Texture2D();
+
+	protected:
+		virtual void CreateViews() override;
+	};
+
+	class D3D12TextureCube : public D3D12Texture
+	{
+	public:
+		D3D12TextureCube(uint32_t p_width, uint32_t p_height, DXGI_FORMAT p_format = DXGI_FORMAT_R8G8B8A8_UNORM);
+		~D3D12TextureCube();
 
 	private:
 		void CreateViews() override;
-	};
 
+	};
+	
 
 	class D3D12RenderTarget : public D3D12Texture
 	{

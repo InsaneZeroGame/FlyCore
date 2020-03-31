@@ -107,6 +107,10 @@ namespace Renderer {
 
 		ID3D12PipelineState* m_shadowPassPipelineState;
 
+		ID3D12PipelineState* m_skyboxPipelineState;
+
+		ID3D12RootSignature* m_skyboxRootSignature;
+
 		D3D12VertexBuffer* m_vertexBuffer;
 
 		D3D12IndexBuffer* m_indexBuffer;
@@ -146,19 +150,25 @@ namespace Renderer {
 
 		std::array<PointLight,1024> m_lights;
 
-		struct FrameQuad
+		struct BuiltinMesh
 		{
 			Mesh m_quadMesh;
 			uint32_t m_quadVertexOffset;
 			uint32_t m_quadIndexOffset;
 
-		}m_frameQuad;
+		};
+
+		BuiltinMesh m_frameQuad;
+
+		BuiltinMesh m_skyBoxMesh;
 
 		uint32_t m_width;
 
 		uint32_t m_height;
 
 		D3D12Texture2D* m_defaultTexture;
+
+		D3D12TextureCube* m_skyBox;
 
 	};
 };

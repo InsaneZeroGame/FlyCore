@@ -93,7 +93,7 @@ Renderer::D3D12RenderTarget::D3D12RenderTarget(uint32_t p_width,uint32_t p_heigh
 		 p_width,
 		 p_height,
 		 1,
-		 0,
+		 1,
 		 p_format,
 		{1,
 		 0},
@@ -123,15 +123,15 @@ void Renderer::D3D12RenderTarget::CreateViews()
 	l_device->CreateShaderResourceView(m_pResource.Get(), nullptr, m_srv->cpuHandle);
 }
 
-Renderer::D3D12Texture2D::D3D12Texture2D(uint32_t p_width, uint32_t p_height,DXGI_FORMAT p_format)
+Renderer::D3D12Texture2D::D3D12Texture2D(uint32_t p_width, uint32_t p_height, uint32_t p_depth,DXGI_FORMAT p_format)
 	:D3D12Texture(
 		{
 		 D3D12_RESOURCE_DIMENSION_TEXTURE2D,
 		 0,
 		 p_width,
 		 p_height,
+		 (UINT16)p_depth,
 		 1,
-		 0,
 		 p_format,
 		{1,
 		 0},
@@ -156,3 +156,42 @@ void Renderer::D3D12Texture2D::CreateViews()
 	l_device->CreateShaderResourceView(m_pResource.Get(), nullptr, m_srv->cpuHandle);
 
 }
+
+Renderer::D3D12TextureCube::D3D12TextureCube(uint32_t p_width, uint32_t p_height, DXGI_FORMAT p_format):
+	D3D12Texture(
+		{
+		 D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+		 0,
+		 p_width,
+		 p_height,
+		 6,
+		 1,
+		 p_format,
+		{1,
+		 0},
+		 D3D12_TEXTURE_LAYOUT_UNKNOWN,
+		D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
+		},
+		D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE,
+		{ p_format },
+		nullptr, D3D12_RESOURCE_STATE_COPY_DEST)
+{
+	CreateViews();
+}
+
+Renderer::D3D12TextureCube::~D3D12TextureCube()
+{
+}
+
+void Renderer::D3D12TextureCube::CreateViews()
+{
+	D3D12_SHADER_RESOURCE_VIEW_DESC l_cubeSRV = {};
+	l_cubeSRV.Format = m_resourceDesc.Format;
+	l_cubeSRV.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+	l_cubeSRV.TextureCube = {0,1,0};
+	l_cubeSRV.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	ID3D12Device* l_device = (D3D12Device::GetDevice());
+	m_srv = D3D12DescManager::GetDescManager().RequestDesc(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	l_device->CreateShaderResourceView(m_pResource.Get(), &l_cubeSRV, m_srv->cpuHandle);
+}
+

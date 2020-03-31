@@ -11,6 +11,7 @@ struct PSInput
 struct ShadowOut
 {
 	float4 position:SV_POSITION;
+
 };
 
 struct SSRPSinput
@@ -42,6 +43,12 @@ cbuffer CDataBuffer : register(b0)
 struct LightList
 {
 	uint isActive[256];
+};
+
+struct SkyboxPSInput {
+	float4 position: SV_POSITION;
+	float4 uv : POSITION;
+
 };
 
 //Group Count

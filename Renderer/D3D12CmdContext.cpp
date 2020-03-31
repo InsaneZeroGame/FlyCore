@@ -97,6 +97,86 @@ void Renderer::D3D12GraphicsCmdContext::CopyTextureData(
 	m_graphicsCmdList->CopyTextureRegion(&l_destLocation, 0, 0, 0, &l_srcLocation, &l_box);
 }
 
+void Renderer::D3D12GraphicsCmdContext::CopyTextureCubeData(ID3D12Resource* pDstBuffer, ID3D12Resource* pSrcBuffers, uint32_t p_width, uint32_t p_height, DXGI_FORMAT p_format)
+{
+	auto texelInByte = GetFormatInByte(p_format);
+
+
+	D3D12_TEXTURE_COPY_LOCATION l_destLocation = {};
+	l_destLocation.pResource = pDstBuffer;
+	l_destLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+	l_destLocation.SubresourceIndex = 0;
+	
+	D3D12_TEXTURE_COPY_LOCATION l_srcLocation = {};
+	l_srcLocation.pResource = pSrcBuffers;
+	l_srcLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+	l_srcLocation.PlacedFootprint.Footprint = { p_format ,p_width,p_height,6,static_cast<uint32_t>(Utility::AlignTo256(p_width * texelInByte)) };
+	l_srcLocation.PlacedFootprint.Offset = 0;
+
+	D3D12_BOX l_box = {};
+	l_box.left = 0;
+	l_box.top = 0;
+	l_box.front = 0;
+	l_box.right = p_width;
+	l_box.bottom = p_height;
+	l_box.back = 6;
+
+
+
+
+	for (auto i = 0; i < 6; ++i)
+	{
+		l_destLocation.SubresourceIndex = i;
+		l_box.front = i;
+		l_box.back = i + 1;
+		l_srcLocation.PlacedFootprint.Offset = i * static_cast<uint32_t>(Utility::AlignTo256(p_width * texelInByte)) * p_height;
+		m_graphicsCmdList->CopyTextureRegion(&l_destLocation, 0, 0, 0, &l_srcLocation, &l_box);
+
+	}
+
+
+}
+
+void Renderer::D3D12GraphicsCmdContext::CopyTextureCubeData(Renderer::D3D12Texture* p_texture, ID3D12Resource* pSrcBuffers)
+{
+	auto texelInByte = GetFormatInByte(p_texture->GetDesc()->Format);
+
+	ID3D12Device* l_device = (D3D12Device::GetDevice());
+	std::array<D3D12_PLACED_SUBRESOURCE_FOOTPRINT,6> l_footprints;
+	std::array<UINT,6> l_row;
+	std::array<UINT64,6> l_rowSize;
+	std::array<UINT64,6> l_totalSize;
+	l_device->GetCopyableFootprints(p_texture->GetDesc(), 0, 6, 0, l_footprints.data(), l_row.data(), l_rowSize.data(), l_totalSize.data());
+	D3D12_TEXTURE_COPY_LOCATION l_destLocation = {};
+	l_destLocation.pResource = p_texture->GetResource();
+	l_destLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+	l_destLocation.SubresourceIndex = 0;
+
+	D3D12_TEXTURE_COPY_LOCATION l_srcLocation = {};
+	l_srcLocation.pResource = pSrcBuffers;
+	l_srcLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+
+	D3D12_BOX l_box = {};
+	l_box.left = 0;
+	l_box.top = 0;
+	l_box.front = 0;
+	l_box.right = p_texture->GetDesc()->Width;
+	l_box.bottom = p_texture->GetDesc()->Height;
+	l_box.back = 1;
+	
+	for (auto i = 0; i < l_footprints.size(); ++i)
+	{
+		l_srcLocation.PlacedFootprint = l_footprints[i];
+		l_destLocation.SubresourceIndex = i;
+		l_box.front = 0;
+		l_box.back = 1;
+		m_graphicsCmdList->CopyTextureRegion(&l_destLocation, 0, 0, 0, &l_srcLocation, &l_box);
+	}
+	
+	
+
+}
+
 void Renderer::D3D12GraphicsCmdContext::TransitResourceState(ID3D12Resource* pResource,
 	D3D12_RESOURCE_STATES StateBefore,
 	D3D12_RESOURCE_STATES StateAfter,
