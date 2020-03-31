@@ -236,8 +236,9 @@ MRT main(PSInput input) : SV_TARGET
 	//shadow /= 4.0;
 
 
-	l_res.LightOut = (spec + diffuse) * 0.75 * shadow + 0.25;
-	l_res.LightOut *= Alebdo.Sample(DefaultSampler, input.uv);
+	l_res.LightOut = (spec + diffuse) * 0.85 * shadow + 0.15;
+	l_res.LightOut *= 0.75;
+	//l_res.LightOut *= Alebdo.Sample(DefaultSampler, input.uv);
 	l_res.NormalOut = float4(input.normal,1.0f);
 	l_res.SpecularOut = float4(input.shadowUV.xy, 0.0f, 1.0f);
 	l_res.SpecularOut.a = input.scenePositionView.z;
