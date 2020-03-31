@@ -7,7 +7,7 @@
 
 int main() {
 
-	auto window = new Framework::Window({ 1920,1080,"Ang's Game" });
+	auto window = new Framework::Window({ 1920,1080,"Game" });
 	window->OnInit();
 
 	auto mainCamera = new Gameplay::BaseCamera(glm::vec3(-15.1f, 25.1f, -15.1f), glm::vec3(0.0f));
