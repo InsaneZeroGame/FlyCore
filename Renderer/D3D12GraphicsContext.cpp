@@ -55,6 +55,13 @@ void Renderer::D3D12GraphicsContext::AddRenderTargets(const std::string& p_name,
 	
 }
 
+void Renderer::D3D12GraphicsContext::AddDepthBuffer(const std::string& p_name, uint32_t p_width, uint32_t p_height, DXGI_FORMAT p_format)
+{
+	D3D12DepthBuffer* l_newDepthBuffer = new D3D12DepthBuffer(p_width, p_height);
+	l_newDepthBuffer->SetName(MakeWStr(p_name));
+	m_depthBuffers.insert(std::pair<std::string, D3D12DepthBuffer*>(p_name, l_newDepthBuffer));
+}
+
 void Renderer::D3D12GraphicsContext::InitSwapchainOutputTarget(uint32_t p_width, uint32_t p_height, IDXGISwapChain3* p_swapChain)
 {
 	m_RTHeight = p_height;
@@ -81,13 +88,6 @@ void Renderer::D3D12GraphicsContext::InitSwapchainOutputTarget(uint32_t p_width,
 		m_swapChainOutputPass.mrt[i].cpuDescriptor = m_swapChainOutputTargets[i]->GetRTV()->cpuHandle;
 		m_swapChainOutputPass.mrt[i].EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
 	}
-
-	//Create depth buffer resource
-	m_depthBuffer = new D3D12DepthBuffer(p_width, p_height);
-	m_depthBuffer->SetName(L"Depth Buffer");
-
-	m_shadowMap = new D3D12DepthBuffer(ShadowMapWidth, ShadowMapHeight);
-	m_shadowMap->SetName(L"Shadow Map");
 }
 
 Renderer::D3D12GraphicsContext::~D3D12GraphicsContext()

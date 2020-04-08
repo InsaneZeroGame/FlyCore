@@ -28,7 +28,8 @@ Renderer::D3D12Renderer::D3D12Renderer():
 	m_indexBuffer(nullptr),
 	m_uploadBuffer(nullptr),
 	m_clusterForwardRootSignature(nullptr),
-	m_shadowPassRootSignature(nullptr)
+	m_shadowPassRootSignature(nullptr),
+	m_isFirstFrame(true)
 {
 }
 
@@ -50,24 +51,27 @@ void Renderer::D3D12Renderer::OnInit()
 
 void Renderer::D3D12Renderer::OnUpdate()
 {
-	m_VSUniform->ResetBuffer();
-	m_mainCamera->UpdateCamera();
 
-	auto shadowMatrix = glm::lookAtLH(glm::vec3(-10.01, 25.0, -10.0), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	if (m_mainCamera->IsCameraUpdated() || m_isFirstFrame)
+	{
+		m_VSUniform->ResetBuffer();
+		m_mainCamera->UpdateCamera();
+
+		auto shadowMatrix = glm::lookAtLH(glm::vec3(-10.01, 25.0, -10.0), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
 
 
-	SceneUniformData l_data = {
-		m_mainCamera->GetProj(),
-		m_mainCamera->GetView(),
-		m_mainCamera->GetInverseProj(),
-		m_mainCamera->GetShadowProj() * shadowMatrix,
-		{m_mainCamera->GetNear(),m_mainCamera->GetFar(),0.0,0.0}
-	};
+		SceneUniformData l_data = {
+			m_mainCamera->GetProj(),
+			m_mainCamera->GetView(),
+			m_mainCamera->GetInverseProj(),
+			m_mainCamera->GetShadowProj() * shadowMatrix,
+			{m_mainCamera->GetNear(),m_mainCamera->GetFar(),0.0,0.0}
+		};
 
-	m_VSUniform->CopyData(&l_data, Utility::AlignTo256(sizeof(SceneUniformData)));
-
-	
+		m_VSUniform->CopyData(&l_data, Utility::AlignTo256(sizeof(SceneUniformData)));
+		m_isFirstFrame = false;
+	}
 	//Light cull 
 	{
 		using namespace Constants;
@@ -87,15 +91,16 @@ void Renderer::D3D12Renderer::OnUpdate()
 	auto& l_graphicsContext = D3D12GraphicsContext::GetContext();
 	ID3D12GraphicsCommandList4* l_graphicsCmdList = *m_graphicsCmd;
 	m_graphicsCmd->Reset(m_frameIndex, m_graphicsPipelineState);
+	D3D12DepthBuffer* l_shadowMap = l_graphicsContext.GetDepthBuffer("ShadowMap");
+	D3D12DepthBuffer* l_depthBuffer = l_graphicsContext.GetDepthBuffer("DepthBuffer");
 
-	
 	//Shadow pass
 	{
 		l_graphicsCmdList->SetPipelineState(m_shadowPassPipelineState);
-		l_graphicsCmdList->OMSetRenderTargets(0, nullptr, false, &l_graphicsContext.GetShadowMap()->GetDSV()->cpuHandle);
+		l_graphicsCmdList->OMSetRenderTargets(0, nullptr, false, &l_shadowMap->GetDSV()->cpuHandle);
 		l_graphicsCmdList->RSSetViewports(1, &ShadowPassViewPort);
 		l_graphicsCmdList->RSSetScissorRects(1, &ShadowPassRect);
-		l_graphicsCmdList->ClearDepthStencilView(l_graphicsContext.GetShadowMap()->GetDSV()->cpuHandle,D3D12_CLEAR_FLAG_DEPTH,1.0f,0,1, &ShadowPassRect);
+		l_graphicsCmdList->ClearDepthStencilView(l_shadowMap->GetDSV()->cpuHandle,D3D12_CLEAR_FLAG_DEPTH,1.0f,0,1, &ShadowPassRect);
 		l_graphicsCmdList->IASetIndexBuffer(&m_indexBuffer->GetIndexBufferView());
 		l_graphicsCmdList->SetGraphicsRootSignature(m_shadowPassRootSignature);
 		l_graphicsCmdList->IASetVertexBuffers(0, 1, &m_vertexBuffer->GetVertexBufferView());
@@ -108,7 +113,7 @@ void Renderer::D3D12Renderer::OnUpdate()
 				l_graphicsCmdList->DrawIndexedInstanced(static_cast<uint32_t>(l_mesh->m_indices.size()), 1, l_mesh->m_indexOffset, l_mesh->m_vertexOffset, 0);
 			}
 		}
-		DepthToShaderResource.Transition.pResource = l_graphicsContext.GetShadowMap()->GetResource();
+		DepthToShaderResource.Transition.pResource = l_shadowMap->GetResource();
 		l_graphicsCmdList->ResourceBarrier(1, &DepthToShaderResource);
 	}
 
@@ -146,7 +151,7 @@ void Renderer::D3D12Renderer::OnUpdate()
 		ID3D12DescriptorHeap* l_srvHeap[] = { D3D12DescManager::GetDescManager().GetHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)->GetHeap() };
 		l_graphicsCmdList->SetDescriptorHeaps(1, l_srvHeap);
 		l_graphicsCmdList->SetGraphicsRootDescriptorTable(DIFFUSE_MAP, m_defaultTexture->GetSRV()->gpuHandle);
-		l_graphicsCmdList->SetGraphicsRootDescriptorTable(SHADOW_MAP, l_graphicsContext.GetShadowMap()->GetSRV()->gpuHandle);
+		l_graphicsCmdList->SetGraphicsRootDescriptorTable(SHADOW_MAP, l_shadowMap->GetSRV()->gpuHandle);
 
 		for (auto& l_actor = m_scene->m_actors.begin(); l_actor < m_scene->m_actors.end(); ++l_actor)
 		{
@@ -157,13 +162,15 @@ void Renderer::D3D12Renderer::OnUpdate()
 		}
 		l_graphicsCmdList->EndRenderPass();
 		//Resource Trasition
-		ShaderResourceToDepth.Transition.pResource = l_graphicsContext.GetShadowMap()->GetResource();
+		ShaderResourceToDepth.Transition.pResource = l_shadowMap->GetResource();
 		l_graphicsCmdList->ResourceBarrier(1, &ShaderResourceToDepth);
 	}
 
 	//Frame Quad
 	{
 		l_graphicsContext.TransitRenderTargets({ "Light","Normal","Specular" }, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		//DepthToShaderResource.Transition.pResource = l_depthBuffer->GetResource();
+		//l_graphicsCmdList->ResourceBarrier(1, &DepthToShaderResource);
 		//Deferred Pass
 		l_graphicsContext.BeginSwapchainOutputPass(m_frameIndex);
 		l_graphicsCmdList->SetPipelineState(m_quadPipelineState);
@@ -178,6 +185,8 @@ void Renderer::D3D12Renderer::OnUpdate()
 		l_graphicsCmdList->SetGraphicsRootDescriptorTable(FINAL_OUTPUT_TEX_ROOT_INDEX, l_graphicsContext.GetRenderTarget("Light")->GetSRV()->gpuHandle);
 		l_graphicsCmdList->DrawIndexedInstanced(static_cast<uint32_t>(m_frameQuad.m_quadMesh.m_indices.size()), 1, m_frameQuad.m_quadIndexOffset, m_frameQuad.m_quadVertexOffset, 0);
 		l_graphicsContext.TransitRenderTargets({ "Light","Normal","Specular" }, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		//ShaderResourceToDepth.Transition.pResource = l_depthBuffer->GetResource();
+		//l_graphicsCmdList->ResourceBarrier(1, &ShaderResourceToDepth);
 
 
 		l_graphicsCmdList->EndRenderPass();
@@ -268,6 +277,9 @@ void Renderer::D3D12Renderer::InitGraphicsContext()
 	l_context.AddRenderTargets("Light", m_width, m_height, nullptr, DXGI_FORMAT::DXGI_FORMAT_R10G10B10A2_UNORM);
 	l_context.AddRenderTargets("Normal", m_width, m_height, nullptr, DXGI_FORMAT::DXGI_FORMAT_R16G16B16A16_FLOAT);
 	l_context.AddRenderTargets("Specular", m_width, m_height, nullptr, DXGI_FORMAT::DXGI_FORMAT_R16G16B16A16_FLOAT);
+	l_context.AddDepthBuffer("DepthBuffer", m_width, m_height);
+	l_context.AddDepthBuffer("ShadowMap", ShadowMapWidth, ShadowMapHeight);
+
 }
 
 void Renderer::D3D12Renderer::SyncFrame()
@@ -321,7 +333,7 @@ void Renderer::D3D12Renderer::SetCamera(Gameplay::BaseCamera* p_camera)
 
 	for (auto i = 0; i < 16; ++i)
 	{
-		for (auto j = 0; j < 4; ++j)
+		for (auto j = 0; j < 2; ++j)
 		{
 			auto lightPosView = glm::vec4(10 * Utility::RandomFloat_11(), 4.0 * Utility::RandomFloat_01(), 10 * Utility::RandomFloat_11(), 1.0);
 			//auto lightPosView = m_uniformBuffer.m_view * glm::vec4(0, 0.5, 0, 1.0f);
@@ -335,7 +347,7 @@ void Renderer::D3D12Renderer::SetCamera(Gameplay::BaseCamera* p_camera)
 			l_lights[i * 16 + j].color[2] = l_colors[rand() % 6].data[2];
 			l_lights[i * 16 + j].color[3] = l_colors[rand() % 6].data[3];
 			l_lights[i * 16 + j].radius = 2.5;
-			l_lights[i * 16 + j].attenutation = Utility::RandomFloat_01() * 0.4;
+			l_lights[i * 16 + j].attenutation = Utility::RandomFloat_01() * 0.5;
 		}
 	}
 
@@ -412,17 +424,10 @@ void Renderer::D3D12Renderer::InitBuffers()
 		{{-1.0f,-1.0f, -1.0f,   1.0f},{0.0f,0.0f,0.0f},{0.0f,1.0f}},
 		{{-1.0f,1.0f,  -1.0f,   1.0f},{0.0f,0.0f,0.0f},{1.0f,1.0f}},
 		{{-1.0f,1.0f,   1.0f,   1.0f},{0.0f,0.0f,0.0f},{1.0f,0.0f}},
-
-		//{{-1.0f, -1.0f, -1.0f, 1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f}},
-		//{{-1.0f,  1.0f, -1.0f, 1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f}},
-		//{{1.0f, -1.0f, -1.0f,  1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f}},
-		//{{1.0f,  1.0f, -1.0f,  1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f}},
 	};
 
 	std::vector<uint32_t> l_skybox_indices =
 	{
-		 //0, 1, 2, 3, 6, 7, 4, 5,         // First strip
-		//2, 6, 0, 4, 1, 5, 3, 7          // Second strip
 		0 + 0 * 4,1 + 0 * 4,2 + 0 * 4,0 + 0 * 4,2 + 0 * 4,3 + 0 * 4,
 		0 + 1 * 4,1 + 1 * 4,2 + 1 * 4,0 + 1 * 4,2 + 1 * 4,3 + 1 * 4,
 		0 + 2 * 4,1 + 2 * 4,2 + 2 * 4,0 + 2 * 4,2 + 2 * 4,3 + 2 * 4,
@@ -663,7 +668,8 @@ void Renderer::D3D12Renderer::InitRootSignature()
 		l_finalOutputTextures.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 		D3D12_DESCRIPTOR_RANGE l_range = {};
 		l_range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-		l_range.NumDescriptors = static_cast<uint32_t>(m_clusterForwardPass.mrt.size());
+		//+1 is for the depth buffer that used in screen space related tech.
+		l_range.NumDescriptors = static_cast<uint32_t>(m_clusterForwardPass.mrt.size() + 1);
 		l_range.BaseShaderRegister = 0;
 		l_range.RegisterSpace = 0;
 		l_range.OffsetInDescriptorsFromTableStart = 0;
@@ -867,7 +873,7 @@ void Renderer::D3D12Renderer::InitPipelineState()
 	psoDesc.RTVFormats[2] = DXGI_FORMAT_UNKNOWN;
 	psoDesc.DepthStencilState.DepthEnable = true;
 	psoDesc.RasterizerState.DepthBias = 50;
-	psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
+	psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_FRONT;
 	psoDesc.RasterizerState.SlopeScaledDepthBias = 2.5;
 	m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_shadowPassPipelineState));
 
@@ -918,10 +924,12 @@ void Renderer::D3D12Renderer::InitRenderpass()
 	l_specularRT.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
 
 	D3D12_RENDER_PASS_DEPTH_STENCIL_DESC l_depthRT = {};
-	l_depthRT.cpuDescriptor = l_graphicsContext.GetDepthBuffer()->cpuHandle;
+	l_depthRT.cpuDescriptor = l_graphicsContext.GetDepthBuffer("DepthBuffer")->GetDSV()->cpuHandle;
 	l_depthRT.DepthBeginningAccess.Clear.ClearValue.DepthStencil = { 1.0f,0 };
 	l_depthRT.DepthBeginningAccess.Clear.ClearValue.Format = Constants::DepthFormat;
 	l_depthRT.DepthBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
+	//l_depthRT.DepthEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+
 	m_clusterForwardPass.mrt = { l_lightRT ,l_normalRT ,l_specularRT };
 	m_clusterForwardPass.depth = l_depthRT;
 }

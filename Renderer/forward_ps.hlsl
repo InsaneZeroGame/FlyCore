@@ -16,7 +16,6 @@ Texture2D <float> ShadowMap : register(t4);
 SamplerState DefaultSampler :register(s0);
 SamplerComparisonState ShadowSampler :register(s1);
 
-static uint2  SCREEN_DIMENSION = uint2(1920, 1080);
 static float4 sliceColor[16] = {
 	float4(0.0,0.0,0.0,1.0f),
 	float4(0.1,0.1,0.1,1.0f),
@@ -189,6 +188,14 @@ float PCSS(float3 shadowCoord,float zEye)
 }
 
 
+float4 EvaluateLight(float3 alebdo)
+{
+	//float4 ks kd;
+	//float kd = alebdo / PI;
+
+}
+
+
 MRT main(PSInput input) : SV_TARGET
 {
 	float zNear = zNearFar.x;
@@ -196,9 +203,8 @@ MRT main(PSInput input) : SV_TARGET
 	float zPosition = (input.scenePositionView.z - zNear) / (zFar - zNear);
 	//float zPosition = log(input.scenePositionView.z)
 	float2 screenPosition = input.position.xy / SCREEN_DIMENSION.xy;
-	uint3 clusterPosition = uint3(screenPosition * uint2(GROUP_SIZE_X, GROUP_SIZE_Y), zPosition * 16);
+	uint3 clusterPosition = uint3(screenPosition * uint2(GROUP_SIZE_X, GROUP_SIZE_Y), zPosition * GROUP_SIZE_Z);
 
-	float4 res_color = float4(0.0f, 0.0f, 0.0f, 1.0f);
 	uint ClusterIndex = clusterPosition.z * (GROUP_SIZE_X * GROUP_SIZE_Y) + clusterPosition.y * GROUP_SIZE_X + clusterPosition.x;
 	float4 diffuse = float4(0.0, 0.0, 0.0, 1.0);
 	float4 spec = 0.0f;
@@ -213,7 +219,7 @@ MRT main(PSInput input) : SV_TARGET
 		{
 		float3 lightDir = mul(view,PointLights[i].pos).xyz - input.scenePositionView.xyz/ input.scenePositionView.w;
 		float3 lightDirNormalized = normalize(lightDir);
-		float3 viewDir = normalize(-float3(0.0,0.0,0.0) + input.scenePositionView.xyz);
+		float3 viewDir = normalize(float3(0.0,0.0,0.0) - input.scenePositionView.xyz);
 		float3 halfwarDir = normalize(lightDir + viewDir);
 
 		float lightDistSq = dot(lightDir, lightDir);
@@ -221,6 +227,9 @@ MRT main(PSInput input) : SV_TARGET
 		float attenuation = 1.0 / (1.0 + PointLights[i].attenutation * pow(lightDistSq, 2));
 		diffuse += max(dot(input.normal, lightDirNormalized), 0.0) * float4(PointLights[i].color) * attenuation;
 		spec += pow(max(dot(input.normal, halfwarDir), 0.0),3.5) * attenuation;
+		
+		//float4 LightPBR = EvaluateLight();
+		
 		diffuseDebug += colorStep;
 		}
 	}
@@ -229,15 +238,13 @@ MRT main(PSInput input) : SV_TARGET
 	shadowCoord.y = -input.shadowUV.y * 0.5 + 0.5;
 	float shadow = PCSS(float3(shadowCoord, input.shadowUV.z),input.scenePositionView.z);
 
-	//float shadow = ShadowMap.SampleCmpLevelZero(ShadowSampler, shadowCoord, input.shadowUV.z, int2(0, 0));
-	//shadow += ShadowMap.SampleCmpLevelZero(ShadowSampler, shadowCoord, input.shadowUV.z, int2(0, 0));
-	//shadow += ShadowMap.SampleCmpLevelZero(ShadowSampler, shadowCoord, input.shadowUV.z, int2(0, 0));
-	//shadow += ShadowMap.SampleCmpLevelZero(ShadowSampler, shadowCoord, input.shadowUV.z, int2(0, 0));
-	//shadow /= 4.0;
-
-
-	l_res.LightOut = (spec + diffuse) * 0.85 * shadow + 0.15;
-	l_res.LightOut *= 0.75;
+	l_res.LightOut = (spec + diffuse) * shadow ;
+	//l_res.LightOut = diffuseDebug;
+	float gamma = 2.2;
+	//l_res.LightOut = l_res.LightOut / (l_res.LightOut + 1.0f);
+	float exposure = 2.0f;
+	l_res.LightOut = 1.0 - exp(-l_res.LightOut * exposure);
+	l_res.LightOut = pow(l_res.LightOut, 1.0 / gamma);
 	//l_res.LightOut *= Alebdo.Sample(DefaultSampler, input.uv);
 	l_res.NormalOut = float4(input.normal,1.0f);
 	l_res.SpecularOut = float4(input.shadowUV.xy, 0.0f, 1.0f);

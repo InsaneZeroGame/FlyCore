@@ -170,5 +170,7 @@ namespace Renderer {
 
 		D3D12TextureCube* m_skyBox;
 
+		bool m_isFirstFrame;
+
 	};
 };

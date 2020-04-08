@@ -55,3 +55,5 @@ struct SkyboxPSInput {
 static uint GROUP_SIZE_X = 8;
 static uint GROUP_SIZE_Y = 8;
 static uint GROUP_SIZE_Z = 16;
+static uint2  SCREEN_DIMENSION = uint2(1920, 1080);
+static float PI = 3.14159265354;

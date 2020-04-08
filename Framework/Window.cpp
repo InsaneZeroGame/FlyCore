@@ -3,6 +3,8 @@
 
 std::function<void(double, double)> Framework::Window::m_scrollCallback = nullptr;
 std::function<void(double, double)> Framework::Window::m_mouseMoveCallback = nullptr;
+std::function<void(int key, int scancode, int action, int mods)> Framework::Window::m_keypress = nullptr;
+
 bool Framework::Window::m_exit = false;
 Framework::Window::Window(const WindowDescriptor& p_desc):
 	m_descriptor(p_desc),
@@ -24,12 +26,15 @@ void Framework::Window::m_mouseMoveCallbackFp(GLFWwindow* p_window, double x, do
 }
 
 
+
+
 void Framework::Window::key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
     {
         m_exit = true;
     }
+    m_keypress(key, scancode, action, mods);
 }
 
 
@@ -51,6 +56,8 @@ void Framework::Window::OnInit()
 
     //glfwSetKeyCallback(window, key_callback);
     glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    if (glfwRawMouseMotionSupported())
+        glfwSetInputMode(m_window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
     glfwSetScrollCallback(m_window, &m_scrollCallbackFp);
     glfwSetKeyCallback(m_window, &key_callback);
     glfwSetCursorPosCallback(m_window, &m_mouseMoveCallbackFp);

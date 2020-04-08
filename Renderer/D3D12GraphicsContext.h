@@ -16,8 +16,6 @@ namespace Renderer
 			return l_context;
 		}
 
-		D3D12DepthBuffer* GetShadowMap() { return m_shadowMap; }
-
 		__forceinline void BeginRenderpass(std::vector<D3D12_RENDER_PASS_RENDER_TARGET_DESC> p_renderTargets, D3D12_RENDER_PASS_DEPTH_STENCIL_DESC* p_depthBuffer, D3D12_RENDER_PASS_FLAGS p_flag = D3D12_RENDER_PASS_FLAG_NONE)
 		{
 			m_graphicsCmdList->BeginRenderPass(static_cast<UINT>(p_renderTargets.size()), p_renderTargets.data(), p_depthBuffer, p_flag);
@@ -52,12 +50,14 @@ namespace Renderer
 			return m_renderTargets[p_name];
 		}
 
-		__forceinline const D3D12Descriptor* GetDepthBuffer()
+		__forceinline D3D12DepthBuffer* GetDepthBuffer(const std::string p_name)
 		{
-			return m_depthBuffer->GetDSV();
+			return m_depthBuffers[p_name];
 		}
 
 		void AddRenderTargets(const std::string& p_name,uint32_t p_width, uint32_t p_height, ID3D12Resource* p_resource, DXGI_FORMAT p_format);
+
+		void AddDepthBuffer(const std::string& p_name, uint32_t p_width, uint32_t p_height,DXGI_FORMAT p_format = DXGI_FORMAT_D32_FLOAT);
 
 		void InitSwapchainOutputTarget(uint32_t p_width,uint32_t p_height, IDXGISwapChain3* p_swapChain);
 
@@ -66,9 +66,9 @@ namespace Renderer
 	private:
 		D3D12GraphicsContext();
 
-		D3D12DepthBuffer* m_depthBuffer;
+		//D3D12DepthBuffer* m_depthBuffer;
 
-		D3D12DepthBuffer* m_shadowMap;
+		//D3D12DepthBuffer* m_shadowMap;
 
 		std::array <D3D12RenderTarget*,3> m_swapChainOutputTargets;
 
@@ -88,6 +88,9 @@ namespace Renderer
 
 		std::unordered_map<std::string, D3D12RenderTarget*> m_renderTargets;
 
+		std::unordered_map<std::string, D3D12DepthBuffer*> m_depthBuffers;
+
+		
 		typedef struct RenderPass
 		{
 			std::vector<D3D12_RENDER_PASS_RENDER_TARGET_DESC> mrt;

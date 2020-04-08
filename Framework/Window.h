@@ -44,6 +44,11 @@ namespace Framework
 		{
 			m_mouseMoveCallback = p_callback;
 		}
+
+		__forceinline void SetKeyCallback(std::function<void(int key, int scancode, int action, int mods)> p_callback)
+		{
+			m_keypress = p_callback;
+		}
 	private:
 		WindowDescriptor m_descriptor;
 
@@ -54,6 +59,8 @@ namespace Framework
 		static std::function<void(double, double)> m_scrollCallback;
 
 		static std::function<void(double, double)> m_mouseMoveCallback;
+
+		static std::function<void(int key, int scancode, int action, int mods)> m_keypress;
 
 		static void m_scrollCallbackFp(GLFWwindow* p_window,double x, double y);
 

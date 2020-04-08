@@ -5,7 +5,6 @@
 
 
 
-static uint2  SCREEN_DIMENSION = uint2(1920,1080);
 
 
 
@@ -29,7 +28,7 @@ void main(
 	float zSliceNext = zSlice + zRangePerSlice;
 	uint groupIndexInCS = groupID.z * (GROUP_SIZE_X * GROUP_SIZE_Y) + groupID.y * GROUP_SIZE_X + groupID.x;
 	LightBuffer[groupIndexInCS].isActive[threadIndex] = false;
-	float2 tileScale = float2(4,4);	
+	float2 tileScale = float2(GROUP_SIZE_X/2, GROUP_SIZE_X/2);
 	float2 tileBias = tileScale - groupID.xy;
 
 	float4 c1 = float4(project._11 * tileScale.x, 0.0, tileBias.x, 0.0);

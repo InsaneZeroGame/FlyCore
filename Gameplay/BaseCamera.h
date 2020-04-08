@@ -33,6 +33,9 @@ namespace Gameplay
 
 		virtual void OnMouseMove(double x, double y) override;
 
+		virtual void OnKeyPress(int key, int scancode, int action, int mods) override;
+
+		__forceinline bool IsCameraUpdated() { return m_needToUpdate ? m_needToUpdate++:false; }
 	protected:
 		glm::mat4 m_proj;
 
@@ -51,5 +54,7 @@ namespace Gameplay
 		float m_width;
 
 		float m_height;
+
+		bool m_needToUpdate;
 	};
 }
