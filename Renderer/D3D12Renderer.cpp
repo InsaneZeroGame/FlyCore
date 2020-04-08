@@ -347,7 +347,7 @@ void Renderer::D3D12Renderer::SetCamera(Gameplay::BaseCamera* p_camera)
 			l_lights[i * 16 + j].color[2] = l_colors[rand() % 6].data[2];
 			l_lights[i * 16 + j].color[3] = l_colors[rand() % 6].data[3];
 			l_lights[i * 16 + j].radius = 2.5;
-			l_lights[i * 16 + j].attenutation = Utility::RandomFloat_01() * 0.8;
+			l_lights[i * 16 + j].attenutation = Utility::RandomFloat_01() * 0.3;
 		}
 	}
 

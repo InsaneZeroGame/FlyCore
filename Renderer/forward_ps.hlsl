@@ -188,11 +188,43 @@ float PCSS(float3 shadowCoord,float zEye)
 }
 
 
-float4 EvaluateLight(float3 alebdo)
+float DistributionGGX(float3 N, float3 H, float roughness)
 {
-	//float4 ks kd;
-	//float kd = alebdo / PI;
+	float a = roughness * roughness;
+	float a2 = a * a;
+	float NdotH = max(dot(N, H), 0.0);
+	float NdotH2 = NdotH * NdotH;
 
+	float num = a2;
+	float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+	denom = PI * denom * denom;
+
+	return num / denom;
+}
+
+float GeometrySchlickGGX(float NdotV, float roughness)
+{
+	float r = (roughness + 1.0);
+	float k = (r * r) / 8.0;
+
+	float num = NdotV;
+	float denom = NdotV * (1.0 - k) + k;
+
+	return num / denom;
+}
+float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
+{
+	float NdotV = max(dot(N, V), 0.0);
+	float NdotL = max(dot(N, L), 0.0);
+	float ggx2 = GeometrySchlickGGX(NdotV, roughness);
+	float ggx1 = GeometrySchlickGGX(NdotL, roughness);
+
+	return ggx1 * ggx2;
+}
+
+float3 fresnelSchlick(float cosTheta, float3 F0)
+{
+	return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
 
@@ -212,25 +244,45 @@ MRT main(PSInput input) : SV_TARGET
 
 	float4 diffuseDebug = 0.0f;
 	MRT l_res;
+	float3 N = input.normal;
+	float3 V = normalize(float3(0.0, 0.0, 0.0) - input.scenePositionView.xyz);
+	float3 Lo = 0.0;
+	float3 F0 = float3(0.91, 0.92, 0.92);
 
+	float roughness = screenPosition.x;
+	float metallic = 1.0- roughness;
+	//float3 albedo = Alebdo.Sample(DefaultSampler, input.uv).rgb;
+	float3 albedo = 0.75;
 	for (uint i = 0; i < 256; ++i)
 	{
 		if (LightBuffer[ClusterIndex].isActive[i] == 1)
 		{
-		float3 lightDir = mul(view,PointLights[i].pos).xyz - input.scenePositionView.xyz/ input.scenePositionView.w;
-		float3 lightDirNormalized = normalize(lightDir);
-		float3 viewDir = normalize(float3(0.0,0.0,0.0) - input.scenePositionView.xyz);
-		float3 halfwarDir = normalize(lightDir + viewDir);
+			float3 LightViewPos = mul(view, PointLights[i].pos).xyz;
+			float3 SceneViewPos = input.scenePositionView.xyz / input.scenePositionView.w;
+			float3 L = normalize(LightViewPos - SceneViewPos);
+			float3 H = normalize(L + V);
+			float distance = length(LightViewPos - SceneViewPos);
+			float attenuation = 1.0 / (distance * distance);
+			float3 radiance = PointLights[i].color.rgb * attenuation;
 
-		float lightDistSq = dot(lightDir, lightDir);
-		float invLightDist = rsqrt(lightDistSq);
-		float attenuation = 1.0 / (1.0 + PointLights[i].attenutation * pow(lightDistSq, 2));
-		diffuse += max(dot(input.normal, lightDirNormalized), 0.0) * float4(PointLights[i].color) * attenuation;
-		spec += pow(max(dot(input.normal, halfwarDir), 0.0),3.5) * attenuation;
-		
-		//float4 LightPBR = EvaluateLight();
-		
-		diffuseDebug += colorStep;
+			// cook-torrance brdf
+			float NDF = DistributionGGX(N, H, roughness);
+			float G = GeometrySmith(N, V, L, roughness);
+			float3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
+
+			float3 kS = F;
+			float3 kD = 1.0 - kS;
+			kD *= 1.0 - metallic;
+
+			float3 numerator = NDF * G * F;
+			float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0);
+			float3 specular = numerator / max(denominator, 0.001);
+
+			// add to outgoing radiance Lo
+			float NdotL = max(dot(N, L), 0.0);
+			Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+
+			diffuseDebug += colorStep;
 		}
 	}
 	float2 shadowCoord;
@@ -238,13 +290,13 @@ MRT main(PSInput input) : SV_TARGET
 	shadowCoord.y = -input.shadowUV.y * 0.5 + 0.5;
 	float shadow = PCSS(float3(shadowCoord, input.shadowUV.z),input.scenePositionView.z);
 
-	l_res.LightOut = (spec + diffuse) * shadow ;
+	l_res.LightOut = float4(Lo,1.0) * shadow ;
 	//l_res.LightOut = diffuseDebug;
 	float gamma = 2.2;
 	//l_res.LightOut = l_res.LightOut / (l_res.LightOut + 1.0f);
-	float exposure = 2.0f;
+	float exposure = 5.0f;
 	l_res.LightOut = 1.0 - exp(-l_res.LightOut * exposure);
-	l_res.LightOut = pow(l_res.LightOut, 1.0 / gamma);
+	l_res.LightOut = pow((l_res.LightOut), 1.0 / gamma);
 	//l_res.LightOut *= Alebdo.Sample(DefaultSampler, input.uv);
 	l_res.NormalOut = float4(input.normal,1.0f);
 	l_res.SpecularOut = float4(input.shadowUV.xy, 0.0f, 1.0f);
