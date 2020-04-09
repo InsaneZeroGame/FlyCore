@@ -15,10 +15,16 @@
 >>4.TXAA(Todo)
 
 
->>6.Gamma Correction(Todo)
+>>6.Gamma Correction
 
 
->>7.HDR(Todo)
+>>7.HDR
+
+
+>>8.PBR
+
+
+>>9.IBL(Todo)
 
 
 >><img align="right" width="800" height="600" src="https://github.com/InsaneZeroGame/FlyCore/blob/master/readme1.png"> </br> 
