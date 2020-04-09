@@ -1,5 +1,23 @@
 # FlyCore
 
+>How to build : 
+
+  >>1.Install CMake.
+  
+  
+  >>2.Build Visual Studio Solution via CMake.
+  
+  
+  >>3.Install 3rd party dependencies : FBX SDK 2019 adn GLFW to FlyCore/3dparty/lib/
+  
+  
+  >>4.Build the binary.
+  
+  
+  >>5.Copy libfbxsdk.dll to the same dir with Game.exe.
+  
+  
+
 >Features :  
 
 
@@ -9,7 +27,7 @@
 >>2.PCSS  
 
 
->>3.SSR(Todo)
+>>3.SSR(Todo)/
 
 
 >>4.TXAA(Todo)
