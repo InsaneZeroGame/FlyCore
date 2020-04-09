@@ -333,9 +333,9 @@ void Renderer::D3D12Renderer::SetCamera(Gameplay::BaseCamera* p_camera)
 
 	for (auto i = 0; i < 16; ++i)
 	{
-		for (auto j = 0; j < 4; ++j)
+		for (auto j = 0; j < 16; ++j)
 		{
-			auto lightPosView = glm::vec4(10 * Utility::RandomFloat_11(), 4.0 * Utility::RandomFloat_01(), 10 * Utility::RandomFloat_11(), 1.0);
+			auto lightPosView = glm::vec4(15 * Utility::RandomFloat_11(), 6.0 * Utility::RandomFloat_01(), 15 * Utility::RandomFloat_11(), 1.0);
 			//auto lightPosView = m_uniformBuffer.m_view * glm::vec4(0, 0.5, 0, 1.0f);
 			l_lights[i * 16 + j].isActive = true;
 			l_lights[i * 16 + j].position[0] = lightPosView.x;
@@ -347,7 +347,7 @@ void Renderer::D3D12Renderer::SetCamera(Gameplay::BaseCamera* p_camera)
 			l_lights[i * 16 + j].color[2] = l_colors[rand() % 6].data[2];
 			l_lights[i * 16 + j].color[3] = l_colors[rand() % 6].data[3];
 			l_lights[i * 16 + j].radius = 2.5;
-			l_lights[i * 16 + j].attenutation = Utility::RandomFloat_01() * 0.3;
+			l_lights[i * 16 + j].attenutation = Utility::RandomFloat_01() * 0.1;
 		}
 	}
 

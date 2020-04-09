@@ -244,10 +244,12 @@ MRT main(PSInput input) : SV_TARGET
 
 	float4 diffuseDebug = 0.0f;
 	MRT l_res;
-	float3 N = input.normal;
-	float3 V = normalize(float3(0.0, 0.0, 0.0) - input.scenePositionView.xyz);
+	float3 SceneViewPos = input.scenePositionView.xyz / input.scenePositionView.w;
+
+	float3 N = normalize(input.normal);
+	float3 V = normalize(float3(0.0, 0.0, 0.0) - SceneViewPos);
 	float3 Lo = 0.0;
-	float3 F0 = float3(0.91, 0.92, 0.92);
+	float3 F0 = float3(0.56, 0.57, 0.58);
 
 	float roughness = screenPosition.x;
 	float metallic = 1.0- roughness;
@@ -258,7 +260,6 @@ MRT main(PSInput input) : SV_TARGET
 		if (LightBuffer[ClusterIndex].isActive[i] == 1)
 		{
 			float3 LightViewPos = mul(view, PointLights[i].pos).xyz;
-			float3 SceneViewPos = input.scenePositionView.xyz / input.scenePositionView.w;
 			float3 L = normalize(LightViewPos - SceneViewPos);
 			float3 H = normalize(L + V);
 			float distance = length(LightViewPos - SceneViewPos);
@@ -275,7 +276,7 @@ MRT main(PSInput input) : SV_TARGET
 			kD *= 1.0 - metallic;
 
 			float3 numerator = NDF * G * F;
-			float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0);
+			float denominator = 4.0 * dot(N, V) * dot(N, L);
 			float3 specular = numerator / max(denominator, 0.001);
 
 			// add to outgoing radiance Lo

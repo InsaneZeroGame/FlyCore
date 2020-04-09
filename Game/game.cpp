@@ -10,7 +10,7 @@ int main() {
 	auto window = new Framework::Window({ 1920,1080,"The Borning Game" });
 	window->OnInit();
 
-	auto mainCamera = new Gameplay::BaseCamera(glm::vec3(-15.1f, 25.1f, -15.1f), glm::vec3(0.0f));
+	auto mainCamera = new Gameplay::BaseCamera(glm::vec3(-15.1f, 10.1f, 0.1f), glm::vec3(0.0f));
 
 	auto renderer = new Renderer::D3D12Renderer();
 	renderer->SetTargetWindow(window); 
