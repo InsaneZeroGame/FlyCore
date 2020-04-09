@@ -352,7 +352,7 @@ void Utility::FbxLoader::DisplayMesh(FbxNode* pNode)
     DisplayString("Mesh Name: ", (char*)pNode->GetName());
     DisplayMetaDataConnections(lMesh);
     DisplayControlsPoints(lMesh,l_vertices, &matrix);
-    DisplayPolygons(lMesh,l_indices,l_vertices);
+    DisplayPolygons(lMesh,l_indices,l_vertices,&matrix);
     DisplayMaterialMapping(lMesh);
     DisplayMaterial(lMesh);
     DisplayTexture(lMesh);
@@ -556,7 +556,7 @@ void Utility::FbxLoader::DisplayControlsPoints(FbxMesh* pMesh, std::vector<Rende
 }
 
 
-void Utility::FbxLoader::DisplayPolygons(FbxMesh* pMesh, std::vector<uint32_t>& p_indices, std::vector<Renderer::Vertex>& p_vertices)
+void Utility::FbxLoader::DisplayPolygons(FbxMesh* pMesh, std::vector<uint32_t>& p_indices, std::vector<Renderer::Vertex>& p_vertices,FbxAMatrix* l_transformMatrix)
 {
     
     int i, j, lPolygonCount = pMesh->GetPolygonCount();
@@ -723,6 +723,7 @@ void Utility::FbxLoader::DisplayPolygons(FbxMesh* pMesh, std::vector<uint32_t>& 
                     {
                     case FbxGeometryElement::eDirect:
                         l_normal =  leNormal->GetDirectArray().GetAt(vertexId);
+                        l_normal = l_transformMatrix->MultT(l_normal);
 						p_vertices[lControlPointIndex].normal[0] = float(l_normal.mData[0]);
 						p_vertices[lControlPointIndex].normal[1] = float(l_normal.mData[1]);
 						p_vertices[lControlPointIndex].normal[2] = float(l_normal.mData[2]);
@@ -733,6 +734,8 @@ void Utility::FbxLoader::DisplayPolygons(FbxMesh* pMesh, std::vector<uint32_t>& 
                         int id = leNormal->GetIndexArray().GetAt(vertexId);
                         Display3DVector(header, leNormal->GetDirectArray().GetAt(id));
 						l_normal = leNormal->GetDirectArray().GetAt(id);
+                        l_normal = l_transformMatrix->MultT(l_normal);
+
 						p_vertices[lControlPointIndex].normal[0] = float(l_normal.mData[0]);
 						p_vertices[lControlPointIndex].normal[1] = float(l_normal.mData[1]);
 						p_vertices[lControlPointIndex].normal[2] = float(l_normal.mData[2]);
@@ -762,6 +765,8 @@ void Utility::FbxLoader::DisplayPolygons(FbxMesh* pMesh, std::vector<uint32_t>& 
                         //Got normals of each vertex.
                         FbxVector4 lNormal = leNormal->GetDirectArray().GetAt(lNormalIndex);
                         ////FBXSDK_printf("normals for vertex[%d]: %f %f %f %f \n", lVertexIndex, lNormal[0], lNormal[1], lNormal[2], lNormal[3]);
+                        l_normal = l_transformMatrix->MultT(l_normal);
+
                         p_vertices[lControlPointIndex].normal[0] = float(lNormal.mData[0]);
                         p_vertices[lControlPointIndex].normal[1] = float(lNormal.mData[1]);
                         p_vertices[lControlPointIndex].normal[2] = float(lNormal.mData[2]);
