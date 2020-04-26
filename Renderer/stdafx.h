@@ -31,6 +31,7 @@
 #include <array>
 #include <wrl.h>
 #include <ppltasks.h>
+#include <cassert>
 #include "../Framework/Utility.h"
 #include "../Framework/INoCopy.h"
 

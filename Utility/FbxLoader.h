@@ -2,7 +2,7 @@
 #include "stdafx.h"
 #define FBXSDK_SHARED
 #include <fbxsdk.h>
-#include "../Framework/IScene.h"
+#include "../Gameplay/Scene.h"
 
 namespace Utility
 {
@@ -13,7 +13,7 @@ namespace Utility
 
 		~FbxLoader();
 
-		void LoadSceneFromFile(const std::string p_fileName, Renderer::Scene* p_scene);
+		void LoadSceneFromFile(const std::string p_fileName, Gameplay::Scene* p_scene);
 
 
 	private:
@@ -21,7 +21,7 @@ namespace Utility
 
 		FbxScene* m_scene;
 
-		Renderer::Scene* m_currentGameScene;
+		Gameplay::Scene* m_currentGameScene;
 
 		FbxImporter* m_importer;
 
@@ -43,8 +43,8 @@ namespace Utility
 		void DisplayContent(FbxScene* pScene);
 		void DisplayContent(FbxNode* pNode);
 		void DisplayMesh(FbxNode* pNode);
-		void DisplayControlsPoints(FbxMesh* pMesh,std::vector<Renderer::Vertex>& p_vertices,FbxAMatrix* l_transformMatrix);
-		void DisplayPolygons(FbxMesh* pMesh, std::vector<uint32_t>& p_indices, std::vector<Renderer::Vertex>& p_vertices, FbxAMatrix* l_transformMatrix);
+		void DisplayControlsPoints(FbxMesh* pMesh,std::vector<Gameplay::Vertex>& p_vertices,FbxAMatrix* l_transformMatrix);
+		void DisplayPolygons(FbxMesh* pMesh, std::vector<uint32_t>& p_indices, std::vector<Gameplay::Vertex>& p_vertices, FbxAMatrix* l_transformMatrix);
 		void DisplayTextureNames(FbxProperty& pProperty, FbxString& pConnectionString);
 		void DisplayMaterialTextureConnections(FbxSurfaceMaterial* pMaterial, char* header, int pMatId, int l);
 		void DisplayMaterialConnections(FbxMesh* pMesh);

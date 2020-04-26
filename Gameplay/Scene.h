@@ -1,8 +1,8 @@
 #pragma once
-#include "INoCopy.h"
+#include "../Framework/INoCopy.h"
 #include <vector>
 #include <array>
-namespace Renderer
+namespace Gameplay
 {
 
 	struct Texture
@@ -85,9 +85,9 @@ namespace Renderer
 
 		virtual ~Scene();
 
-		__forceinline void AddActor(Actor&& p_mesh)
+		__forceinline void AddActor(Actor&& p_actor)
 		{
-			m_actors.push_back(p_mesh);
+			m_actors.push_back(p_actor);
 		}
 
 		virtual void UploadToGPU() {};

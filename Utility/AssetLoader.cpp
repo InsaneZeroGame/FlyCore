@@ -10,7 +10,7 @@ Utility::AssetLoader::AssetLoader():
  
 
 
-bool Utility::AssetLoader::LoadTextureFromFile(const std::string& p_fileName,Renderer::Texture& p_texture)
+bool Utility::AssetLoader::LoadTextureFromFile(const std::string& p_fileName, Gameplay::Texture& p_texture)
 {
     //To set 3 components convert to 4 components set flip vertically
     stbi_set_flip_vertically_on_load(true);

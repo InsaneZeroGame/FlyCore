@@ -1,6 +1,5 @@
 #pragma once
 #include "Window.h"
-#include "IScene.h"
 #include "../Gameplay/BaseCamera.h"
 
 namespace Interface
@@ -9,8 +8,6 @@ namespace Interface
 	{
 	public:
 		virtual void RenderScene() = 0;
-
-		virtual void LoadScene(Renderer::Scene*) = 0;
 
 		virtual void SetCamera(Gameplay::BaseCamera* p_camera) { m_mainCamera = p_camera; };
 

@@ -52,5 +52,5 @@ set_property(SOURCE ${cs} PROPERTY VS_SHADER_FLAGS "/Zi")
 
 source_group(Shaders FILES ${ShaderSource})
 add_library(Renderer STATIC ${source_files} ${ShaderSource})
-target_link_libraries(Renderer Framework D3DCompiler Utility)
+target_link_libraries(Renderer Framework D3DCompiler Utility Gameplay)
 cotire(Renderer)

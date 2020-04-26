@@ -10,6 +10,8 @@
 #include "D3D12RenderCmd.h"
 #include "../3dparty/include/glm/glm.hpp"
 #include "../3dparty/include/glm/ext.hpp"
+#include "../Gameplay/System.h"
+#include "../Gameplay/RenderComponent.h"
 
 namespace Renderer {
 
@@ -28,6 +30,8 @@ namespace Renderer {
 		}
 	};
 
+	
+
 	struct LightList
 	{
 		//Todo use bit mask to
@@ -38,7 +42,7 @@ namespace Renderer {
 	
 
 
-	class D3D12Renderer : public Interface::IRenderer, public Interface::IModule
+	class D3D12Renderer : public Interface::IRenderer, public Interface::IModule, public Gameplay::System<Gameplay::RenderComponent>
 	{
 	public:
 		D3D12Renderer();
@@ -56,8 +60,6 @@ namespace Renderer {
 
 		// Inherited via IRenderer
 		void RenderScene() override;
-
-		void LoadScene(Renderer::Scene*) override;
 
 
 	private:
@@ -80,7 +82,6 @@ namespace Renderer {
 		//Default texture
 		void CreateDefaultTexture();
 
-		Renderer::Scene* m_scene;
 
 
 		typedef struct RenderPass
@@ -152,7 +153,7 @@ namespace Renderer {
 
 		struct BuiltinMesh
 		{
-			Mesh m_quadMesh;
+			Gameplay::Mesh m_quadMesh;
 			uint32_t m_quadVertexOffset;
 			uint32_t m_quadIndexOffset;
 

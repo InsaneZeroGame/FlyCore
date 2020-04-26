@@ -37,7 +37,7 @@ Utility::FbxLoader::FbxLoader():
 
 
 
-void Utility::FbxLoader::LoadSceneFromFile(const std::string p_fileName, Renderer::Scene* p_scene)
+void Utility::FbxLoader::LoadSceneFromFile(const std::string p_fileName, Gameplay::Scene* p_scene)
 {
     m_currentGameScene = p_scene;
     // Prepare the FBX SDK.
@@ -192,7 +192,7 @@ bool Utility::FbxLoader::LoadScene(FbxManager* pManager, FbxDocument* pScene, co
     }
     if (lStatus == true)
     {
-		m_currentGameScene->AddActor(Renderer::Actor());
+		m_currentGameScene->AddActor(Gameplay::Actor());
         // Check the scene integrity!
         FbxStatus status;
         FbxArray< FbxString*> details;
@@ -335,7 +335,7 @@ void Utility::FbxLoader::DisplayContent(FbxNode* pNode)
 void Utility::FbxLoader::DisplayMesh(FbxNode* pNode)
 {
     FbxMesh* lMesh = (FbxMesh*)pNode->GetNodeAttribute();
-    std::vector<Renderer::Vertex> l_vertices;
+    std::vector<Gameplay::Vertex> l_vertices;
     std::vector<uint32_t> l_indices;
 
 	FbxAMatrix matrixGeo;
@@ -361,7 +361,7 @@ void Utility::FbxLoader::DisplayMesh(FbxNode* pNode)
     DisplayShape(lMesh);
     DisplayCache(lMesh);
 
-    m_currentGameScene->m_actors[m_currentGameScene->m_actors.size() - 1].AddMesh(Renderer::Mesh(std::move(l_vertices), std::move(l_indices)));
+    m_currentGameScene->m_actors[m_currentGameScene->m_actors.size() - 1].AddMesh(Gameplay::Mesh(std::move(l_vertices), std::move(l_indices)));
 }
 
 void DisplayTextureInfo(FbxTexture* pTexture, int pBlendMode)
@@ -517,7 +517,7 @@ void DisplayTexture(FbxGeometry* pGeometry)
     }// end for lMaterialIndex     
 }
 
-void Utility::FbxLoader::DisplayControlsPoints(FbxMesh* pMesh, std::vector<Renderer::Vertex>& p_vertices, FbxAMatrix* l_transformMatrix)
+void Utility::FbxLoader::DisplayControlsPoints(FbxMesh* pMesh, std::vector<Gameplay::Vertex>& p_vertices, FbxAMatrix* l_transformMatrix)
 {
     int i, lControlPointsCount = pMesh->GetControlPointsCount();
     FbxVector4* lControlPoints = pMesh->GetControlPoints();
@@ -529,7 +529,7 @@ void Utility::FbxLoader::DisplayControlsPoints(FbxMesh* pMesh, std::vector<Rende
     {
         DisplayInt("        Control Point ", i);
         Display3DVector("            Coordinates: ", lControlPoints[i]);
-        Renderer::Vertex l_vertex = {};
+        Gameplay::Vertex l_vertex = {};
 		auto transformed_control_points = l_transformMatrix->MultT(lControlPoints[i]);
         l_vertex.position[0] = static_cast<float>(transformed_control_points.Buffer()[0]);
         l_vertex.position[1] = static_cast<float>(transformed_control_points.Buffer()[1]);
@@ -556,7 +556,7 @@ void Utility::FbxLoader::DisplayControlsPoints(FbxMesh* pMesh, std::vector<Rende
 }
 
 
-void Utility::FbxLoader::DisplayPolygons(FbxMesh* pMesh, std::vector<uint32_t>& p_indices, std::vector<Renderer::Vertex>& p_vertices,FbxAMatrix* l_transformMatrix)
+void Utility::FbxLoader::DisplayPolygons(FbxMesh* pMesh, std::vector<uint32_t>& p_indices, std::vector<Gameplay::Vertex>& p_vertices,FbxAMatrix* l_transformMatrix)
 {
     
     int i, j, lPolygonCount = pMesh->GetPolygonCount();

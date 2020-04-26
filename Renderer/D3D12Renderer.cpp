@@ -3,6 +3,7 @@
 #include <D3Dcompiler.h>
 #include "../Utility/AssetLoader.h"
 #include "D3D12DescManager.h"
+#include "../Gameplay/Entity.h"
 
 #define CAMERA_UNIFORM_ROOT_INDEX 0
 #define LIGHT_UAV_ROOT_INDEX 1
@@ -57,7 +58,7 @@ void Renderer::D3D12Renderer::OnUpdate()
 		m_VSUniform->ResetBuffer();
 		m_mainCamera->UpdateCamera();
 
-		auto shadowMatrix = glm::lookAtLH(glm::vec3(-10.01, 25.0, -10.0), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		auto shadowMatrix = glm::lookAtLH(glm::vec3(0.01, 20.0, -2.0), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
 
 
@@ -93,6 +94,7 @@ void Renderer::D3D12Renderer::OnUpdate()
 	m_graphicsCmd->Reset(m_frameIndex, m_graphicsPipelineState);
 	D3D12DepthBuffer* l_shadowMap = l_graphicsContext.GetDepthBuffer("ShadowMap");
 	D3D12DepthBuffer* l_depthBuffer = l_graphicsContext.GetDepthBuffer("DepthBuffer");
+	auto all_entities = Gameplay::EntityManager::GetManager().GetAllEntities();
 
 	//Shadow pass
 	{
@@ -106,13 +108,23 @@ void Renderer::D3D12Renderer::OnUpdate()
 		l_graphicsCmdList->IASetVertexBuffers(0, 1, &m_vertexBuffer->GetVertexBufferView());
 		l_graphicsCmdList->SetGraphicsRootConstantBufferView(CAMERA_UNIFORM_ROOT_INDEX, m_VSUniform->GetGpuVirtualAddress());
 		l_graphicsCmdList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		for (auto& l_actor = m_scene->m_actors.begin(); l_actor < m_scene->m_actors.end(); ++l_actor)
+		
+
+		for (auto i = 0; i < all_entities.size(); ++i)
 		{
-			for (auto& l_mesh = l_actor->m_meshes.begin(); l_mesh < l_actor->m_meshes.end(); l_mesh++)
+			if (!all_entities[i]) continue;
+			auto l_scene = m_entites[i]->GetComponent()->m_scene;
+			for (auto& l_actor = l_scene->m_actors.begin(); l_actor < l_scene->m_actors.end(); ++l_actor)
 			{
-				l_graphicsCmdList->DrawIndexedInstanced(static_cast<uint32_t>(l_mesh->m_indices.size()), 1, l_mesh->m_indexOffset, l_mesh->m_vertexOffset, 0);
+				for (auto& l_mesh = l_actor->m_meshes.begin(); l_mesh < l_actor->m_meshes.end(); l_mesh++)
+				{
+					l_graphicsCmdList->DrawIndexedInstanced(static_cast<uint32_t>(l_mesh->m_indices.size()), 1, l_mesh->m_indexOffset, l_mesh->m_vertexOffset, 0);
+				}
 			}
 		}
+		
+		
+		
 		DepthToShaderResource.Transition.pResource = l_shadowMap->GetResource();
 		l_graphicsCmdList->ResourceBarrier(1, &DepthToShaderResource);
 	}
@@ -153,11 +165,17 @@ void Renderer::D3D12Renderer::OnUpdate()
 		l_graphicsCmdList->SetGraphicsRootDescriptorTable(DIFFUSE_MAP, m_defaultTexture->GetSRV()->gpuHandle);
 		l_graphicsCmdList->SetGraphicsRootDescriptorTable(SHADOW_MAP, l_shadowMap->GetSRV()->gpuHandle);
 
-		for (auto& l_actor = m_scene->m_actors.begin(); l_actor < m_scene->m_actors.end(); ++l_actor)
+		for (auto i = 0; i < all_entities.size(); ++i)
 		{
-			for (auto& l_mesh = l_actor->m_meshes.begin(); l_mesh < l_actor->m_meshes.end(); l_mesh++)
+			if (!all_entities[i]) continue;
+
+			auto l_scene = m_entites[i]->GetComponent()->m_scene;
+			for (auto& l_actor = l_scene->m_actors.begin(); l_actor < l_scene->m_actors.end(); ++l_actor)
 			{
-				l_graphicsCmdList->DrawIndexedInstanced(static_cast<uint32_t>(l_mesh->m_indices.size()), 1, l_mesh->m_indexOffset, l_mesh->m_vertexOffset, 0);
+				for (auto& l_mesh = l_actor->m_meshes.begin(); l_mesh < l_actor->m_meshes.end(); l_mesh++)
+				{
+					l_graphicsCmdList->DrawIndexedInstanced(static_cast<uint32_t>(l_mesh->m_indices.size()), 1, l_mesh->m_indexOffset, l_mesh->m_vertexOffset, 0);
+				}
 			}
 		}
 		l_graphicsCmdList->EndRenderPass();
@@ -369,16 +387,19 @@ void Renderer::D3D12Renderer::SetCamera(Gameplay::BaseCamera* p_camera)
 
 void Renderer::D3D12Renderer::InitBuffers()
 {
-    auto& loader = Utility::AssetLoader::GetLoader();
+	auto l_entity = Gameplay::EntityManager::GetManager().SpwanEntity();
+	AddComponent(l_entity, "C:\\Dev\\FlyCore\\Assets\\scene1.fbx");
+
+	auto l_scene = m_entites[l_entity]->GetComponent()->m_scene;
     
-    m_scene = new Renderer::Scene;
-    loader.LoadFbx("C:\\Dev\\FlyCore\\Assets\\scene1.fbx", m_scene);
 
     m_vertexBuffer = new D3D12VertexBuffer(Constants::VERTEX_BUFFER_SIZE);
     m_uploadBuffer = new D3D12UploadBuffer(Constants::MAX_CONST_BUFFER_VIEW_SIZE);
     m_indexBuffer = new D3D12IndexBuffer(Constants::VERTEX_BUFFER_SIZE);
 	m_VSUniform = new D3D12UploadBuffer(Utility::AlignTo256(sizeof(SceneUniformData)));
 	
+	using namespace Gameplay;
+
 	std::vector<Vertex> l_vertices = {
 		{ {-1.0f, 1.0f,0.0f,1.0},{0.0f,0.0f,0.0},{0.0f,0.0f}} ,
 		{ {-1.0f,-1.0f,0.0f,1.0},{0.0f,0.0f,0.0},{0.0f,1.0f}} ,
@@ -442,12 +463,12 @@ void Renderer::D3D12Renderer::InitBuffers()
 
 
 	UINT vertexBufferSize = 0;
-	for (auto i = 0; i < m_scene->m_actors.size(); ++i)
+	for (auto i = 0; i < l_scene->m_actors.size(); ++i)
 	{
-	   for (auto j = 0; j < m_scene->m_actors[i].m_meshes.size(); ++j)
+	   for (auto j = 0; j < l_scene->m_actors[i].m_meshes.size(); ++j)
 	   {
-		   auto l_vertexSize = (UINT)sizeof(m_scene->m_actors[i].m_meshes[j].m_vertices[0]) * static_cast<uint32_t>(m_scene->m_actors[i].m_meshes[j].m_vertices.size());
-		   m_uploadBuffer->CopyData(m_scene->m_actors[i].m_meshes[j].m_vertices.data(), l_vertexSize);
+		   auto l_vertexSize = (UINT)sizeof(l_scene->m_actors[i].m_meshes[j].m_vertices[0]) * static_cast<uint32_t>(l_scene->m_actors[i].m_meshes[j].m_vertices.size());
+		   m_uploadBuffer->CopyData(l_scene->m_actors[i].m_meshes[j].m_vertices.data(), l_vertexSize);
 		   vertexBufferSize += l_vertexSize;
 	   }
 	}
@@ -460,12 +481,12 @@ void Renderer::D3D12Renderer::InitBuffers()
 	vertexBufferSize += static_cast<uint32_t>(sizeof(Vertex) * l_skybox_vertices.size());
 
 	UINT indexBufferSize = 0;
-	for (auto i = 0; i < m_scene->m_actors.size(); ++i)
+	for (auto i = 0; i < l_scene->m_actors.size(); ++i)
 	{
-	   for (auto j = 0; j < m_scene->m_actors[i].m_meshes.size(); j++)
+	   for (auto j = 0; j < l_scene->m_actors[i].m_meshes.size(); j++)
 	   {
-		   auto l_indexSize = (UINT)sizeof(m_scene->m_actors[i].m_meshes[j].m_indices[0]) * static_cast<uint32_t>(m_scene->m_actors[i].m_meshes[j].m_indices.size());
-		   m_uploadBuffer->CopyData(m_scene->m_actors[i].m_meshes[j].m_indices.data(),l_indexSize);
+		   auto l_indexSize = (UINT)sizeof(l_scene->m_actors[i].m_meshes[j].m_indices[0]) * static_cast<uint32_t>(l_scene->m_actors[i].m_meshes[j].m_indices.size());
+		   m_uploadBuffer->CopyData(l_scene->m_actors[i].m_meshes[j].m_indices.data(),l_indexSize);
 		   indexBufferSize += l_indexSize;
 	   }
 	}
@@ -476,7 +497,7 @@ void Renderer::D3D12Renderer::InitBuffers()
 	m_skyBoxMesh.m_quadIndexOffset = indexBufferSize / sizeof(uint32_t);
 	m_uploadBuffer->CopyData(l_skybox_indices.data(), sizeof(uint32_t) * l_skybox_indices.size());
 	indexBufferSize += static_cast<uint32_t>(sizeof(uint32_t) * l_skybox_indices.size());
-
+ 
 	auto& l_graphicsContext = D3D12GraphicsCmdContext::GetContext();
 	l_graphicsContext.Begin(nullptr);
     l_graphicsContext.UploadVertexBuffer(m_vertexBuffer, 0, m_uploadBuffer, 0, vertexBufferSize);
@@ -730,7 +751,7 @@ void Renderer::D3D12Renderer::InitRootSignature()
 void Renderer::D3D12Renderer::CreateDefaultTexture()
 {
 	auto& l_graphicsContext = D3D12GraphicsCmdContext::GetContext();
-	Texture l_texture;
+	Gameplay::Texture l_texture;
 	Utility::AssetLoader::LoadTextureFromFile("C:\\Dev\\FlyCore\\Assets\\uv_texture.png", l_texture);
 	m_uploadBuffer->ResetBuffer();
 	m_defaultTexture = new D3D12Texture2D(l_texture.width, l_texture.height);
@@ -747,7 +768,7 @@ void Renderer::D3D12Renderer::CreateDefaultTexture()
 	l_graphicsContext.End(true);
 
 	m_uploadBuffer->ResetBuffer();
-	std::array<Texture, 6> l_skybox_textures;
+	std::array<Gameplay::Texture, 6> l_skybox_textures;
 	Utility::AssetLoader::LoadTextureFromFile("C:\\Dev\\FlyCore\\Assets\\skybox\\left.jpg", l_skybox_textures[0]);
 	Utility::AssetLoader::LoadTextureFromFile("C:\\Dev\\FlyCore\\Assets\\skybox\\right.jpg", l_skybox_textures[1]);
 	Utility::AssetLoader::LoadTextureFromFile("C:\\Dev\\FlyCore\\Assets\\skybox\\top.jpg", l_skybox_textures[2]);
@@ -932,10 +953,6 @@ void Renderer::D3D12Renderer::InitRenderpass()
 
 	m_clusterForwardPass.mrt = { l_lightRT ,l_normalRT ,l_specularRT };
 	m_clusterForwardPass.depth = l_depthRT;
-}
-
-void Renderer::D3D12Renderer::LoadScene(Renderer::Scene*)
-{
 }
 
 void Renderer::D3D12Renderer::OnDestory()
