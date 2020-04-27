@@ -79,6 +79,8 @@ namespace Renderer {
 
 		void InitRenderpass();
 
+		void InitBuiltinMeshes();
+
 		//Default texture
 		void CreateDefaultTexture();
 
@@ -154,8 +156,8 @@ namespace Renderer {
 		struct BuiltinMesh
 		{
 			Gameplay::Mesh m_quadMesh;
-			uint32_t m_quadVertexOffset;
-			uint32_t m_quadIndexOffset;
+			uint64_t m_quadVertexOffset;
+			uint64_t m_quadIndexOffset;
 
 		};
 
@@ -172,6 +174,9 @@ namespace Renderer {
 		D3D12TextureCube* m_skyBox;
 
 		bool m_isFirstFrame;
+
+		uint64_t m_vertexOffsetInByte;
+		uint64_t m_indexOffsetInByte;
 
 	};
 };

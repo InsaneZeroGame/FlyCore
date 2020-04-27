@@ -29,17 +29,16 @@ Utility::FbxLoader::FbxLoader():
     m_sdkManager(FbxManager::Create()),
     m_cameraArray(),
     m_poseArray(),
-    m_supportVBO(true),
-    m_currentGameScene(nullptr)
+    m_supportVBO(true)
 {
 
 }
 
 
 
-void Utility::FbxLoader::LoadSceneFromFile(const std::string p_fileName, Gameplay::Scene* p_scene)
+void Utility::FbxLoader::LoadSceneFromFile(const std::string p_fileName, Gameplay::RenderComponent* p_renderComponent)
 {
-    m_currentGameScene = p_scene;
+    m_renderComponent = p_renderComponent;
     // Prepare the FBX SDK.
     InitializeSdkObjects(m_sdkManager, m_scene);
     // Load the scene.
@@ -192,7 +191,7 @@ bool Utility::FbxLoader::LoadScene(FbxManager* pManager, FbxDocument* pScene, co
     }
     if (lStatus == true)
     {
-		m_currentGameScene->AddActor(Gameplay::Actor());
+
         // Check the scene integrity!
         FbxStatus status;
         FbxArray< FbxString*> details;
@@ -361,7 +360,7 @@ void Utility::FbxLoader::DisplayMesh(FbxNode* pNode)
     DisplayShape(lMesh);
     DisplayCache(lMesh);
 
-    m_currentGameScene->m_actors[m_currentGameScene->m_actors.size() - 1].AddMesh(Gameplay::Mesh(std::move(l_vertices), std::move(l_indices)));
+    m_renderComponent->AddMesh(Gameplay::Mesh(std::move(l_vertices), std::move(l_indices)));
 }
 
 void DisplayTextureInfo(FbxTexture* pTexture, int pBlendMode)

@@ -17,7 +17,7 @@ Renderer::D3D12Renderer::D3D12Renderer():
     m_frameIndex(0),
 	m_graphicsCmd(new D3D12GraphicsCmd(Constants::SWAPCHAIN_BUFFER_COUNT)),
 	m_computeCmd(new D3D12GraphicsCmd(Constants::COMPUTE_CMD_COUNT)),
-	m_VSUniform(nullptr),
+	m_VSUniform(new D3D12UploadBuffer(Utility::AlignTo256(sizeof(SceneUniformData)))),
 	m_renderCmdQueue(new D3D12CmdQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)),
     m_lightList(nullptr),
 	m_width(0),
@@ -25,12 +25,14 @@ Renderer::D3D12Renderer::D3D12Renderer():
 	m_quadPipelineState(nullptr),
 	m_computePipelineState(nullptr),
 	m_graphicsPipelineState(nullptr),
-	m_vertexBuffer(nullptr),
-	m_indexBuffer(nullptr),
-	m_uploadBuffer(nullptr),
+	m_vertexBuffer(new D3D12VertexBuffer(Constants::VERTEX_BUFFER_SIZE)),
+	m_indexBuffer(new D3D12IndexBuffer(Constants::VERTEX_BUFFER_SIZE)),
+	m_uploadBuffer(new D3D12UploadBuffer(Constants::MAX_CONST_BUFFER_VIEW_SIZE)),
 	m_clusterForwardRootSignature(nullptr),
 	m_shadowPassRootSignature(nullptr),
-	m_isFirstFrame(true)
+	m_isFirstFrame(true),
+	m_vertexOffsetInByte(0),
+	m_indexOffsetInByte(0)
 {
 }
 
@@ -94,7 +96,7 @@ void Renderer::D3D12Renderer::OnUpdate()
 	m_graphicsCmd->Reset(m_frameIndex, m_graphicsPipelineState);
 	D3D12DepthBuffer* l_shadowMap = l_graphicsContext.GetDepthBuffer("ShadowMap");
 	D3D12DepthBuffer* l_depthBuffer = l_graphicsContext.GetDepthBuffer("DepthBuffer");
-	auto all_entities = Gameplay::EntityManager::GetManager().GetAllEntities();
+	const auto& all_entities = Gameplay::EntityManager::GetManager().GetAllEntities();
 
 	//Shadow pass
 	{
@@ -110,16 +112,18 @@ void Renderer::D3D12Renderer::OnUpdate()
 		l_graphicsCmdList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		
 
-		for (auto i = 0; i < all_entities.size(); ++i)
+		for (Gameplay::Entity i = 0; i < all_entities.size(); ++i)
 		{
 			if (!all_entities[i]) continue;
-			auto l_scene = m_entites[i]->GetComponent()->m_scene;
-			for (auto& l_actor = l_scene->m_actors.begin(); l_actor < l_scene->m_actors.end(); ++l_actor)
+			if (m_systemEntites.find(i) == m_systemEntites.end()) continue;
+			auto& l_entity_meshes = m_systemEntites[i]->GetComponent()->GetMeshes();
+			for (auto& l_mesh = l_entity_meshes.begin(); l_mesh < l_entity_meshes.end(); l_mesh++)
 			{
-				for (auto& l_mesh = l_actor->m_meshes.begin(); l_mesh < l_actor->m_meshes.end(); l_mesh++)
-				{
-					l_graphicsCmdList->DrawIndexedInstanced(static_cast<uint32_t>(l_mesh->m_indices.size()), 1, l_mesh->m_indexOffset, l_mesh->m_vertexOffset, 0);
-				}
+				l_graphicsCmdList->DrawIndexedInstanced(
+					static_cast<uint32_t>(l_mesh->m_indices.size()),
+					1, 
+					static_cast<uint32_t>(l_mesh->m_indexOffset + m_systemEntites[i]->GetComponent()->m_componentIndexOffset),
+					static_cast<uint32_t>(l_mesh->m_vertexOffset + m_systemEntites[i]->GetComponent()->m_componentVertexOffset), 0);
 			}
 		}
 		
@@ -143,7 +147,7 @@ void Renderer::D3D12Renderer::OnUpdate()
 		l_graphicsCmdList->SetDescriptorHeaps(1, l_srvHeap);
 		l_graphicsCmdList->SetGraphicsRootDescriptorTable(1, m_skyBox->GetSRV()->gpuHandle);
 		l_graphicsCmdList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		l_graphicsCmdList->DrawIndexedInstanced(static_cast<uint32_t>(m_skyBoxMesh.m_quadMesh.m_indices.size()), 1, m_skyBoxMesh.m_quadIndexOffset, m_skyBoxMesh.m_quadVertexOffset, 0);
+		l_graphicsCmdList->DrawIndexedInstanced(static_cast<uint32_t>(m_skyBoxMesh.m_quadMesh.m_indices.size()), 1, static_cast<uint32_t>(m_skyBoxMesh.m_quadIndexOffset), static_cast<uint32_t>(m_skyBoxMesh.m_quadVertexOffset), 0);
 	}
 
 
@@ -168,14 +172,15 @@ void Renderer::D3D12Renderer::OnUpdate()
 		for (auto i = 0; i < all_entities.size(); ++i)
 		{
 			if (!all_entities[i]) continue;
-
-			auto l_scene = m_entites[i]->GetComponent()->m_scene;
-			for (auto& l_actor = l_scene->m_actors.begin(); l_actor < l_scene->m_actors.end(); ++l_actor)
+			if (m_systemEntites.find(i) == m_systemEntites.end()) continue;
+			auto& l_entity_meshes = m_systemEntites[i]->GetComponent()->GetMeshes();
+			for (auto& l_mesh = l_entity_meshes.begin(); l_mesh < l_entity_meshes.end(); l_mesh++)
 			{
-				for (auto& l_mesh = l_actor->m_meshes.begin(); l_mesh < l_actor->m_meshes.end(); l_mesh++)
-				{
-					l_graphicsCmdList->DrawIndexedInstanced(static_cast<uint32_t>(l_mesh->m_indices.size()), 1, l_mesh->m_indexOffset, l_mesh->m_vertexOffset, 0);
-				}
+				l_graphicsCmdList->DrawIndexedInstanced(
+					static_cast<uint32_t>(l_mesh->m_indices.size()),
+					1,
+					static_cast<uint32_t>(l_mesh->m_indexOffset + m_systemEntites[i]->GetComponent()->m_componentIndexOffset),
+					static_cast<uint32_t>(l_mesh->m_vertexOffset + m_systemEntites[i]->GetComponent()->m_componentVertexOffset), 0);
 			}
 		}
 		l_graphicsCmdList->EndRenderPass();
@@ -201,7 +206,7 @@ void Renderer::D3D12Renderer::OnUpdate()
 		l_graphicsCmdList->SetGraphicsRootSignature(m_finalOutputRootSignature);
 		l_graphicsCmdList->SetDescriptorHeaps(1, l_srvHeap);
 		l_graphicsCmdList->SetGraphicsRootDescriptorTable(FINAL_OUTPUT_TEX_ROOT_INDEX, l_graphicsContext.GetRenderTarget("Light")->GetSRV()->gpuHandle);
-		l_graphicsCmdList->DrawIndexedInstanced(static_cast<uint32_t>(m_frameQuad.m_quadMesh.m_indices.size()), 1, m_frameQuad.m_quadIndexOffset, m_frameQuad.m_quadVertexOffset, 0);
+		l_graphicsCmdList->DrawIndexedInstanced(static_cast<uint32_t>(m_frameQuad.m_quadMesh.m_indices.size()), 1, static_cast<uint32_t>(m_frameQuad.m_quadIndexOffset), static_cast<uint32_t>(m_frameQuad.m_quadVertexOffset), 0);
 		l_graphicsContext.TransitRenderTargets({ "Light","Normal","Specular" }, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		//ShaderResourceToDepth.Transition.pResource = l_depthBuffer->GetResource();
 		//l_graphicsCmdList->ResourceBarrier(1, &ShaderResourceToDepth);
@@ -365,7 +370,7 @@ void Renderer::D3D12Renderer::SetCamera(Gameplay::BaseCamera* p_camera)
 			l_lights[i * 16 + j].color[2] = l_colors[rand() % 6].data[2];
 			l_lights[i * 16 + j].color[3] = l_colors[rand() % 6].data[3];
 			l_lights[i * 16 + j].radius = 2.5;
-			l_lights[i * 16 + j].attenutation = Utility::RandomFloat_01() * 0.1;
+			l_lights[i * 16 + j].attenutation = Utility::RandomFloat_01() * 0.1f;
 		}
 	}
 
@@ -387,121 +392,49 @@ void Renderer::D3D12Renderer::SetCamera(Gameplay::BaseCamera* p_camera)
 
 void Renderer::D3D12Renderer::InitBuffers()
 {
-	auto l_entity = Gameplay::EntityManager::GetManager().SpwanEntity();
-	AddComponent(l_entity, "C:\\Dev\\FlyCore\\Assets\\scene1.fbx");
-
-	auto l_scene = m_entites[l_entity]->GetComponent()->m_scene;
-    
-
-    m_vertexBuffer = new D3D12VertexBuffer(Constants::VERTEX_BUFFER_SIZE);
-    m_uploadBuffer = new D3D12UploadBuffer(Constants::MAX_CONST_BUFFER_VIEW_SIZE);
-    m_indexBuffer = new D3D12IndexBuffer(Constants::VERTEX_BUFFER_SIZE);
-	m_VSUniform = new D3D12UploadBuffer(Utility::AlignTo256(sizeof(SceneUniformData)));
-	
+	InitBuiltinMeshes();
 	using namespace Gameplay;
 
-	std::vector<Vertex> l_vertices = {
-		{ {-1.0f, 1.0f,0.0f,1.0},{0.0f,0.0f,0.0},{0.0f,0.0f}} ,
-		{ {-1.0f,-1.0f,0.0f,1.0},{0.0f,0.0f,0.0},{0.0f,1.0f}} ,
-		{ { 1.0f,-1.0f,0.0f,1.0},{0.0f,0.0f,0.0},{1.0f,1.0f}} ,
-		{ { 1.0f, 1.0f,0.0f,1.0},{0.0f,0.0f,0.0},{1.0f,0.0f}} ,
+	const auto& all_entities = Gameplay::EntityManager::GetManager().GetAllEntities();
+	auto l_vertexOffset = m_vertexOffsetInByte;
+	auto l_indexOffset = m_indexOffsetInByte;
 
-	};
-	std::vector<uint32_t> l_indices = 
+ 	for (Gameplay::Entity i = 0; i < all_entities.size(); ++i)
 	{
-		0,2,1,
-		0,3,2
-	};
-	//-1 1  0,0         1  1  1,0
-	//-1-1	0,1	   	    1 -1  1,1
-	std::vector<Vertex> l_skybox_vertices = {
-		// positions      
-		{{-1.0f,  1.0f, 1.0f,  1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f}},
-		{{-1.0f, -1.0f, 1.0f,  1.0f},{0.0f,0.0f,0.0f},{0.0f,1.0f}},
-		{{1.0f,  -1.0f, 1.0f,  1.0f},{0.0f,0.0f,0.0f},{1.0f,1.0f}},
-		{{1.0f,   1.0f, 1.0f,  1.0f},{0.0f,0.0f,0.0f},{1.0f,0.0f}},
+		if (!all_entities[i]) continue;
+		if (m_systemEntites.find(i) == m_systemEntites.end()) continue;
 
-		{{-1.0f,  1.0f, -1.0f,  1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f}},
-		{{-1.0f, -1.0f, -1.0f,  1.0f},{0.0f,0.0f,0.0f},{0.0f,1.0f}},
-		{{1.0f,  -1.0f, -1.0f,  1.0f},{0.0f,0.0f,0.0f},{1.0f,1.0f}},
-		{{1.0f,   1.0f, -1.0f,  1.0f},{0.0f,0.0f,0.0f},{1.0f,0.0f}},
-
-		{{-1.0f, 1.0f, 1.0f,   1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f}},
-		{{-1.0f, 1.0f,-1.0f,   1.0f},{0.0f,0.0f,0.0f},{0.0f,1.0f}},
-		{{1.0f,  1.0f,-1.0f,   1.0f},{0.0f,0.0f,0.0f},{1.0f,1.0f}},
-		{{1.0f,  1.0f, 1.0f,   1.0f},{0.0f,0.0f,0.0f},{1.0f,0.0f}},
-
-		{{-1.0f, -1.0f, 1.0f,   1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f}},
-		{{-1.0f, -1.0f,-1.0f,   1.0f},{0.0f,0.0f,0.0f},{0.0f,1.0f}},
-		{{1.0f,  -1.0f,-1.0f,   1.0f},{0.0f,0.0f,0.0f},{1.0f,1.0f}},
-		{{1.0f,  -1.0f, 1.0f,   1.0f},{0.0f,0.0f,0.0f},{1.0f,0.0f}},
-
-		{{1.0f,-1.0f,  1.0f,   1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f}},
-		{{1.0f,-1.0f, -1.0f,   1.0f},{0.0f,0.0f,0.0f},{0.0f,1.0f}},
-		{{1.0f,1.0f,  -1.0f,   1.0f},{0.0f,0.0f,0.0f},{1.0f,1.0f}},
-		{{1.0f,1.0f,   1.0f,   1.0f},{0.0f,0.0f,0.0f},{1.0f,0.0f}},
-
-		{{-1.0f,-1.0f,  1.0f,   1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f}},
-		{{-1.0f,-1.0f, -1.0f,   1.0f},{0.0f,0.0f,0.0f},{0.0f,1.0f}},
-		{{-1.0f,1.0f,  -1.0f,   1.0f},{0.0f,0.0f,0.0f},{1.0f,1.0f}},
-		{{-1.0f,1.0f,   1.0f,   1.0f},{0.0f,0.0f,0.0f},{1.0f,0.0f}},
-	};
-
-	std::vector<uint32_t> l_skybox_indices =
-	{
-		0 + 0 * 4,1 + 0 * 4,2 + 0 * 4,0 + 0 * 4,2 + 0 * 4,3 + 0 * 4,
-		0 + 1 * 4,1 + 1 * 4,2 + 1 * 4,0 + 1 * 4,2 + 1 * 4,3 + 1 * 4,
-		0 + 2 * 4,1 + 2 * 4,2 + 2 * 4,0 + 2 * 4,2 + 2 * 4,3 + 2 * 4,
-		0 + 3 * 4,1 + 3 * 4,2 + 3 * 4,0 + 3 * 4,2 + 3 * 4,3 + 3 * 4,
-		0 + 4 * 4,1 + 4 * 4,2 + 4 * 4,0 + 4 * 4,2 + 4 * 4,3 + 4 * 4,
-		0 + 5 * 4,1 + 5 * 4,2 + 5 * 4,0 + 5 * 4,2 + 5 * 4,3 + 5 * 4,
-
-	};
-	m_frameQuad.m_quadMesh = Mesh(std::move(l_vertices),std::move(l_indices));
-
-	m_skyBoxMesh.m_quadMesh = Mesh(std::move(l_skybox_vertices), std::move(l_skybox_indices));
-
-
-	UINT vertexBufferSize = 0;
-	for (auto i = 0; i < l_scene->m_actors.size(); ++i)
-	{
-	   for (auto j = 0; j < l_scene->m_actors[i].m_meshes.size(); ++j)
-	   {
-		   auto l_vertexSize = (UINT)sizeof(l_scene->m_actors[i].m_meshes[j].m_vertices[0]) * static_cast<uint32_t>(l_scene->m_actors[i].m_meshes[j].m_vertices.size());
-		   m_uploadBuffer->CopyData(l_scene->m_actors[i].m_meshes[j].m_vertices.data(), l_vertexSize);
-		   vertexBufferSize += l_vertexSize;
-	   }
+		auto& l_entity_meshes = m_systemEntites[i]->GetComponent()->GetMeshes();
+		m_systemEntites[i]->GetComponent()->m_componentVertexOffset = m_vertexOffsetInByte/sizeof(Vertex);
+		for (auto j = 0; j < l_entity_meshes.size(); ++j)
+		{
+			auto l_vertexSize = (UINT)sizeof(l_entity_meshes[j].m_vertices[0]) * static_cast<uint32_t>(l_entity_meshes[j].m_vertices.size());
+			m_uploadBuffer->CopyData((void*)l_entity_meshes[j].m_vertices.data(), l_vertexSize);
+			m_vertexOffsetInByte += l_vertexSize;
+		}
 	}
-	m_frameQuad.m_quadVertexOffset = vertexBufferSize / sizeof(Vertex);
-	m_uploadBuffer->CopyData(l_vertices.data(), sizeof(Vertex)* l_vertices.size());
-	vertexBufferSize += static_cast<uint32_t>(sizeof(Vertex) * l_vertices.size());
 
-	m_skyBoxMesh.m_quadVertexOffset = vertexBufferSize / sizeof(Vertex);
-	m_uploadBuffer->CopyData(l_skybox_vertices.data(), sizeof(Vertex) * l_skybox_vertices.size());
-	vertexBufferSize += static_cast<uint32_t>(sizeof(Vertex) * l_skybox_vertices.size());
-
-	UINT indexBufferSize = 0;
-	for (auto i = 0; i < l_scene->m_actors.size(); ++i)
+	for (Gameplay::Entity i = 0; i < all_entities.size(); ++i)
 	{
-	   for (auto j = 0; j < l_scene->m_actors[i].m_meshes.size(); j++)
-	   {
-		   auto l_indexSize = (UINT)sizeof(l_scene->m_actors[i].m_meshes[j].m_indices[0]) * static_cast<uint32_t>(l_scene->m_actors[i].m_meshes[j].m_indices.size());
-		   m_uploadBuffer->CopyData(l_scene->m_actors[i].m_meshes[j].m_indices.data(),l_indexSize);
-		   indexBufferSize += l_indexSize;
-	   }
-	}
-	m_frameQuad.m_quadIndexOffset = indexBufferSize / sizeof(uint32_t);
-	m_uploadBuffer->CopyData(l_indices.data(), sizeof(uint32_t)* l_indices.size());
-	indexBufferSize += static_cast<uint32_t>(sizeof(uint32_t) * l_indices.size());
+		if (!all_entities[i]) continue;
+		if (m_systemEntites.find(i) == m_systemEntites.end()) continue;
 
-	m_skyBoxMesh.m_quadIndexOffset = indexBufferSize / sizeof(uint32_t);
-	m_uploadBuffer->CopyData(l_skybox_indices.data(), sizeof(uint32_t) * l_skybox_indices.size());
-	indexBufferSize += static_cast<uint32_t>(sizeof(uint32_t) * l_skybox_indices.size());
- 
+		auto& l_entity_meshes = m_systemEntites[i]->GetComponent()->GetMeshes();
+		m_systemEntites[i]->GetComponent()->m_componentIndexOffset = m_indexOffsetInByte/sizeof(uint32_t);
+
+		for (auto j = 0; j < l_entity_meshes.size(); j++)
+		{
+			auto l_indexSize = (UINT)sizeof(l_entity_meshes[j].m_indices[0]) * static_cast<uint32_t>(l_entity_meshes[j].m_indices.size());
+			m_uploadBuffer->CopyData((void*)l_entity_meshes[j].m_indices.data(), l_indexSize);
+			m_indexOffsetInByte += l_indexSize;
+		}
+	}
+	
+	
 	auto& l_graphicsContext = D3D12GraphicsCmdContext::GetContext();
 	l_graphicsContext.Begin(nullptr);
-    l_graphicsContext.UploadVertexBuffer(m_vertexBuffer, 0, m_uploadBuffer, 0, vertexBufferSize);
-    l_graphicsContext.UploadVertexBuffer(m_indexBuffer, 0, m_uploadBuffer, vertexBufferSize, indexBufferSize);
+    l_graphicsContext.UploadVertexBuffer(m_vertexBuffer, l_vertexOffset, m_uploadBuffer, 0, m_vertexOffsetInByte-l_vertexOffset);
+    l_graphicsContext.UploadVertexBuffer(m_indexBuffer, l_indexOffset, m_uploadBuffer, m_vertexOffsetInByte - l_vertexOffset, m_indexOffsetInByte - l_indexOffset);
     l_graphicsContext.TransitResourceState(m_vertexBuffer->GetResource(),
         D3D12_RESOURCE_STATE_COPY_DEST,
         D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
@@ -953,6 +886,104 @@ void Renderer::D3D12Renderer::InitRenderpass()
 
 	m_clusterForwardPass.mrt = { l_lightRT ,l_normalRT ,l_specularRT };
 	m_clusterForwardPass.depth = l_depthRT;
+}
+
+void Renderer::D3D12Renderer::InitBuiltinMeshes()
+{
+	using namespace Gameplay;
+
+	std::vector<Vertex> l_vertices = {
+		{ {-1.0f, 1.0f,0.0f,1.0},{0.0f,0.0f,0.0},{0.0f,0.0f}} ,
+		{ {-1.0f,-1.0f,0.0f,1.0},{0.0f,0.0f,0.0},{0.0f,1.0f}} ,
+		{ { 1.0f,-1.0f,0.0f,1.0},{0.0f,0.0f,0.0},{1.0f,1.0f}} ,
+		{ { 1.0f, 1.0f,0.0f,1.0},{0.0f,0.0f,0.0},{1.0f,0.0f}} ,
+
+	};
+	std::vector<uint32_t> l_indices =
+	{
+		0,2,1,
+		0,3,2
+	};
+	//-1 1  0,0         1  1  1,0
+	//-1-1	0,1	   	    1 -1  1,1
+	std::vector<Vertex> l_skybox_vertices = {
+		// positions      
+		{{-1.0f,  1.0f, 1.0f,  1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f}},
+		{{-1.0f, -1.0f, 1.0f,  1.0f},{0.0f,0.0f,0.0f},{0.0f,1.0f}},
+		{{1.0f,  -1.0f, 1.0f,  1.0f},{0.0f,0.0f,0.0f},{1.0f,1.0f}},
+		{{1.0f,   1.0f, 1.0f,  1.0f},{0.0f,0.0f,0.0f},{1.0f,0.0f}},
+
+		{{-1.0f,  1.0f, -1.0f,  1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f}},
+		{{-1.0f, -1.0f, -1.0f,  1.0f},{0.0f,0.0f,0.0f},{0.0f,1.0f}},
+		{{1.0f,  -1.0f, -1.0f,  1.0f},{0.0f,0.0f,0.0f},{1.0f,1.0f}},
+		{{1.0f,   1.0f, -1.0f,  1.0f},{0.0f,0.0f,0.0f},{1.0f,0.0f}},
+
+		{{-1.0f, 1.0f, 1.0f,   1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f}},
+		{{-1.0f, 1.0f,-1.0f,   1.0f},{0.0f,0.0f,0.0f},{0.0f,1.0f}},
+		{{1.0f,  1.0f,-1.0f,   1.0f},{0.0f,0.0f,0.0f},{1.0f,1.0f}},
+		{{1.0f,  1.0f, 1.0f,   1.0f},{0.0f,0.0f,0.0f},{1.0f,0.0f}},
+
+		{{-1.0f, -1.0f, 1.0f,   1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f}},
+		{{-1.0f, -1.0f,-1.0f,   1.0f},{0.0f,0.0f,0.0f},{0.0f,1.0f}},
+		{{1.0f,  -1.0f,-1.0f,   1.0f},{0.0f,0.0f,0.0f},{1.0f,1.0f}},
+		{{1.0f,  -1.0f, 1.0f,   1.0f},{0.0f,0.0f,0.0f},{1.0f,0.0f}},
+
+		{{1.0f,-1.0f,  1.0f,   1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f}},
+		{{1.0f,-1.0f, -1.0f,   1.0f},{0.0f,0.0f,0.0f},{0.0f,1.0f}},
+		{{1.0f,1.0f,  -1.0f,   1.0f},{0.0f,0.0f,0.0f},{1.0f,1.0f}},
+		{{1.0f,1.0f,   1.0f,   1.0f},{0.0f,0.0f,0.0f},{1.0f,0.0f}},
+
+		{{-1.0f,-1.0f,  1.0f,   1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f}},
+		{{-1.0f,-1.0f, -1.0f,   1.0f},{0.0f,0.0f,0.0f},{0.0f,1.0f}},
+		{{-1.0f,1.0f,  -1.0f,   1.0f},{0.0f,0.0f,0.0f},{1.0f,1.0f}},
+		{{-1.0f,1.0f,   1.0f,   1.0f},{0.0f,0.0f,0.0f},{1.0f,0.0f}},
+	};
+
+	std::vector<uint32_t> l_skybox_indices =
+	{
+		0 + 0 * 4,1 + 0 * 4,2 + 0 * 4,0 + 0 * 4,2 + 0 * 4,3 + 0 * 4,
+		0 + 1 * 4,1 + 1 * 4,2 + 1 * 4,0 + 1 * 4,2 + 1 * 4,3 + 1 * 4,
+		0 + 2 * 4,1 + 2 * 4,2 + 2 * 4,0 + 2 * 4,2 + 2 * 4,3 + 2 * 4,
+		0 + 3 * 4,1 + 3 * 4,2 + 3 * 4,0 + 3 * 4,2 + 3 * 4,3 + 3 * 4,
+		0 + 4 * 4,1 + 4 * 4,2 + 4 * 4,0 + 4 * 4,2 + 4 * 4,3 + 4 * 4,
+		0 + 5 * 4,1 + 5 * 4,2 + 5 * 4,0 + 5 * 4,2 + 5 * 4,3 + 5 * 4,
+
+	};
+	m_frameQuad.m_quadMesh = Mesh(std::move(l_vertices), std::move(l_indices));
+
+	m_skyBoxMesh.m_quadMesh = Mesh(std::move(l_skybox_vertices), std::move(l_skybox_indices));
+
+	m_frameQuad.m_quadVertexOffset = m_vertexOffsetInByte / sizeof(Vertex);
+	m_uploadBuffer->CopyData(l_vertices.data(), sizeof(Vertex) * l_vertices.size());
+	m_vertexOffsetInByte += static_cast<uint32_t>(sizeof(Vertex) * l_vertices.size());
+
+	m_skyBoxMesh.m_quadVertexOffset = m_vertexOffsetInByte / sizeof(Vertex);
+	m_uploadBuffer->CopyData(l_skybox_vertices.data(), sizeof(Vertex) * l_skybox_vertices.size());
+	m_vertexOffsetInByte += static_cast<uint32_t>(sizeof(Vertex) * l_skybox_vertices.size());
+
+
+	m_frameQuad.m_quadIndexOffset = m_indexOffsetInByte / sizeof(uint32_t);
+	m_uploadBuffer->CopyData(l_indices.data(), sizeof(uint32_t) * l_indices.size());
+	m_indexOffsetInByte += static_cast<uint32_t>(sizeof(uint32_t) * l_indices.size());
+
+	m_skyBoxMesh.m_quadIndexOffset = m_indexOffsetInByte / sizeof(uint32_t);
+	m_uploadBuffer->CopyData(l_skybox_indices.data(), sizeof(uint32_t) * l_skybox_indices.size());
+	m_indexOffsetInByte += static_cast<uint32_t>(sizeof(uint32_t) * l_skybox_indices.size());
+
+	auto& l_graphicsContext = D3D12GraphicsCmdContext::GetContext();
+	l_graphicsContext.Begin(nullptr);
+	l_graphicsContext.UploadVertexBuffer(m_vertexBuffer, 0, m_uploadBuffer, 0, m_vertexOffsetInByte);
+	l_graphicsContext.UploadVertexBuffer(m_indexBuffer, 0, m_uploadBuffer, m_vertexOffsetInByte, m_indexOffsetInByte);
+	l_graphicsContext.TransitResourceState(m_vertexBuffer->GetResource(),
+		D3D12_RESOURCE_STATE_COPY_DEST,
+		D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+
+	l_graphicsContext.TransitResourceState(m_indexBuffer->GetResource(),
+		D3D12_RESOURCE_STATE_COPY_DEST,
+		D3D12_RESOURCE_STATE_INDEX_BUFFER);
+	l_graphicsContext.End(true);
+	m_uploadBuffer->ResetBuffer();
+
 }
 
 void Renderer::D3D12Renderer::OnDestory()

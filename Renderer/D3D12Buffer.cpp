@@ -2,9 +2,8 @@
 #include "D3D12Resource.h"
 #include "D3D12Buffer.h"
 #include "D3D12Device.h"
-#include "../Gameplay/Scene.h"
 #include "D3D12DescManager.h"
-
+#include "../Gameplay/RenderComponent.h"
 
 Renderer::D3D12Buffer::D3D12Buffer(uint64_t p_size,
 	D3D12_HEAP_TYPE p_heapType, 

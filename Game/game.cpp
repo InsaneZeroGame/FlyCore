@@ -2,6 +2,7 @@
 #include "../Framework/Window.h"
 #include "../Renderer/D3D12Renderer.h"
 #include "../Gameplay/BaseCamera.h"
+#include "../Gameplay/RenderComponent.h"
 #include <functional>
 
 
@@ -13,7 +14,13 @@ int main() {
 	auto mainCamera = new Gameplay::BaseCamera(glm::vec3(-15.1f, 10.1f, 0.1f), glm::vec3(0.0f));
 
 	auto renderer = new Renderer::D3D12Renderer();
-	renderer->SetTargetWindow(window); 
+	renderer->SetTargetWindow(window);
+
+	auto& entity_manager = Gameplay::EntityManager::GetManager();
+	auto entity = entity_manager.SpwanEntity();
+	renderer->AddComponent(entity, "C:\\Dev\\FlyCore\\Assets\\scene1.fbx");
+
+
 	renderer->OnInit();
 	renderer->SetCamera(mainCamera);
 	window->SetRendererCallback(std::bind(&Renderer::D3D12Renderer::OnUpdate,renderer));

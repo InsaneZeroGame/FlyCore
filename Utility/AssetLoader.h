@@ -1,7 +1,7 @@
 #pragma once
 #include "stdafx.h"
-#include "../Gameplay/Scene.h"
 #include "FbxLoader.h"
+#include "../Gameplay/RenderComponent.h"
 
 namespace Utility
 {
@@ -14,9 +14,9 @@ namespace Utility
 			return l_loader;
 		}
 
-		__forceinline void LoadFbx(const std::string p_fileName, Gameplay::Scene* p_scene)
+		__forceinline void LoadFbx(const std::string p_fileName, Gameplay::RenderComponent* p_component)
 		{
-			m_fbxLoader->LoadSceneFromFile(p_fileName, p_scene);
+			m_fbxLoader->LoadSceneFromFile(p_fileName, p_component);
 		};
 
 		static bool LoadTextureFromFile(const std::string& p_fileName, Gameplay::Texture& p_texture);

@@ -160,8 +160,8 @@ void Renderer::D3D12GraphicsCmdContext::CopyTextureCubeData(Renderer::D3D12Textu
 	l_box.left = 0;
 	l_box.top = 0;
 	l_box.front = 0;
-	l_box.right = p_texture->GetDesc()->Width;
-	l_box.bottom = p_texture->GetDesc()->Height;
+	l_box.right = static_cast<uint32_t>(p_texture->GetDesc()->Width);
+	l_box.bottom = static_cast<uint32_t>(p_texture->GetDesc()->Height);
 	l_box.back = 1;
 	
 	for (auto i = 0; i < l_footprints.size(); ++i)

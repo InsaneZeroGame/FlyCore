@@ -2,7 +2,7 @@
 #include "stdafx.h"
 #define FBXSDK_SHARED
 #include <fbxsdk.h>
-#include "../Gameplay/Scene.h"
+#include "../Gameplay/RenderComponent.h"
 
 namespace Utility
 {
@@ -13,15 +13,15 @@ namespace Utility
 
 		~FbxLoader();
 
-		void LoadSceneFromFile(const std::string p_fileName, Gameplay::Scene* p_scene);
+		void LoadSceneFromFile(const std::string p_fileName, Gameplay::RenderComponent*);
 
 
 	private:
+		Gameplay::RenderComponent* m_renderComponent;
+
 		FbxManager* m_sdkManager;
 
 		FbxScene* m_scene;
-
-		Gameplay::Scene* m_currentGameScene;
 
 		FbxImporter* m_importer;
 

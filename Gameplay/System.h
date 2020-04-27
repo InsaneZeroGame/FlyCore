@@ -18,13 +18,13 @@ namespace Gameplay
 		template<typename... Arg>
 		void AddComponent(const Entity& p_entity, Arg&&... Args)
 		{
-			m_entites.emplace(std::pair<Entity, Component<S>*>(p_entity, new Component<S>(std::forward<Arg>(Args)...)));
+			m_systemEntites.emplace(std::pair<Entity, Component<S>*>(p_entity, new Component<S>(std::forward<Arg>(Args)...)));
 		};
 
 	protected:
 		System() {};
 
-		std::unordered_map<Entity, Component<S>*> m_entites;
+		std::unordered_map<Entity, Component<S>*> m_systemEntites;
 
 	};
 	
