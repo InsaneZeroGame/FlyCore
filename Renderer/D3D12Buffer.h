@@ -112,6 +112,8 @@ namespace Renderer
 
 		void CopyData(void* p_src, uint64_t p_size) override;
 
+		void UpdateData(uint64_t p_dst_offset,void* p_src, uint64_t p_size);
+
 		__forceinline void ResetBuffer() override
 		{
 			m_offset = 0;

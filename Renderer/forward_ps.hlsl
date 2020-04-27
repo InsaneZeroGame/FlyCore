@@ -237,7 +237,10 @@ MRT main(PSInput input) : SV_TARGET
 	float2 screenPosition = input.position.xy / SCREEN_DIMENSION.xy;
 	uint3 clusterPosition = uint3(screenPosition * uint2(GROUP_SIZE_X, GROUP_SIZE_Y), zPosition * GROUP_SIZE_Z);
 
+
+	//Note : This triggers a memory violation,Clmap it for now,later figures the correct math.
 	uint ClusterIndex = clusterPosition.z * (GROUP_SIZE_X * GROUP_SIZE_Y) + clusterPosition.y * GROUP_SIZE_X + clusterPosition.x;
+	ClusterIndex = clamp(ClusterIndex, 0, 255);
 	float4 diffuse = float4(0.0, 0.0, 0.0, 1.0);
 	float4 spec = 0.0f;
 	float4 colorStep = 1.0/256.0;
@@ -291,13 +294,13 @@ MRT main(PSInput input) : SV_TARGET
 	shadowCoord.y = -input.shadowUV.y * 0.5 + 0.5;
 	float shadow = PCSS(float3(shadowCoord, input.shadowUV.z),input.scenePositionView.z);
 
-	l_res.LightOut = float4(Lo,1.0) * shadow ;
+	l_res.LightOut = float4(Lo,1.0) * shadow * materialColor;
 	//l_res.LightOut = diffuseDebug;
 	float gamma = 2.2;
 	//l_res.LightOut = l_res.LightOut / (l_res.LightOut + 1.0f);
 	float exposure = 5.0f;
 	l_res.LightOut = 1.0 - exp(-l_res.LightOut * exposure);
-	l_res.LightOut = pow((l_res.LightOut), 1.0 / gamma);
+	l_res.LightOut = pow(abs(l_res.LightOut), 1.0 / gamma);
 	//l_res.LightOut *= Alebdo.Sample(DefaultSampler, input.uv);
 	l_res.NormalOut = float4(input.normal,1.0f);
 	l_res.SpecularOut = float4(input.shadowUV.xy, 0.0f, 1.0f);

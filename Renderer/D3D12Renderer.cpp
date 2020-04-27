@@ -11,6 +11,7 @@
 #define FINAL_OUTPUT_TEX_ROOT_INDEX 1
 #define DIFFUSE_MAP 3
 #define SHADOW_MAP 4
+#define PUSH_CONSTANTS 5
 Renderer::D3D12Renderer::D3D12Renderer():
     m_device(D3D12Device::GetDevice()),
     m_swapChain(nullptr),
@@ -51,6 +52,23 @@ void Renderer::D3D12Renderer::OnInit()
     InitRootSignature();
     InitPipelineState();
 }
+
+
+static float debugColor[][10] = 
+{
+	{1.0f,0.0f,0.0f,1.0f},
+	{0.0f,1.0f,0.0f,1.0f},
+	{0.0f,0.0f,1.0f,1.0f},
+	{1.0f,0.0f,0.0f,1.0f},
+	{0.0f,1.0f,0.0f,1.0f},
+	{0.0f,0.0f,1.0f,1.0f},
+	{1.0f,0.0f,0.0f,1.0f},
+	{0.0f,1.0f,0.0f,1.0f},
+	{0.0f,0.0f,1.0f,1.0f},
+	{1.0f,0.0f,0.0f,1.0f},
+
+
+};
 
 void Renderer::D3D12Renderer::OnUpdate()
 {
@@ -168,7 +186,7 @@ void Renderer::D3D12Renderer::OnUpdate()
 		l_graphicsCmdList->SetDescriptorHeaps(1, l_srvHeap);
 		l_graphicsCmdList->SetGraphicsRootDescriptorTable(DIFFUSE_MAP, m_defaultTexture->GetSRV()->gpuHandle);
 		l_graphicsCmdList->SetGraphicsRootDescriptorTable(SHADOW_MAP, l_shadowMap->GetSRV()->gpuHandle);
-
+		uint32_t uniformDebugColor = 0;
 		for (auto i = 0; i < all_entities.size(); ++i)
 		{
 			if (!all_entities[i]) continue;
@@ -176,6 +194,8 @@ void Renderer::D3D12Renderer::OnUpdate()
 			auto& l_entity_meshes = m_systemEntites[i]->GetComponent()->GetMeshes();
 			for (auto& l_mesh = l_entity_meshes.begin(); l_mesh < l_entity_meshes.end(); l_mesh++)
 			{
+				l_graphicsCmdList->SetGraphicsRoot32BitConstants(PUSH_CONSTANTS, 4, debugColor[(uniformDebugColor++) % 10], 0);
+
 				l_graphicsCmdList->DrawIndexedInstanced(
 					static_cast<uint32_t>(l_mesh->m_indices.size()),
 					1,
@@ -511,6 +531,8 @@ void Renderer::D3D12Renderer::InitRootSignature()
 	{
 		CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
 
+
+
 		D3D12_ROOT_PARAMETER l_cameraUniform = {};
 		l_cameraUniform.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 		l_cameraUniform.Descriptor = { 0,0 };
@@ -551,6 +573,11 @@ void Renderer::D3D12Renderer::InitRootSignature()
 		l_shadowMap.DescriptorTable.pDescriptorRanges = &l_shadow_map_range;
 		l_shadowMap.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
+		D3D12_ROOT_PARAMETER l_pushConstants = {};
+
+		l_pushConstants.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+		l_pushConstants.Constants = {5,0,4};
+		l_pushConstants.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 		std::vector<D3D12_ROOT_PARAMETER> l_rootParameters =
 		{
@@ -558,7 +585,8 @@ void Renderer::D3D12Renderer::InitRootSignature()
 			l_lightUAV,
 			l_lightBuffer,
 			l_diffuseMap,
-			l_shadowMap
+			l_shadowMap,
+			l_pushConstants
 		};
 		
 

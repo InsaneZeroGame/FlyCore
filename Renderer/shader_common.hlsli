@@ -40,6 +40,12 @@ cbuffer CDataBuffer : register(b0)
 	float4 zNearFar;
 };
 
+cbuffer PushConstants : register(b5)
+{
+	float4x4 model;
+	float4 materialColor;
+}
+
 struct LightList
 {
 	uint isActive[256];

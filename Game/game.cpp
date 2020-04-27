@@ -17,10 +17,12 @@ int main() {
 	renderer->SetTargetWindow(window);
 
 	auto& entity_manager = Gameplay::EntityManager::GetManager();
-	auto entity = entity_manager.SpwanEntity();
-	renderer->AddComponent(entity, "C:\\Dev\\FlyCore\\Assets\\scene1.fbx");
+	auto entity0 = entity_manager.SpwanEntity();
+	renderer->AddComponent(entity0, "C:\\Dev\\FlyCore\\Assets\\humanoid.fbx");
 
-
+	//auto entity1 = entity_manager.SpwanEntity();
+	//renderer->AddComponent(entity1, "C:\\Dev\\FlyCore\\Assets\\untitled.fbx");
+	
 	renderer->OnInit();
 	renderer->SetCamera(mainCamera);
 	window->SetRendererCallback(std::bind(&Renderer::D3D12Renderer::OnUpdate,renderer));

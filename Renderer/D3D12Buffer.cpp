@@ -91,6 +91,11 @@ void Renderer::D3D12UploadBuffer::CopyData(void* p_src, uint64_t p_size)
 	m_offset += p_size;
 }
 
+void Renderer::D3D12UploadBuffer::UpdateData(uint64_t p_dst_offset, void* p_src, uint64_t p_size)
+{
+	memcpy(m_data + p_dst_offset, p_src, p_size);
+}
+
 void Renderer::D3D12UploadBuffer::CreateViews()
 {
 	//D3D12_CONSTANT_BUFFER_VIEW_DESC l_cbvDesc = {};
