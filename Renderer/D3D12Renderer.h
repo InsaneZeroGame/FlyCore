@@ -39,6 +39,11 @@ namespace Renderer {
 		uint32_t isActive[256];
 	};
 
+	struct PushConstants
+	{
+		glm::mat4 model;
+		std::array<float,4> material;
+	};
 	
 
 

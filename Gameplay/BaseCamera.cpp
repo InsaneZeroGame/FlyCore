@@ -6,7 +6,7 @@ Gameplay::BaseCamera::BaseCamera(const glm::vec3& p_pos, const glm::vec3& p_look
 	m_width(30.0f),
 	m_height(30.0f),
 	m_near(5.0f),
-	m_far(50.0f),
+	m_far(150.0f),
 	m_needToUpdate(false)
 {
 	m_proj = glm::perspectiveFovLH(m_fov, m_width, m_height, m_near, m_far);

@@ -15,11 +15,11 @@
 PSInput main(float4 position : POSITION, float3 normal : NORMAL0,float2 tex_uv : TEXCOORD0)
 {
 	PSInput result;
-	result.scenePositionView = mul(view, position);
+	result.scenePositionView = mul(view, mul(model,position));
 	result.position = mul(project, result.scenePositionView);
-	float4 shadowCoord = mul(shadowMatrix, position);
+	float4 shadowCoord = mul(shadowMatrix, mul(model,position));
 	result.shadowUV = shadowCoord.xyz/shadowCoord.w;
-	result.normal = mul(view,float4(normal,0.0)).xyz;
+	result.normal = mul(view,mul(model,float4(normal,0.0))).xyz;
 	result.uv = tex_uv;
 	return result;
 }

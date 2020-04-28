@@ -4,6 +4,7 @@
 #include "../Utility/AssetLoader.h"
 #include "D3D12DescManager.h"
 #include "../Gameplay/Entity.h"
+#include "../Gameplay/Director.h"
 
 #define CAMERA_UNIFORM_ROOT_INDEX 0
 #define LIGHT_UAV_ROOT_INDEX 1
@@ -54,7 +55,7 @@ void Renderer::D3D12Renderer::OnInit()
 }
 
 
-static float debugColor[][10] = 
+static std::array<float,4> debugColor[10] = 
 {
 	{1.0f,0.0f,0.0f,1.0f},
 	{0.0f,1.0f,0.0f,1.0f},
@@ -65,14 +66,14 @@ static float debugColor[][10] =
 	{1.0f,0.0f,0.0f,1.0f},
 	{0.0f,1.0f,0.0f,1.0f},
 	{0.0f,0.0f,1.0f,1.0f},
-	{1.0f,0.0f,0.0f,1.0f},
+	{0.75f,0.75f,0.75f,1.0f},
 
 
 };
 
 void Renderer::D3D12Renderer::OnUpdate()
 {
-
+	auto& l_director = Gameplay::Director::GetDirector();
 	if (m_mainCamera->IsCameraUpdated() || m_isFirstFrame)
 	{
 		m_VSUniform->ResetBuffer();
@@ -135,6 +136,9 @@ void Renderer::D3D12Renderer::OnUpdate()
 			if (!all_entities[i]) continue;
 			if (m_systemEntites.find(i) == m_systemEntites.end()) continue;
 			auto& l_entity_meshes = m_systemEntites[i]->GetComponent()->GetMeshes();
+
+			l_graphicsCmdList->SetGraphicsRoot32BitConstants(1, 16, &l_director.Query(i)->GetComponent()->GetModelMatrix(), 0);
+
 			for (auto& l_mesh = l_entity_meshes.begin(); l_mesh < l_entity_meshes.end(); l_mesh++)
 			{
 				l_graphicsCmdList->DrawIndexedInstanced(
@@ -192,9 +196,12 @@ void Renderer::D3D12Renderer::OnUpdate()
 			if (!all_entities[i]) continue;
 			if (m_systemEntites.find(i) == m_systemEntites.end()) continue;
 			auto& l_entity_meshes = m_systemEntites[i]->GetComponent()->GetMeshes();
+
+			l_graphicsCmdList->SetGraphicsRoot32BitConstants(PUSH_CONSTANTS, 16, &l_director.Query(i)->GetComponent()->GetModelMatrix(), 0);
+			
 			for (auto& l_mesh = l_entity_meshes.begin(); l_mesh < l_entity_meshes.end(); l_mesh++)
 			{
-				l_graphicsCmdList->SetGraphicsRoot32BitConstants(PUSH_CONSTANTS, 4, debugColor[(uniformDebugColor++) % 10], 0);
+				l_graphicsCmdList->SetGraphicsRoot32BitConstants(PUSH_CONSTANTS, 4, debugColor[9].data(), 16);
 
 				l_graphicsCmdList->DrawIndexedInstanced(
 					static_cast<uint32_t>(l_mesh->m_indices.size()),
@@ -576,8 +583,8 @@ void Renderer::D3D12Renderer::InitRootSignature()
 		D3D12_ROOT_PARAMETER l_pushConstants = {};
 
 		l_pushConstants.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-		l_pushConstants.Constants = {5,0,4};
-		l_pushConstants.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+		l_pushConstants.Constants = {5,0,16 + 4};
+		l_pushConstants.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
 		std::vector<D3D12_ROOT_PARAMETER> l_rootParameters =
 		{
@@ -622,9 +629,16 @@ void Renderer::D3D12Renderer::InitRootSignature()
 		l_cameraUniform.Descriptor = { 0,0 };
 		l_cameraUniform.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
+		D3D12_ROOT_PARAMETER l_pushConstants = {};
+
+		l_pushConstants.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+		l_pushConstants.Constants = { 5,0,16 + 4 };
+		l_pushConstants.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
 		std::vector<D3D12_ROOT_PARAMETER> l_rootParameters =
 		{
 			l_cameraUniform,
+			l_pushConstants
 		};
 
 		rootSignatureDesc.Init(static_cast<uint32_t>(l_rootParameters.size()), l_rootParameters.data(), 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
@@ -854,7 +868,7 @@ void Renderer::D3D12Renderer::InitPipelineState()
 	psoDesc.RTVFormats[1] = DXGI_FORMAT_UNKNOWN;
 	psoDesc.RTVFormats[2] = DXGI_FORMAT_UNKNOWN;
 	psoDesc.DepthStencilState.DepthEnable = true;
-	psoDesc.RasterizerState.DepthBias = 50;
+	psoDesc.RasterizerState.DepthBias = 100;
 	psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_FRONT;
 	psoDesc.RasterizerState.SlopeScaledDepthBias = 2.5;
 	m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_shadowPassPipelineState));

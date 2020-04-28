@@ -1,11 +1,16 @@
 #pragma once
 #include "stdafx.h"
 
+
 namespace Gameplay
 {
+	class Director;
+
 	class TranformComponent
 	{
 	public:
+		friend Director;
+		TranformComponent(const glm::vec3 p_pos, const glm::vec3& p_lookAt);
 
 		virtual ~TranformComponent();
 
@@ -15,7 +20,6 @@ namespace Gameplay
 		
 		void UpdateTransform();
 	protected:
-		TranformComponent(const glm::vec3 p_pos, const glm::vec3& p_lookAt);
 
 		glm::mat4 m_model;
 
