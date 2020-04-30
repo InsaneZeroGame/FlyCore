@@ -12,7 +12,7 @@ int main() {
 	auto window = new Framework::Window({ 1920,1080,"The Borning Game" });
 	window->OnInit();
 
-	auto mainCamera = new Gameplay::BaseCamera(glm::vec3(-20.1f, 15.1f, 0.1f), glm::vec3(0.0f,0.0f,0.0F));
+	auto mainCamera = new Gameplay::BaseCamera(glm::vec3(10.01, 10.0, 2.0), glm::vec3(0.0f,0.0f,0.0F));
 
 	auto renderer = new Renderer::D3D12Renderer();
 	renderer->SetTargetWindow(window);
@@ -21,9 +21,9 @@ int main() {
 
 	auto& entity_manager = Gameplay::EntityManager::GetManager();
 	auto entity0 = entity_manager.SpwanEntity();
-	renderer->AddComponent(entity0, "C:\\Dev\\FlyCore\\Assets\\humanoid.fbx");
+	renderer->AddComponent(entity0, "C:\\Dev\\FlyCore\\Assets\\player.fbx");
 	director.AddComponent(entity0, glm::vec3(0.0f), glm::vec3(0.0));
-	director.Scale(entity0, glm::vec3(0.005f));
+	director.Scale(entity0, glm::vec3(0.01f));
 
 	auto entity1 = entity_manager.SpwanEntity();
 	renderer->AddComponent(entity1, "C:\\Dev\\FlyCore\\Assets\\scene1.fbx");

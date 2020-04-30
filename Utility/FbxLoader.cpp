@@ -604,57 +604,57 @@ void Utility::FbxLoader::DisplayPolygons(FbxMesh* pMesh, std::vector<uint32_t>& 
             else
                 Display3DVector("            Coordinates: ", lControlPoints[lControlPointIndex]);
 
-            for (l = 0; l < pMesh->GetElementVertexColorCount(); l++)
-            {
-                FbxGeometryElementVertexColor* leVtxc = pMesh->GetElementVertexColor(l);
-                FBXSDK_sprintf(header, 100, "            Color vertex: ");
-
-                switch (leVtxc->GetMappingMode())
-                {
-                default:
-                    break;
-                case FbxGeometryElement::eByControlPoint:
-                    switch (leVtxc->GetReferenceMode())
-                    {
-                    case FbxGeometryElement::eDirect:
-                        DisplayColor(header, leVtxc->GetDirectArray().GetAt(lControlPointIndex));
-                        break;
-                    case FbxGeometryElement::eIndexToDirect:
-                    {
-                        int id = leVtxc->GetIndexArray().GetAt(lControlPointIndex);
-                        DisplayColor(header, leVtxc->GetDirectArray().GetAt(id));
-                    }
-                    break;
-                    default:
-                        break; // other reference modes not shown here!
-                    }
-                    break;
-
-                case FbxGeometryElement::eByPolygonVertex:
-                {
-                    switch (leVtxc->GetReferenceMode())
-                    {
-                    case FbxGeometryElement::eDirect:
-                        DisplayColor(header, leVtxc->GetDirectArray().GetAt(vertexId));
-                        break;
-                    case FbxGeometryElement::eIndexToDirect:
-                    {
-                        int id = leVtxc->GetIndexArray().GetAt(vertexId);
-                        DisplayColor(header, leVtxc->GetDirectArray().GetAt(id));
-                    }
-                    break;
-                    default:
-                        break; // other reference modes not shown here!
-                    }
-                }
-                break;
-
-                case FbxGeometryElement::eByPolygon: // doesn't make much sense for UVs
-                case FbxGeometryElement::eAllSame:   // doesn't make much sense for UVs
-                case FbxGeometryElement::eNone:       // doesn't make much sense for UVs
-                    break;
-                }
-            }
+            //for (l = 0; l < pMesh->GetElementVertexColorCount(); l++)
+            //{
+            //    FbxGeometryElementVertexColor* leVtxc = pMesh->GetElementVertexColor(l);
+            //    FBXSDK_sprintf(header, 100, "            Color vertex: ");
+            //
+            //    switch (leVtxc->GetMappingMode())
+            //    {
+            //    default:
+            //        break;
+            //    case FbxGeometryElement::eByControlPoint:
+            //        switch (leVtxc->GetReferenceMode())
+            //        {
+            //        case FbxGeometryElement::eDirect:
+            //            DisplayColor(header, leVtxc->GetDirectArray().GetAt(lControlPointIndex));
+            //            break;
+            //        case FbxGeometryElement::eIndexToDirect:
+            //        {
+            //            int id = leVtxc->GetIndexArray().GetAt(lControlPointIndex);
+            //            DisplayColor(header, leVtxc->GetDirectArray().GetAt(id));
+            //        }
+            //        break;
+            //        default:
+            //            break; // other reference modes not shown here!
+            //        }
+            //        break;
+            //
+            //    case FbxGeometryElement::eByPolygonVertex:
+            //    {
+            //        switch (leVtxc->GetReferenceMode())
+            //        {
+            //        case FbxGeometryElement::eDirect:
+            //            DisplayColor(header, leVtxc->GetDirectArray().GetAt(vertexId));
+            //            break;
+            //        case FbxGeometryElement::eIndexToDirect:
+            //        {
+            //            int id = leVtxc->GetIndexArray().GetAt(vertexId);
+            //            DisplayColor(header, leVtxc->GetDirectArray().GetAt(id));
+            //        }
+            //        break;
+            //        default:
+            //            break; // other reference modes not shown here!
+            //        }
+            //    }
+            //    break;
+            //
+            //    case FbxGeometryElement::eByPolygon: // doesn't make much sense for UVs
+            //    case FbxGeometryElement::eAllSame:   // doesn't make much sense for UVs
+            //    case FbxGeometryElement::eNone:       // doesn't make much sense for UVs
+            //        break;
+            //    }
+            //}
             for (l = 0; l < pMesh->GetElementUVCount(); ++l)
             {
                 FbxGeometryElementUV* leUV = pMesh->GetElementUV(l);
@@ -774,54 +774,54 @@ void Utility::FbxLoader::DisplayPolygons(FbxMesh* pMesh, std::vector<uint32_t>& 
                     }//end for lVertexIndex
                 }
             }
-            for (l = 0; l < pMesh->GetElementTangentCount(); ++l)
-            {
-                FbxGeometryElementTangent* leTangent = pMesh->GetElementTangent(l);
-                FBXSDK_sprintf(header, 100, "            Tangent: ");
-
-                if (leTangent->GetMappingMode() == FbxGeometryElement::eByPolygonVertex)
-                {
-                    switch (leTangent->GetReferenceMode())
-                    {
-                    case FbxGeometryElement::eDirect:
-                        Display3DVector(header, leTangent->GetDirectArray().GetAt(vertexId));
-                        break;
-                    case FbxGeometryElement::eIndexToDirect:
-                    {
-                        int id = leTangent->GetIndexArray().GetAt(vertexId);
-                        Display3DVector(header, leTangent->GetDirectArray().GetAt(id));
-                    }
-                    break;
-                    default:
-                        break; // other reference modes not shown here!
-                    }
-                }
-
-            }
-            for (l = 0; l < pMesh->GetElementBinormalCount(); ++l)
-            {
-
-                FbxGeometryElementBinormal* leBinormal = pMesh->GetElementBinormal(l);
-
-                FBXSDK_sprintf(header, 100, "            Binormal: ");
-                if (leBinormal->GetMappingMode() == FbxGeometryElement::eByPolygonVertex)
-                {
-                    switch (leBinormal->GetReferenceMode())
-                    {
-                    case FbxGeometryElement::eDirect:
-                        Display3DVector(header, leBinormal->GetDirectArray().GetAt(vertexId));
-                        break;
-                    case FbxGeometryElement::eIndexToDirect:
-                    {
-                        int id = leBinormal->GetIndexArray().GetAt(vertexId);
-                        Display3DVector(header, leBinormal->GetDirectArray().GetAt(id));
-                    }
-                    break;
-                    default:
-                        break; // other reference modes not shown here!
-                    }
-                }
-            }
+            //for (l = 0; l < pMesh->GetElementTangentCount(); ++l)
+            //{
+            //    FbxGeometryElementTangent* leTangent = pMesh->GetElementTangent(l);
+            //    FBXSDK_sprintf(header, 100, "            Tangent: ");
+            //
+            //    if (leTangent->GetMappingMode() == FbxGeometryElement::eByPolygonVertex)
+            //    {
+            //        switch (leTangent->GetReferenceMode())
+            //        {
+            //        case FbxGeometryElement::eDirect:
+            //            Display3DVector(header, leTangent->GetDirectArray().GetAt(vertexId));
+            //            break;
+            //        case FbxGeometryElement::eIndexToDirect:
+            //        {
+            //            int id = leTangent->GetIndexArray().GetAt(vertexId);
+            //            Display3DVector(header, leTangent->GetDirectArray().GetAt(id));
+            //        }
+            //        break;
+            //        default:
+            //            break; // other reference modes not shown here!
+            //        }
+            //    }
+            //
+            //}
+            //for (l = 0; l < pMesh->GetElementBinormalCount(); ++l)
+            //{
+            //
+            //    FbxGeometryElementBinormal* leBinormal = pMesh->GetElementBinormal(l);
+            //
+            //    FBXSDK_sprintf(header, 100, "            Binormal: ");
+            //    if (leBinormal->GetMappingMode() == FbxGeometryElement::eByPolygonVertex)
+            //    {
+            //        switch (leBinormal->GetReferenceMode())
+            //        {
+            //        case FbxGeometryElement::eDirect:
+            //            Display3DVector(header, leBinormal->GetDirectArray().GetAt(vertexId));
+            //            break;
+            //        case FbxGeometryElement::eIndexToDirect:
+            //        {
+            //            int id = leBinormal->GetIndexArray().GetAt(vertexId);
+            //            Display3DVector(header, leBinormal->GetDirectArray().GetAt(id));
+            //        }
+            //        break;
+            //        default:
+            //            break; // other reference modes not shown here!
+            //        }
+            //    }
+            //}
             vertexId++;
         } // for polygonSize
     } // for polygonCount
@@ -1416,58 +1416,59 @@ void DisplayMetaDataConnections(FbxObject* pObject)
 
 void DisplayString(const char* pHeader, const char* pValue /* = "" */, const char* pSuffix /* = "" */)
 {
-    FbxString lString;
-
-    lString = pHeader;
-    lString += pValue;
-    lString += pSuffix;
-    lString += "\n";
+    //FbxString lString;
+    //
+    //lString = pHeader;
+    //lString += pValue;
+    //lString += pSuffix;
+    //lString += "\n";
     //FBXSDK_printf(lString);
 }
 
 
 void DisplayBool(const char* pHeader, bool pValue, const char* pSuffix /* = "" */)
 {
-    FbxString lString;
-
-    lString = pHeader;
-    lString += pValue ? "true" : "false";
-    lString += pSuffix;
-    lString += "\n";
+    //FbxString lString;
+    //
+    //lString = pHeader;
+    //lString += pValue ? "true" : "false";
+    //lString += pSuffix;
+    //lString += "\n";
     //FBXSDK_printf(lString);
 }
 
 
 void DisplayInt(const char* pHeader, int pValue, const char* pSuffix /* = "" */)
 {
-    FbxString lString;
-
-    lString = pHeader;
-    lString += pValue;
-    lString += pSuffix;
-    lString += "\n";
+    //FbxString lString;
+    //
+    //lString = pHeader;
+    //lString += pValue;
+    //lString += pSuffix;
+    //lString += "\n";
     //FBXSDK_printf(lString);
 }
 
 
 void DisplayDouble(const char* pHeader, double pValue, const char* pSuffix /* = "" */)
 {
-    FbxString lString;
-    FbxString lFloatValue = (float)pValue;
-
-    lFloatValue = pValue <= -HUGE_VAL ? "-INFINITY" : lFloatValue.Buffer();
-    lFloatValue = pValue >= HUGE_VAL ? "INFINITY" : lFloatValue.Buffer();
-
-    lString = pHeader;
-    lString += lFloatValue;
-    lString += pSuffix;
-    lString += "\n";
+    //FbxString lString;
+    //FbxString lFloatValue = (float)pValue;
+    //
+    //lFloatValue = pValue <= -HUGE_VAL ? "-INFINITY" : lFloatValue.Buffer();
+    //lFloatValue = pValue >= HUGE_VAL ? "INFINITY" : lFloatValue.Buffer();
+    //
+    //lString = pHeader;
+    //lString += lFloatValue;
+    //lString += pSuffix;
+    //lString += "\n";
     //FBXSDK_printf(lString);
 }
 
 
 void Display2DVector(const char* pHeader, FbxVector2 pValue, const char* pSuffix  /* = "" */)
 {
+    return;
     FbxString lString;
     FbxString lFloatValue1 = (float)pValue[0];
     FbxString lFloatValue2 = (float)pValue[1];
@@ -1489,6 +1490,8 @@ void Display2DVector(const char* pHeader, FbxVector2 pValue, const char* pSuffix
 
 void Display3DVector(const char* pHeader, FbxVector4 pValue, const char* pSuffix /* = "" */)
 {
+    return;
+
     FbxString lString;
     FbxString lFloatValue1 = (float)pValue[0];
     FbxString lFloatValue2 = (float)pValue[1];
@@ -1514,6 +1517,8 @@ void Display3DVector(const char* pHeader, FbxVector4 pValue, const char* pSuffix
 
 void Display4DVector(const char* pHeader, FbxVector4 pValue, const char* pSuffix /* = "" */)
 {
+    return;
+
     FbxString lString;
     FbxString lFloatValue1 = (float)pValue[0];
     FbxString lFloatValue2 = (float)pValue[1];
@@ -1546,6 +1551,8 @@ void Display4DVector(const char* pHeader, FbxVector4 pValue, const char* pSuffix
 void DisplayColor(const char* pHeader, FbxPropertyT<FbxDouble3> pValue, const char* pSuffix /* = "" */)
 
 {
+    return;
+
     FbxString lString;
 
     lString = pHeader;
@@ -1566,6 +1573,7 @@ void DisplayColor(const char* pHeader, FbxPropertyT<FbxDouble3> pValue, const ch
 
 void DisplayColor(const char* pHeader, FbxColor pValue, const char* pSuffix /* = "" */)
 {
+    return;
     FbxString lString;
 
     lString = pHeader;
