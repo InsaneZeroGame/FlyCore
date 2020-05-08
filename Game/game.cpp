@@ -23,7 +23,7 @@ int main() {
 	auto entity0 = entity_manager.SpwanEntity();
 	renderer->AddComponent(entity0, "C:\\Dev\\FlyCore\\Assets\\player.fbx");
 	director.AddComponent(entity0, glm::vec3(0.0f), glm::vec3(0.0));
-	director.Scale(entity0, glm::vec3(0.01f));
+	director.Scale(entity0, glm::vec3(0.05f));
 
 	auto entity1 = entity_manager.SpwanEntity();
 	renderer->AddComponent(entity1, "C:\\Dev\\FlyCore\\Assets\\scene1.fbx");

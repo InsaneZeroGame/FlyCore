@@ -292,8 +292,8 @@ MRT main(PSInput input) : SV_TARGET
 	float2 shadowCoord;
 	shadowCoord.x = input.shadowUV.x * 0.5 + 0.5;
 	shadowCoord.y = -input.shadowUV.y * 0.5 + 0.5;
-	//float shadow = PCSS(float3(shadowCoord, input.shadowUV.z),input.scenePositionView.z);
-	float shadow = ShadowMap.SampleCmpLevelZero(ShadowSampler, shadowCoord, input.shadowUV.z);
+	float shadow = PCSS(float3(shadowCoord, input.shadowUV.z),input.scenePositionView.z);
+	//float shadow = ShadowMap.SampleCmpLevelZero(ShadowSampler, shadowCoord, input.shadowUV.z);
 	l_res.LightOut = float4(Lo,1.0) * shadow * materialColor;
 	//l_res.LightOut = diffuseDebug;
 	float gamma = 2.2;

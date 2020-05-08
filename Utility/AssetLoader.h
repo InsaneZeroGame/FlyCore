@@ -2,6 +2,7 @@
 #include "stdafx.h"
 #include "FbxLoader.h"
 #include "../Gameplay/RenderComponent.h"
+#include <future>
 
 namespace Utility
 {

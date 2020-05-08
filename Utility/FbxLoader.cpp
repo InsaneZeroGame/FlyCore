@@ -564,6 +564,8 @@ void Utility::FbxLoader::DisplayPolygons(FbxMesh* pMesh, std::vector<uint32_t>& 
 
     DisplayString("    Polygons");
 
+    bool normalByControlPointsNeedLoadingOnlyOnce = true;
+
     int vertexId = 0;
     for (i = 0; i < lPolygonCount; i++)
     {
@@ -746,6 +748,7 @@ void Utility::FbxLoader::DisplayPolygons(FbxMesh* pMesh, std::vector<uint32_t>& 
                 }
                 else
                 {
+                    if (!normalByControlPointsNeedLoadingOnlyOnce) break;
                     //Let's get normals of each vertex, since the mapping mode of normal element is by control point
                     for (int lVertexIndex = 0; lVertexIndex < pMesh->GetControlPointsCount(); lVertexIndex++)
                     {
@@ -766,12 +769,13 @@ void Utility::FbxLoader::DisplayPolygons(FbxMesh* pMesh, std::vector<uint32_t>& 
                         ////FBXSDK_printf("normals for vertex[%d]: %f %f %f %f \n", lVertexIndex, lNormal[0], lNormal[1], lNormal[2], lNormal[3]);
                         l_normal = l_transformMatrix->MultT(l_normal);
 
-                        p_vertices[lControlPointIndex].normal[0] = float(lNormal.mData[0]);
-                        p_vertices[lControlPointIndex].normal[1] = float(lNormal.mData[1]);
-                        p_vertices[lControlPointIndex].normal[2] = float(lNormal.mData[2]);
+                        p_vertices[lVertexIndex].normal[0] = float(lNormal.mData[0]);
+                        p_vertices[lVertexIndex].normal[1] = float(lNormal.mData[1]);
+                        p_vertices[lVertexIndex].normal[2] = float(lNormal.mData[2]);
                        //add your custom code here, to output normals or get them into a list, such as KArrayTemplate<FbxVector4>
                         //. . .
                     }//end for lVertexIndex
+                    normalByControlPointsNeedLoadingOnlyOnce = false;
                 }
             }
             //for (l = 0; l < pMesh->GetElementTangentCount(); ++l)
