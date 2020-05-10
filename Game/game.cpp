@@ -21,9 +21,9 @@ int main() {
 
 	auto& entity_manager = Gameplay::EntityManager::GetManager();
 	auto entity0 = entity_manager.SpwanEntity();
-	renderer->AddComponent(entity0, "C:\\Dev\\FlyCore\\Assets\\player.fbx");
+	renderer->AddComponent(entity0, "C:\\Dev\\FlyCore\\Assets\\humanoid.fbx");
 	director.AddComponent(entity0, glm::vec3(0.0f), glm::vec3(0.0));
-	director.Scale(entity0, glm::vec3(0.05f));
+	director.Scale(entity0, glm::vec3(0.01f));
 
 	auto entity1 = entity_manager.SpwanEntity();
 	renderer->AddComponent(entity1, "C:\\Dev\\FlyCore\\Assets\\scene1.fbx");

@@ -10,6 +10,7 @@ namespace Gameplay
 		std::array<float, 4> position;
 		std::array<float, 3> normal;
 		std::array<float, 2> uv;
+		std::array<float, 4> bone;
 	};
 
 
