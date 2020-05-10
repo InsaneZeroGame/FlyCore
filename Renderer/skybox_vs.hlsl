@@ -2,7 +2,7 @@
 
 
 
-SkyboxPSInput main(float4 position : POSITION, float3 normal : NORMAL0, float2 tex_uv : TEXCOORD0, float4 bone : BONE)
+SkyboxPSInput main(float4 position : POSITION, float3 normal : NORMAL0, float2 tex_uv : TEXCOORD0, int4 boneIndex : BONEINDEX,float4 boneWeight : BONEWEIGHT)
 {
 	SkyboxPSInput res;
 	float4x4 viewMatrix = view;

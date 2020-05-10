@@ -18,7 +18,6 @@ static void Display3DVector(const char* pHeader, FbxVector4 pValue, const char* 
 static void DisplayColor(const char* pHeader, FbxColor pValue, const char* pSuffix = "");
 static void Display4DVector(const char* pHeader, FbxVector4 pValue, const char* pSuffix = "");
 static void DisplayTexture(FbxGeometry* pGeometry);
-static void DisplayLink(FbxGeometry* pGeometry);
 static void DisplayShape(FbxGeometry* pGeometry);
 static void DisplayCache(FbxGeometry* pGeometry);
 static void DisplayMaterial(FbxGeometry* pGeometry);
@@ -356,7 +355,7 @@ void Utility::FbxLoader::DisplayMesh(FbxNode* pNode)
     DisplayMaterial(lMesh);
     DisplayTexture(lMesh);
     DisplayMaterialConnections(lMesh);
-    DisplayLink(lMesh);
+    DisplayLink(lMesh,l_vertices);
     DisplayShape(lMesh);
     DisplayCache(lMesh);
 
@@ -1597,7 +1596,7 @@ void DisplayColor(const char* pHeader, FbxColor pValue, const char* pSuffix /* =
 
 
 
-void DisplayLink(FbxGeometry* pGeometry)
+void Utility::FbxLoader::DisplayLink(FbxGeometry* pGeometry, std::vector<Gameplay::Vertex>& p_vertices)
 {
     //Display cluster now
 
@@ -1633,8 +1632,8 @@ void DisplayLink(FbxGeometry* pGeometry)
                 DisplayString("        Name: ", (char*)lCluster->GetLink()->GetName());
             }
 
-            FbxString lString1 = "        Link Indices: ";
-            FbxString lString2 = "        Weight Values: ";
+            //FbxString lString1 = "        Link Indices: ";
+            //FbxString lString2 = "        Weight Values: ";
 
             int k, lIndexCount = lCluster->GetControlPointIndicesCount();
             int* lIndices = lCluster->GetControlPointIndices();
@@ -1642,46 +1641,66 @@ void DisplayLink(FbxGeometry* pGeometry)
 
             for (k = 0; k < lIndexCount; k++)
             {
-                lString1 += lIndices[k];
-                lString2 += (float)lWeights[k];
-
-                if (k < lIndexCount - 1)
+                if (p_vertices[lIndices[k]].boneIndex[0] == -1)
                 {
-                    lString1 += ", ";
-                    lString2 += ", ";
+                    p_vertices[lIndices[k]].boneIndex[0] = j;
+                    p_vertices[lIndices[k]].boneWeight[0] = (float)lWeights[k];
+                    continue;
+
                 }
+
+                if (p_vertices[lIndices[k]].boneIndex[1] == -1)
+                {
+                    p_vertices[lIndices[k]].boneIndex[1] = j;
+                    p_vertices[lIndices[k]].boneWeight[1] = (float)lWeights[k];
+                    continue;
+                }
+
+                if (p_vertices[lIndices[k]].boneIndex[2] == -1)
+                {
+                    p_vertices[lIndices[k]].boneIndex[2] = j;
+                    p_vertices[lIndices[k]].boneWeight[2] = (float)lWeights[k];
+                    continue;
+
+                }
+
+                if (p_vertices[lIndices[k]].boneIndex[3] == -1)
+                {
+                    p_vertices[lIndices[k]].boneIndex[3] = j;
+                    p_vertices[lIndices[k]].boneWeight[3] = (float)lWeights[k];
+                    continue;
+                }
+                
             }
 
-            lString1 += "\n";
-            lString2 += "\n";
-
+            //lString1 += "\n";
+            //lString2 += "\n";
             //FBXSDK_printf(lString1);
             //FBXSDK_printf(lString2);
-
-            DisplayString("");
-
-            FbxAMatrix lMatrix;
-
-            lMatrix = lCluster->GetTransformMatrix(lMatrix);
-            Display3DVector("        Transform Translation: ", lMatrix.GetT());
-            Display3DVector("        Transform Rotation: ", lMatrix.GetR());
-            Display3DVector("        Transform Scaling: ", lMatrix.GetS());
-
-            lMatrix = lCluster->GetTransformLinkMatrix(lMatrix);
-            Display3DVector("        Transform Link Translation: ", lMatrix.GetT());
-            Display3DVector("        Transform Link Rotation: ", lMatrix.GetR());
-            Display3DVector("        Transform Link Scaling: ", lMatrix.GetS());
-
-            if (lCluster->GetAssociateModel() != NULL)
-            {
-                lMatrix = lCluster->GetTransformAssociateModelMatrix(lMatrix);
-                DisplayString("        Associate Model: ", (char*)lCluster->GetAssociateModel()->GetName());
-                Display3DVector("        Associate Model Translation: ", lMatrix.GetT());
-                Display3DVector("        Associate Model Rotation: ", lMatrix.GetR());
-                Display3DVector("        Associate Model Scaling: ", lMatrix.GetS());
-            }
-
-            DisplayString("");
+            //DisplayString("");
+            //
+            //FbxAMatrix lMatrix;
+            //
+            //lMatrix = lCluster->GetTransformMatrix(lMatrix);
+            //Display3DVector("        Transform Translation: ", lMatrix.GetT());
+            //Display3DVector("        Transform Rotation: ", lMatrix.GetR());
+            //Display3DVector("        Transform Scaling: ", lMatrix.GetS());
+            //
+            //lMatrix = lCluster->GetTransformLinkMatrix(lMatrix);
+            //Display3DVector("        Transform Link Translation: ", lMatrix.GetT());
+            //Display3DVector("        Transform Link Rotation: ", lMatrix.GetR());
+            //Display3DVector("        Transform Link Scaling: ", lMatrix.GetS());
+            //
+            //if (lCluster->GetAssociateModel() != NULL)
+            //{
+            //    lMatrix = lCluster->GetTransformAssociateModelMatrix(lMatrix);
+            //    DisplayString("        Associate Model: ", (char*)lCluster->GetAssociateModel()->GetName());
+            //    Display3DVector("        Associate Model Translation: ", lMatrix.GetT());
+            //    Display3DVector("        Associate Model Rotation: ", lMatrix.GetR());
+            //    Display3DVector("        Associate Model Scaling: ", lMatrix.GetS());
+            //}
+            //
+            //DisplayString("");
         }
     }
 }

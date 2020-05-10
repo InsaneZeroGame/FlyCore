@@ -14,7 +14,7 @@
 
 
 
-SSRPSinput main(float4 position : POSITION, float3 normal : NORMAL0,float2 tex_uv : TEXCOORD0, float4 bone : BONE)
+SSRPSinput main(float4 position : POSITION, float3 normal : NORMAL0,float2 tex_uv : TEXCOORD0, int4 boneIndex : BONEINDEX,float4 boneWeight : BONEWEIGHT)
 {
 	SSRPSinput result;
 	result.position = position;

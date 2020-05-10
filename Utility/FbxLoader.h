@@ -50,6 +50,7 @@ namespace Utility
 		void DisplayMaterialConnections(FbxMesh* pMesh);
 		void DisplayMaterialMapping(FbxMesh* pMesh);
 		void InitializeSdkObjects(FbxManager*& pManager, FbxScene*& pScene);
+		void DisplayLink(FbxGeometry* pGeometry, std::vector<Gameplay::Vertex>& p_vertices);
 
 	};
 
