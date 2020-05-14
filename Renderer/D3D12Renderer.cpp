@@ -13,6 +13,8 @@
 #define DIFFUSE_MAP 3
 #define SHADOW_MAP 4
 #define PUSH_CONSTANTS 5
+#define COLOR_PASS_ANIM_ROOT_INDEX 6
+#define SHADOW_PASS_ANIM_ROOT_INDEX 2
 Renderer::D3D12Renderer::D3D12Renderer():
     m_device(D3D12Device::GetDevice()),
     m_swapChain(nullptr),
@@ -34,7 +36,8 @@ Renderer::D3D12Renderer::D3D12Renderer():
 	m_shadowPassRootSignature(nullptr),
 	m_isFirstFrame(true),
 	m_vertexOffsetInByte(0),
-	m_indexOffsetInByte(0)
+	m_indexOffsetInByte(0),
+	m_animBuffer(nullptr)
 {
 }
 
@@ -130,7 +133,7 @@ void Renderer::D3D12Renderer::OnUpdate()
 		l_graphicsCmdList->SetGraphicsRootConstantBufferView(CAMERA_UNIFORM_ROOT_INDEX, m_VSUniform->GetGpuVirtualAddress());
 		l_graphicsCmdList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		
-
+		uint64_t l_animIndex = 0;
 		for (Gameplay::Entity i = 0; i < all_entities.size(); ++i)
 		{
 			if (!all_entities[i]) continue;
@@ -138,9 +141,14 @@ void Renderer::D3D12Renderer::OnUpdate()
 			auto& l_entity_meshes = m_systemEntites[i]->GetComponent()->GetMeshes();
 
 			l_graphicsCmdList->SetGraphicsRoot32BitConstants(1, 16, &l_director.Query(i)->GetComponent()->GetModelMatrix(), 0);
-
 			for (auto& l_mesh = l_entity_meshes.begin(); l_mesh < l_entity_meshes.end(); l_mesh++)
 			{
+				if (l_mesh->m_anim)
+				{
+					l_graphicsCmdList->SetGraphicsRootConstantBufferView(SHADOW_PASS_ANIM_ROOT_INDEX, m_animBuffer->GetActorAnimBufferLocation(l_animIndex));
+					l_animIndex++;
+				}
+
 				l_graphicsCmdList->DrawIndexedInstanced(
 					static_cast<uint32_t>(l_mesh->m_indices.size()),
 					1, 
@@ -191,6 +199,8 @@ void Renderer::D3D12Renderer::OnUpdate()
 		l_graphicsCmdList->SetGraphicsRootDescriptorTable(DIFFUSE_MAP, m_defaultTexture->GetSRV()->gpuHandle);
 		l_graphicsCmdList->SetGraphicsRootDescriptorTable(SHADOW_MAP, l_shadowMap->GetSRV()->gpuHandle);
 		uint32_t uniformDebugColor = 0;
+		uint64_t l_animIndex = 0;
+
 		for (auto i = 0; i < all_entities.size(); ++i)
 		{
 			if (!all_entities[i]) continue;
@@ -201,6 +211,12 @@ void Renderer::D3D12Renderer::OnUpdate()
 			
 			for (auto& l_mesh = l_entity_meshes.begin(); l_mesh < l_entity_meshes.end(); l_mesh++)
 			{
+				if (l_mesh->m_anim)
+				{
+					m_animBuffer->UpdateActorAnim(l_animIndex, l_mesh->m_anim->bones.data());
+					l_graphicsCmdList->SetGraphicsRootConstantBufferView(COLOR_PASS_ANIM_ROOT_INDEX, m_animBuffer->GetActorAnimBufferLocation(l_animIndex));
+					l_animIndex++;
+				}
 				l_graphicsCmdList->SetGraphicsRoot32BitConstants(PUSH_CONSTANTS, 4, debugColor[9].data(), 16);
 
 				l_graphicsCmdList->DrawIndexedInstanced(
@@ -456,7 +472,25 @@ void Renderer::D3D12Renderer::InitBuffers()
 			m_indexOffsetInByte += l_indexSize;
 		}
 	}
+
+	uint64_t animCount = 0;
+
+	for (Gameplay::Entity i = 0; i < all_entities.size(); ++i)
+	{
+		if (!all_entities[i]) continue;
+		if (m_systemEntites.find(i) == m_systemEntites.end()) continue;
+
+		auto& l_entity_meshes = m_systemEntites[i]->GetComponent()->GetMeshes();
+		for (auto& l_mesh = l_entity_meshes.begin(); l_mesh < l_entity_meshes.end(); l_mesh++)
+		{
+			if (l_mesh->m_anim)
+			{
+				animCount++;
+			}
+		}
+	}
 	
+	m_animBuffer = new D3D12AnimBuffer(animCount);
 	
 	auto& l_graphicsContext = D3D12GraphicsCmdContext::GetContext();
 	l_graphicsContext.Begin(nullptr);
@@ -586,6 +620,13 @@ void Renderer::D3D12Renderer::InitRootSignature()
 		l_pushConstants.Constants = {5,0,16 + 4};
 		l_pushConstants.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
+		D3D12_ROOT_PARAMETER l_animBuffer = {};
+		l_animBuffer.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+		l_animBuffer.Descriptor.RegisterSpace = 0;
+		l_animBuffer.Descriptor.ShaderRegister = 6;
+		l_animBuffer.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+
 		std::vector<D3D12_ROOT_PARAMETER> l_rootParameters =
 		{
 			l_cameraUniform,
@@ -593,7 +634,8 @@ void Renderer::D3D12Renderer::InitRootSignature()
 			l_lightBuffer,
 			l_diffuseMap,
 			l_shadowMap,
-			l_pushConstants
+			l_pushConstants,
+			l_animBuffer
 		};
 		
 
@@ -635,10 +677,17 @@ void Renderer::D3D12Renderer::InitRootSignature()
 		l_pushConstants.Constants = { 5,0,16 + 4 };
 		l_pushConstants.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
+		D3D12_ROOT_PARAMETER l_animBuffer = {};
+		l_animBuffer.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+		l_animBuffer.Descriptor.RegisterSpace = 0;
+		l_animBuffer.Descriptor.ShaderRegister = 6;
+		l_animBuffer.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
 		std::vector<D3D12_ROOT_PARAMETER> l_rootParameters =
 		{
 			l_cameraUniform,
-			l_pushConstants
+			l_pushConstants,
+			l_animBuffer
 		};
 
 		rootSignatureDesc.Init(static_cast<uint32_t>(l_rootParameters.size()), l_rootParameters.data(), 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);

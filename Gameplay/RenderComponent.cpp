@@ -38,15 +38,31 @@ Gameplay::Mesh::Mesh()
 {
 }
 
-Gameplay::Mesh::Mesh(std::vector<Vertex>&& p_vertices, std::vector<uint32_t>&& p_indices) :
+Gameplay::Mesh::Mesh(
+    std::vector<Vertex>&& p_vertices,
+    std::vector<uint32_t>&& p_indices,
+    SkeletonAnim* p_anim) :
     m_vertices(p_vertices),
     m_indices(p_indices),
+    m_anim(p_anim),
     m_vertexOffset(0),
     m_indexOffset(0)
 {
 }
 
+Gameplay::Mesh::Mesh(
+    std::vector<Vertex>&& p_vertices,
+    std::vector<uint32_t>&& p_indices) :
+    m_vertices(p_vertices),
+    m_indices(p_indices),
+    m_vertexOffset(0),
+    m_indexOffset(0),
+    m_anim(nullptr)
+{
+}
+
 Gameplay::Mesh::~Mesh()
 {
+    
 }
  

@@ -32,18 +32,33 @@ namespace Gameplay
 		}
 	};
 
+	struct SkeletonAnim
+	{
+		enum {MAX_BONE = 60};
+		std::array<glm::mat4x4, MAX_BONE> bones;
+	};
+
 	class Mesh
 	{
 	public:
 		Mesh();
 
-		Mesh(std::vector<Vertex>&& m_vertices, std::vector<uint32_t>&& m_indices);
+		Mesh(
+			std::vector<Vertex>&& m_vertices,
+			std::vector<uint32_t>&& m_indices,
+			SkeletonAnim* p_anim);
+
+		Mesh(
+			std::vector<Vertex>&& m_vertices,
+			std::vector<uint32_t>&& m_indices);
 
 		~Mesh();
 
 		std::vector<Vertex> m_vertices;
 
 		std::vector<uint32_t> m_indices;
+
+		SkeletonAnim* m_anim;
 
 		uint64_t m_vertexOffset;
 
@@ -61,7 +76,7 @@ namespace Gameplay
 		RenderComponent(const std::string& p_fbxFileName);
 		RenderComponent(Mesh&& p_mesh);
 		~RenderComponent();
-	 	__forceinline void AddMesh(Mesh& p_mesh)
+	 	__forceinline void AddMesh(Mesh&& p_mesh)
 	 	{
 	 		p_mesh.m_vertexOffset = m_meshVertexOffset;
 	 		p_mesh.m_indexOffset = m_meshIndexOffset;

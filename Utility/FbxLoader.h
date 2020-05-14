@@ -19,6 +19,8 @@ namespace Utility
 	private:
 		Gameplay::RenderComponent* m_renderComponent;
 
+		std::vector<FbxAnimStack*> m_animStacks;
+
 		FbxManager* m_sdkManager;
 
 		FbxScene* m_scene;
@@ -50,8 +52,22 @@ namespace Utility
 		void DisplayMaterialConnections(FbxMesh* pMesh);
 		void DisplayMaterialMapping(FbxMesh* pMesh);
 		void InitializeSdkObjects(FbxManager*& pManager, FbxScene*& pScene);
-		void DisplayLink(FbxGeometry* pGeometry, std::vector<Gameplay::Vertex>& p_vertices);
+		bool DisplayLink(FbxMesh* pGeometry, std::vector<Gameplay::Vertex>& p_vertices, Gameplay::SkeletonAnim& p_anim);
+		void DisplayAnimation(FbxScene* pScene);
+		void DisplayAnimation(FbxAnimStack* pAnimStack, FbxNode* pNode, bool isSwitcher = false);
+		const FbxAMatrix& ComputeLinearDeformation(FbxAMatrix& pGlobalPosition,
+			FbxMesh* pMesh,
+			FbxTime& pTime,
+			FbxPose* pPose,
+			FbxCluster* pCluster);
 
+		//Compute the transform matrix that the cluster will transform the vertex.
+		void ComputeClusterDeformation(FbxAMatrix& pGlobalPosition,
+			FbxMesh* pMesh,
+			FbxCluster* pCluster,
+			FbxAMatrix& pVertexTransformMatrix,
+			FbxTime pTime,
+			FbxPose* pPose);
 	};
 
 	

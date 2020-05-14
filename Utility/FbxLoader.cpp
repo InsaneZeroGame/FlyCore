@@ -21,6 +21,7 @@ static void DisplayTexture(FbxGeometry* pGeometry);
 static void DisplayShape(FbxGeometry* pGeometry);
 static void DisplayCache(FbxGeometry* pGeometry);
 static void DisplayMaterial(FbxGeometry* pGeometry);
+
 static const unsigned int MAT_HEADER_LENGTH = 200;
 
 
@@ -71,15 +72,16 @@ void Utility::FbxLoader::LoadSceneFromFile(const std::string p_fileName, Gamepla
         //
         ////FBXSDK_printf("\n\n------------\nNode Content\n------------\n\n");
         //
+        DisplayAnimation(m_scene);
         DisplayContent(m_scene);
-        
+
         ////FBXSDK_printf("\n\n----\nPose\n----\n\n");
         //
         //if (gVerbose) DisplayPose(m_scene);
         //
         ////FBXSDK_printf("\n\n---------\nAnimation\n---------\n\n");
         //
-        //if (gVerbose) DisplayAnimation(m_scene);
+        //if (gVerbose) 
         //
         ////now display generic information
         //
@@ -335,6 +337,7 @@ void Utility::FbxLoader::DisplayMesh(FbxNode* pNode)
     FbxMesh* lMesh = (FbxMesh*)pNode->GetNodeAttribute();
     std::vector<Gameplay::Vertex> l_vertices;
     std::vector<uint32_t> l_indices;
+    Gameplay::SkeletonAnim* l_anim = new Gameplay::SkeletonAnim;
 
 	FbxAMatrix matrixGeo;
 	matrixGeo.SetIdentity();
@@ -342,7 +345,7 @@ void Utility::FbxLoader::DisplayMesh(FbxNode* pNode)
 	const FbxVector4 lR = pNode->GetGeometricRotation(FbxNode::eSourcePivot);
 	const FbxVector4 lS = pNode->GetGeometricScaling(FbxNode::eSourcePivot);
 	matrixGeo.SetT(lT);
-	matrixGeo.SetR(lR);
+	matrixGeo.SetR(lR); 
 	matrixGeo.SetS(lS);
 	FbxAMatrix globalMatrix = pNode->EvaluateLocalTransform();
 	FbxAMatrix matrix = globalMatrix * matrixGeo;
@@ -355,11 +358,11 @@ void Utility::FbxLoader::DisplayMesh(FbxNode* pNode)
     DisplayMaterial(lMesh);
     DisplayTexture(lMesh);
     DisplayMaterialConnections(lMesh);
-    DisplayLink(lMesh,l_vertices);
+    bool hasAnim = DisplayLink(lMesh,l_vertices,*l_anim);
     DisplayShape(lMesh);
     DisplayCache(lMesh);
-
-    m_renderComponent->AddMesh(Gameplay::Mesh(std::move(l_vertices), std::move(l_indices)));
+    if (!hasAnim) delete l_anim;
+    m_renderComponent->AddMesh(Gameplay::Mesh(std::move(l_vertices), std::move(l_indices), hasAnim? l_anim : nullptr));
 }
 
 void DisplayTextureInfo(FbxTexture* pTexture, int pBlendMode)
@@ -1596,7 +1599,7 @@ void DisplayColor(const char* pHeader, FbxColor pValue, const char* pSuffix /* =
 
 
 
-void Utility::FbxLoader::DisplayLink(FbxGeometry* pGeometry, std::vector<Gameplay::Vertex>& p_vertices)
+bool Utility::FbxLoader::DisplayLink(FbxMesh* pGeometry, std::vector<Gameplay::Vertex>& p_vertices, Gameplay::SkeletonAnim& p_anim)
 {
     //Display cluster now
 
@@ -1606,34 +1609,83 @@ void Utility::FbxLoader::DisplayLink(FbxGeometry* pGeometry, std::vector<Gamepla
     int i, j;
     int lSkinCount = 0;
     int lClusterCount = 0;
-    FbxCluster* lCluster;
 
     lSkinCount = pGeometry->GetDeformerCount(FbxDeformer::eSkin);
 
+    if (lSkinCount == 0)
+    {
+        return false;
+    }
 
+    fbxsdk::FbxAMatrix lDummyGlobalPosition;
+    FbxTime pTime;
+
+     FbxPose* lPose = m_scene->GetPose(1);
 
     //lLinkCount = pGeometry->GetLinkCount();
+    int boneIndex = 0;
     for (i = 0; i != lSkinCount; ++i)
     {
         lClusterCount = ((FbxSkin*)pGeometry->GetDeformer(i, FbxDeformer::eSkin))->GetClusterCount();
+        assert(lClusterCount <= Gameplay::SkeletonAnim::MAX_BONE);
         for (j = 0; j != lClusterCount; ++j)
         {
-            DisplayInt("    Cluster ", i);
+            FbxSkin* lSkinDeformer = ((FbxSkin*)pGeometry->GetDeformer(i, FbxDeformer::eSkin));
+            FbxSkin::EType lSkinningType = lSkinDeformer->GetSkinningType();
+            FbxCluster* lCluster = lSkinDeformer->GetCluster(j);
+            if (!lCluster->GetLink())
+                continue;
 
-            lCluster = ((FbxSkin*)pGeometry->GetDeformer(i, FbxDeformer::eSkin))->GetCluster(j);
-            //lLink = pGeometry->GetLink(i);    
-
-            const char* lClusterModes[] = { "Normalize", "Additive", "Total1" };
-
-            DisplayString("    Mode: ", lClusterModes[lCluster->GetLinkMode()]);
-
-            if (lCluster->GetLink() != NULL)
+            if (lSkinningType == FbxSkin::eLinear || lSkinningType == FbxSkin::eRigid)
             {
-                DisplayString("        Name: ", (char*)lCluster->GetLink()->GetName());
-            }
+                const fbxsdk::FbxAMatrix boneMatrix = ComputeLinearDeformation(lDummyGlobalPosition, pGeometry, pTime, lPose, lCluster);
 
-            //FbxString lString1 = "        Link Indices: ";
-            //FbxString lString2 = "        Weight Values: ";
+                p_anim.bones[j][0][0] = float(boneMatrix.Get(0,0));
+                p_anim.bones[j][0][1] = float(boneMatrix.Get(0,1));
+                p_anim.bones[j][0][2] = float(boneMatrix.Get(0,2));
+                p_anim.bones[j][0][3] = float(boneMatrix.Get(0,3));
+                p_anim.bones[j][1][0] = float(boneMatrix.Get(1,0));
+                p_anim.bones[j][1][1] = float(boneMatrix.Get(1,1));
+                p_anim.bones[j][1][2] = float(boneMatrix.Get(1,2));
+                p_anim.bones[j][1][3] = float(boneMatrix.Get(1,3));
+                p_anim.bones[j][2][0] = float(boneMatrix.Get(2,0));
+                p_anim.bones[j][2][1] = float(boneMatrix.Get(2,1));
+                p_anim.bones[j][2][2] = float(boneMatrix.Get(2,2));
+                p_anim.bones[j][2][3] = float(boneMatrix.Get(2,3));
+                p_anim.bones[j][3][0] = float(boneMatrix.Get(3,0));
+                p_anim.bones[j][3][1] = float(boneMatrix.Get(3,1));
+                p_anim.bones[j][3][2] = float(boneMatrix.Get(3,2));
+                p_anim.bones[j][3][3] = float(boneMatrix.Get(3,3));
+              
+            }
+            else if (lSkinningType == FbxSkin::eDualQuaternion)
+            {
+                //ComputeDualQuaternionDeformation(pGlobalPosition, pMesh, pTime, pVertexArray, pPose);
+            }
+            else if (lSkinningType == FbxSkin::eBlend)
+            {
+                //int lVertexCount = pMesh->GetControlPointsCount();
+                //
+                //FbxVector4* lVertexArrayLinear = new FbxVector4[lVertexCount];
+                //memcpy(lVertexArrayLinear, pMesh->GetControlPoints(), lVertexCount * sizeof(FbxVector4));
+                //
+                //FbxVector4* lVertexArrayDQ = new FbxVector4[lVertexCount];
+                //memcpy(lVertexArrayDQ, pMesh->GetControlPoints(), lVertexCount * sizeof(FbxVector4));
+                //
+                //ComputeLinearDeformation(pGlobalPosition, pMesh, pTime, lVertexArrayLinear, pPose);
+                //ComputeDualQuaternionDeformation(pGlobalPosition, pMesh, pTime, lVertexArrayDQ, pPose);
+                //
+                //// To blend the skinning according to the blend weights
+                //// Final vertex = DQSVertex * blend weight + LinearVertex * (1- blend weight)
+                //// DQSVertex: vertex that is deformed by dual quaternion skinning method;
+                //// LinearVertex: vertex that is deformed by classic linear skinning method;
+                //int lBlendWeightsCount = lSkinDeformer->GetControlPointIndicesCount();
+                //for (int lBWIndex = 0; lBWIndex < lBlendWeightsCount; ++lBWIndex)
+                //{
+                //    double lBlendWeight = lSkinDeformer->GetControlPointBlendWeights()[lBWIndex];
+                //    pVertexArray[lBWIndex] = lVertexArrayDQ[lBWIndex] * lBlendWeight + lVertexArrayLinear[lBWIndex] * (1 - lBlendWeight);
+                //}
+            }
 
             int k, lIndexCount = lCluster->GetControlPointIndicesCount();
             int* lIndices = lCluster->GetControlPointIndices();
@@ -1643,7 +1695,7 @@ void Utility::FbxLoader::DisplayLink(FbxGeometry* pGeometry, std::vector<Gamepla
             {
                 if (p_vertices[lIndices[k]].boneIndex[0] == -1)
                 {
-                    p_vertices[lIndices[k]].boneIndex[0] = j;
+                    p_vertices[lIndices[k]].boneIndex[0] = boneIndex;
                     p_vertices[lIndices[k]].boneWeight[0] = (float)lWeights[k];
                     continue;
 
@@ -1651,14 +1703,14 @@ void Utility::FbxLoader::DisplayLink(FbxGeometry* pGeometry, std::vector<Gamepla
 
                 if (p_vertices[lIndices[k]].boneIndex[1] == -1)
                 {
-                    p_vertices[lIndices[k]].boneIndex[1] = j;
+                    p_vertices[lIndices[k]].boneIndex[1] = boneIndex;
                     p_vertices[lIndices[k]].boneWeight[1] = (float)lWeights[k];
                     continue;
                 }
 
                 if (p_vertices[lIndices[k]].boneIndex[2] == -1)
                 {
-                    p_vertices[lIndices[k]].boneIndex[2] = j;
+                    p_vertices[lIndices[k]].boneIndex[2] = boneIndex;
                     p_vertices[lIndices[k]].boneWeight[2] = (float)lWeights[k];
                     continue;
 
@@ -1666,13 +1718,13 @@ void Utility::FbxLoader::DisplayLink(FbxGeometry* pGeometry, std::vector<Gamepla
 
                 if (p_vertices[lIndices[k]].boneIndex[3] == -1)
                 {
-                    p_vertices[lIndices[k]].boneIndex[3] = j;
+                    p_vertices[lIndices[k]].boneIndex[3] = boneIndex;
                     p_vertices[lIndices[k]].boneWeight[3] = (float)lWeights[k];
                     continue;
                 }
                 
             }
-
+            boneIndex++;
             //lString1 += "\n";
             //lString2 += "\n";
             //FBXSDK_printf(lString1);
@@ -1703,7 +1755,235 @@ void Utility::FbxLoader::DisplayLink(FbxGeometry* pGeometry, std::vector<Gamepla
             //DisplayString("");
         }
     }
+    return true;
 }
+
+void Utility::FbxLoader::DisplayAnimation(FbxScene* pScene)
+{
+    int i;
+    for (i = 0; i < pScene->GetSrcObjectCount<FbxAnimStack>(); i++)
+    {
+        FbxAnimStack* lAnimStack = pScene->GetSrcObject<FbxAnimStack>(i);
+        m_animStacks.push_back(lAnimStack);
+
+        m_scene->SetCurrentAnimationStack(m_animStacks[0]);
+    }
+}
+
+void Utility::FbxLoader::DisplayAnimation(FbxAnimStack* pAnimStack, FbxNode* pNode, bool isSwitcher)
+{
+    int l;
+    int nbAnimLayers = pAnimStack->GetMemberCount<FbxAnimLayer>();
+    int nbAudioLayers = pAnimStack->GetMemberCount<FbxAudioLayer>();
+    FbxString lOutputString;
+
+    lOutputString = "   contains ";
+    if (nbAnimLayers == 0 && nbAudioLayers == 0)
+        lOutputString += "no layers";
+
+    if (nbAnimLayers)
+    {
+        lOutputString += nbAnimLayers;
+        lOutputString += " Animation Layer";
+        if (nbAnimLayers > 1)
+            lOutputString += "s";
+    }
+
+    if (nbAudioLayers)
+    {
+        if (nbAnimLayers)
+            lOutputString += " and ";
+
+        lOutputString += nbAudioLayers;
+        lOutputString += " Audio Layer";
+        if (nbAudioLayers > 1)
+            lOutputString += "s";
+    }
+    lOutputString += "\n\n";
+    FBXSDK_printf(lOutputString);
+
+    for (l = 0; l < nbAnimLayers; l++)
+    {
+        FbxAnimLayer* lAnimLayer = pAnimStack->GetMember<FbxAnimLayer>(l);
+
+        lOutputString = "AnimLayer ";
+        lOutputString += l;
+        lOutputString += "\n";
+        FBXSDK_printf(lOutputString);
+
+    }
+
+    //for (l = 0; l < nbAudioLayers; l++)
+    //{
+    //    FbxAudioLayer* lAudioLayer = pAnimStack->GetMember<FbxAudioLayer>(l);
+    //
+    //    lOutputString = "AudioLayer ";
+    //    lOutputString += l;
+    //    lOutputString += "\n";
+    //    FBXSDK_printf(lOutputString);
+    //
+    //    DisplayAnimation(lAudioLayer, isSwitcher);
+    //    FBXSDK_printf("\n");
+    //}
+}
+
+const FbxAMatrix& Utility::FbxLoader::ComputeLinearDeformation(FbxAMatrix& pGlobalPosition, FbxMesh* pMesh, FbxTime& pTime, FbxPose* pPose, FbxCluster* pCluster)
+
+{
+    FbxAMatrix lVertexTransformMatrix;
+    ComputeClusterDeformation(pGlobalPosition, pMesh, pCluster, lVertexTransformMatrix, pTime, pPose);
+    return lVertexTransformMatrix;
+}
+
+FbxAMatrix GetGeometry(FbxNode* pNode)
+{
+    const FbxVector4 lT = pNode->GetGeometricTranslation(FbxNode::eSourcePivot);
+    const FbxVector4 lR = pNode->GetGeometricRotation(FbxNode::eSourcePivot);
+    const FbxVector4 lS = pNode->GetGeometricScaling(FbxNode::eSourcePivot);
+
+    return FbxAMatrix(lT, lR, lS);
+}
+
+FbxAMatrix GetPoseMatrix(FbxPose* pPose, int pNodeIndex)
+{
+    FbxAMatrix lPoseMatrix;
+    FbxMatrix lMatrix = pPose->GetMatrix(pNodeIndex);
+
+    memcpy((double*)lPoseMatrix, (double*)lMatrix, sizeof(lMatrix.mData));
+
+    return lPoseMatrix;
+}
+
+FbxAMatrix GetGlobalPosition(FbxNode* pNode, const FbxTime& pTime, FbxPose* pPose, FbxAMatrix* pParentGlobalPosition = nullptr)
+{
+    FbxAMatrix lGlobalPosition;
+    bool        lPositionFound = false;
+
+    if (pPose)
+    {
+        int lNodeIndex = pPose->Find(pNode);
+
+        if (lNodeIndex > -1)
+        {
+            // The bind pose is always a global matrix.
+            // If we have a rest pose, we need to check if it is
+            // stored in global or local space.
+            if (pPose->IsBindPose() || !pPose->IsLocalMatrix(lNodeIndex))
+            {
+                lGlobalPosition = GetPoseMatrix(pPose, lNodeIndex);
+            }
+            else
+            {
+                // We have a local matrix, we need to convert it to
+                // a global space matrix.
+                FbxAMatrix lParentGlobalPosition;
+
+                if (pParentGlobalPosition)
+                {
+                    lParentGlobalPosition = *pParentGlobalPosition;
+                }
+                else
+                {
+                    if (pNode->GetParent())
+                    {
+                        lParentGlobalPosition = GetGlobalPosition(pNode->GetParent(), pTime, pPose);
+                    }
+                }
+
+                FbxAMatrix lLocalPosition = GetPoseMatrix(pPose, lNodeIndex);
+                lGlobalPosition = lParentGlobalPosition * lLocalPosition;
+            }
+
+            lPositionFound = true;
+        }
+    }
+
+    if (!lPositionFound)
+    {
+        // There is no pose entry for that node, get the current global position instead.
+
+        // Ideally this would use parent global position and local position to compute the global position.
+        // Unfortunately the equation 
+        //    lGlobalPosition = pParentGlobalPosition * lLocalPosition
+        // does not hold when inheritance type is other than "Parent" (RSrs).
+        // To compute the parent rotation and scaling is tricky in the RrSs and Rrs cases.
+        lGlobalPosition = pNode->EvaluateGlobalTransform(pTime);
+    }
+
+    return lGlobalPosition;
+}
+
+
+
+
+void Utility::FbxLoader::ComputeClusterDeformation(FbxAMatrix& pGlobalPosition, FbxMesh* pMesh, FbxCluster* pCluster, FbxAMatrix& pVertexTransformMatrix, FbxTime pTime, FbxPose* pPose)
+
+{
+    FbxCluster::ELinkMode lClusterMode = pCluster->GetLinkMode();
+
+    FbxAMatrix lReferenceGlobalInitPosition;
+    FbxAMatrix lReferenceGlobalCurrentPosition;
+    FbxAMatrix lAssociateGlobalInitPosition;
+    FbxAMatrix lAssociateGlobalCurrentPosition;
+    FbxAMatrix lClusterGlobalInitPosition;
+    FbxAMatrix lClusterGlobalCurrentPosition;
+
+    FbxAMatrix lReferenceGeometry;
+    FbxAMatrix lAssociateGeometry;
+    FbxAMatrix lClusterGeometry;
+
+    FbxAMatrix lClusterRelativeInitPosition;
+    FbxAMatrix lClusterRelativeCurrentPositionInverse;
+
+    if (lClusterMode == FbxCluster::eAdditive && pCluster->GetAssociateModel())
+    {
+        pCluster->GetTransformAssociateModelMatrix(lAssociateGlobalInitPosition);
+        // Geometric transform of the model
+        lAssociateGeometry = GetGeometry(pCluster->GetAssociateModel());
+        lAssociateGlobalInitPosition *= lAssociateGeometry;
+        lAssociateGlobalCurrentPosition = GetGlobalPosition(pCluster->GetAssociateModel(), pTime, pPose);
+
+        pCluster->GetTransformMatrix(lReferenceGlobalInitPosition);
+        // Multiply lReferenceGlobalInitPosition by Geometric Transformation
+        lReferenceGeometry = GetGeometry(pMesh->GetNode());
+        lReferenceGlobalInitPosition *= lReferenceGeometry;
+        lReferenceGlobalCurrentPosition = pGlobalPosition;
+
+        // Get the link initial global position and the link current global position.
+        pCluster->GetTransformLinkMatrix(lClusterGlobalInitPosition);
+        // Multiply lClusterGlobalInitPosition by Geometric Transformation
+        lClusterGeometry = GetGeometry(pCluster->GetLink());
+        lClusterGlobalInitPosition *= lClusterGeometry;
+        lClusterGlobalCurrentPosition = GetGlobalPosition(pCluster->GetLink(), pTime, pPose);
+
+        // Compute the shift of the link relative to the reference.
+        //ModelM-1 * AssoM * AssoGX-1 * LinkGX * LinkM-1*ModelM
+        pVertexTransformMatrix = lReferenceGlobalInitPosition.Inverse() * lAssociateGlobalInitPosition * lAssociateGlobalCurrentPosition.Inverse() *
+            lClusterGlobalCurrentPosition * lClusterGlobalInitPosition.Inverse() * lReferenceGlobalInitPosition;
+    }
+    else
+    {
+        pCluster->GetTransformMatrix(lReferenceGlobalInitPosition);
+        lReferenceGlobalCurrentPosition = pGlobalPosition;
+        // Multiply lReferenceGlobalInitPosition by Geometric Transformation
+        lReferenceGeometry = GetGeometry(pMesh->GetNode());
+        lReferenceGlobalInitPosition *= lReferenceGeometry;
+
+        // Get the link initial global position and the link current global position.
+        pCluster->GetTransformLinkMatrix(lClusterGlobalInitPosition);
+        lClusterGlobalCurrentPosition = GetGlobalPosition(pCluster->GetLink(), pTime, pPose);
+
+        // Compute the initial position of the link relative to the reference.
+        lClusterRelativeInitPosition = lClusterGlobalInitPosition.Inverse() * lReferenceGlobalInitPosition;
+
+        // Compute the current position of the link relative to the reference.
+        lClusterRelativeCurrentPositionInverse = lReferenceGlobalCurrentPosition.Inverse() * lClusterGlobalCurrentPosition;
+
+        // Compute the shift of the link relative to the reference.
+        pVertexTransformMatrix = lClusterRelativeCurrentPositionInverse * lClusterRelativeInitPosition;
+    }
+}
+
 
 static void DisplayShapeLayerElements(const FbxShape* pShape, const FbxMesh* pMesh);
 

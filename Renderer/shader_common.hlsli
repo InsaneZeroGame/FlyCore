@@ -46,6 +46,11 @@ cbuffer PushConstants : register(b5)
 	float4 materialColor;
 }
 
+cbuffer AnimBuffer : register(b6)
+{
+	float4x4 boneMatrix[60];
+}
+
 struct LightList
 {
 	uint isActive[256];

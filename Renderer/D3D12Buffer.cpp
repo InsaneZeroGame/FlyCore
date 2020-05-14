@@ -91,10 +91,6 @@ void Renderer::D3D12UploadBuffer::CopyData(void* p_src, uint64_t p_size)
 	m_offset += p_size;
 }
 
-void Renderer::D3D12UploadBuffer::UpdateData(uint64_t p_dst_offset, void* p_src, uint64_t p_size)
-{
-	memcpy(m_data + p_dst_offset, p_src, p_size);
-}
 
 void Renderer::D3D12UploadBuffer::CreateViews()
 {
@@ -167,4 +163,10 @@ void Renderer::D3D12StructBuffer::CreateViews()
 		l_desc.Buffer.StructureByteStride = static_cast<uint32_t>(m_elementSize);
 		m_device->CreateShaderResourceView(m_pResource.Get(), &l_desc, m_srv->cpuHandle);
 	}
+}
+
+void Renderer::D3D12AnimBuffer::UpdateActorAnim(uint64_t p_actorIndex, void* src)
+{
+	static int skeletionAnimSize = sizeof(Gameplay::SkeletonAnim);
+	UpdateData(p_actorIndex * skeletionAnimSize, src, skeletionAnimSize);
 }

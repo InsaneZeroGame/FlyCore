@@ -1,7 +1,7 @@
 #pragma once
 #include "D3D12Resource.h"
 #include "../Framework/Utility.h"
-
+#include "../Gameplay/RenderComponent.h"
 
 namespace Renderer
 {
@@ -104,15 +104,18 @@ namespace Renderer
 	using D3D12IndexBuffer = D3D12VertexBuffer;
 	
 
-	class D3D12UploadBuffer final : public D3D12Buffer
+	class D3D12UploadBuffer : public D3D12Buffer
 	{
 	public:
 		D3D12UploadBuffer(uint64_t p_size);
-		~D3D12UploadBuffer();
+		virtual ~D3D12UploadBuffer();
 
 		void CopyData(void* p_src, uint64_t p_size) override;
 
-		void UpdateData(uint64_t p_dst_offset,void* p_src, uint64_t p_size);
+		__forceinline void UpdateData(uint64_t p_dst_offset, void* p_src, uint64_t p_size)
+		{
+			memcpy(m_data + p_dst_offset, p_src, p_size);
+		};
 
 		__forceinline void ResetBuffer() override
 		{
@@ -123,6 +126,28 @@ namespace Renderer
 		void CreateViews() override;
 
 	};
+
+	class D3D12AnimBuffer final: public D3D12UploadBuffer
+	{
+	public:
+		D3D12AnimBuffer(uint64_t p_actorCount):
+			D3D12UploadBuffer(p_actorCount * sizeof(Gameplay::SkeletonAnim))
+		{};
+		~D3D12AnimBuffer()
+		{};
+
+		void UpdateActorAnim(uint64_t p_actorIndex,void* src);
+
+		__forceinline D3D12_GPU_VIRTUAL_ADDRESS GetActorAnimBufferLocation(uint64_t p_actorIndex)
+		{
+			static int skeletionAnimSize = sizeof(Gameplay::SkeletonAnim);
+			return m_GpuVirtualAddress + p_actorIndex * skeletionAnimSize;
+		};
+
+	private:
+
+	};
+
 
 	class D3D12StructBuffer final: public D3D12Buffer
 	{

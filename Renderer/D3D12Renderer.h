@@ -183,5 +183,7 @@ namespace Renderer {
 		uint64_t m_vertexOffsetInByte;
 		uint64_t m_indexOffsetInByte;
 
+		D3D12AnimBuffer* m_animBuffer;
+
 	};
 };
