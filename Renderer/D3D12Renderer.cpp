@@ -141,8 +141,9 @@ void Renderer::D3D12Renderer::OnUpdate()
 			auto& l_entity_meshes = m_systemEntites[i]->GetComponent()->GetMeshes();
 
 			l_graphicsCmdList->SetGraphicsRoot32BitConstants(1, 16, &l_director.Query(i)->GetComponent()->GetModelMatrix(), 0);
-			for (auto& l_mesh = l_entity_meshes.begin(); l_mesh < l_entity_meshes.end(); l_mesh++)
+			for (int j = 0; j < l_entity_meshes.size(); ++j)
 			{
+				Gameplay::Mesh* l_mesh = l_entity_meshes[j];
 				if (l_mesh->m_anim)
 				{
 					l_graphicsCmdList->SetGraphicsRootConstantBufferView(SHADOW_PASS_ANIM_ROOT_INDEX, m_animBuffer->GetActorAnimBufferLocation(l_animIndex));
@@ -209,8 +210,9 @@ void Renderer::D3D12Renderer::OnUpdate()
 
 			l_graphicsCmdList->SetGraphicsRoot32BitConstants(PUSH_CONSTANTS, 16, &l_director.Query(i)->GetComponent()->GetModelMatrix(), 0);
 			
-			for (auto& l_mesh = l_entity_meshes.begin(); l_mesh < l_entity_meshes.end(); l_mesh++)
+			for (int j = 0; j < l_entity_meshes.size(); ++j)
 			{
+				Gameplay::Mesh* l_mesh = l_entity_meshes[j];
 				if (l_mesh->m_anim)
 				{
 					m_animBuffer->UpdateActorAnim(l_animIndex, l_mesh->m_anim->bones.data());
@@ -451,8 +453,8 @@ void Renderer::D3D12Renderer::InitBuffers()
 		m_systemEntites[i]->GetComponent()->m_componentVertexOffset = m_vertexOffsetInByte/sizeof(Vertex);
 		for (auto j = 0; j < l_entity_meshes.size(); ++j)
 		{
-			auto l_vertexSize = (UINT)sizeof(l_entity_meshes[j].m_vertices[0]) * static_cast<uint32_t>(l_entity_meshes[j].m_vertices.size());
-			m_uploadBuffer->CopyData((void*)l_entity_meshes[j].m_vertices.data(), l_vertexSize);
+			auto l_vertexSize = (UINT)sizeof(l_entity_meshes[j]->m_vertices[0]) * static_cast<uint32_t>(l_entity_meshes[j]->m_vertices.size());
+			m_uploadBuffer->CopyData((void*)l_entity_meshes[j]->m_vertices.data(), l_vertexSize);
 			m_vertexOffsetInByte += l_vertexSize;
 		}
 	}
@@ -467,8 +469,8 @@ void Renderer::D3D12Renderer::InitBuffers()
 
 		for (auto j = 0; j < l_entity_meshes.size(); j++)
 		{
-			auto l_indexSize = (UINT)sizeof(l_entity_meshes[j].m_indices[0]) * static_cast<uint32_t>(l_entity_meshes[j].m_indices.size());
-			m_uploadBuffer->CopyData((void*)l_entity_meshes[j].m_indices.data(), l_indexSize);
+			auto l_indexSize = (UINT)sizeof(l_entity_meshes[j]->m_indices[0]) * static_cast<uint32_t>(l_entity_meshes[j]->m_indices.size());
+			m_uploadBuffer->CopyData((void*)l_entity_meshes[j]->m_indices.data(), l_indexSize);
 			m_indexOffsetInByte += l_indexSize;
 		}
 	}
@@ -481,8 +483,9 @@ void Renderer::D3D12Renderer::InitBuffers()
 		if (m_systemEntites.find(i) == m_systemEntites.end()) continue;
 
 		auto& l_entity_meshes = m_systemEntites[i]->GetComponent()->GetMeshes();
-		for (auto& l_mesh = l_entity_meshes.begin(); l_mesh < l_entity_meshes.end(); l_mesh++)
+		for (int j = 0; j < l_entity_meshes.size(); ++j)
 		{
+			Gameplay::Mesh* l_mesh = l_entity_meshes[j];
 			if (l_mesh->m_anim)
 			{
 				animCount++;

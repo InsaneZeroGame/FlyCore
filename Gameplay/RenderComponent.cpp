@@ -20,7 +20,7 @@ Gameplay::RenderComponent::RenderComponent(const std::string& p_fbxFileName):
 
 }
 
-Gameplay::RenderComponent::RenderComponent(Mesh&& p_mesh):
+Gameplay::RenderComponent::RenderComponent(Mesh* p_mesh):
     m_componentVertexOffset(0),
     m_componentIndexOffset(0),
     m_meshVertexOffset(0),
@@ -31,6 +31,10 @@ Gameplay::RenderComponent::RenderComponent(Mesh&& p_mesh):
 
 Gameplay::RenderComponent::~RenderComponent()
 {
+    for (int i = 0; i < m_meshes.size(); ++i)
+    {
+        SAFE_DELETE(m_meshes[i]);
+    }
 }
 
 
@@ -63,6 +67,6 @@ Gameplay::Mesh::Mesh(
 
 Gameplay::Mesh::~Mesh()
 {
-    
+    SAFE_DELETE(m_anim);
 }
  

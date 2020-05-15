@@ -74,18 +74,18 @@ namespace Gameplay
 	public:
 		RenderComponent();
 		RenderComponent(const std::string& p_fbxFileName);
-		RenderComponent(Mesh&& p_mesh);
+		RenderComponent(Mesh* p_mesh);
 		~RenderComponent();
-	 	__forceinline void AddMesh(Mesh&& p_mesh)
+	 	__forceinline void AddMesh(Mesh* p_mesh)
 	 	{
-	 		p_mesh.m_vertexOffset = m_meshVertexOffset;
-	 		p_mesh.m_indexOffset = m_meshIndexOffset;
+	 		p_mesh->m_vertexOffset = m_meshVertexOffset;
+	 		p_mesh->m_indexOffset = m_meshIndexOffset;
 	 		m_meshes.push_back(p_mesh);
-			m_meshVertexOffset += static_cast<uint64_t>(p_mesh.m_vertices.size());
-			m_meshIndexOffset += static_cast<uint64_t>(p_mesh.m_indices.size());
+			m_meshVertexOffset += static_cast<uint64_t>(p_mesh->m_vertices.size());
+			m_meshIndexOffset += static_cast<uint64_t>(p_mesh->m_indices.size());
 	 	}
 
-		__forceinline const std::vector<Mesh>& GetMeshes()
+		__forceinline const std::vector<Mesh*> GetMeshes()
 		{
 			return  m_meshes;
 		}
@@ -94,7 +94,7 @@ namespace Gameplay
 		uint64_t m_componentIndexOffset;
 	private:
 
-		std::vector<Mesh> m_meshes;
+		std::vector<Mesh*> m_meshes;
 
 		uint64_t m_meshVertexOffset;
 

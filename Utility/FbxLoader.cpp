@@ -362,7 +362,8 @@ void Utility::FbxLoader::DisplayMesh(FbxNode* pNode)
     DisplayShape(lMesh);
     DisplayCache(lMesh);
     if (!hasAnim) delete l_anim;
-    m_renderComponent->AddMesh(Gameplay::Mesh(std::move(l_vertices), std::move(l_indices), hasAnim? l_anim : nullptr));
+    Gameplay::Mesh* l_mesh = new Gameplay::Mesh(std::move(l_vertices), std::move(l_indices), hasAnim ? l_anim : nullptr);
+    m_renderComponent->AddMesh(l_mesh);
 }
 
 void DisplayTextureInfo(FbxTexture* pTexture, int pBlendMode)
