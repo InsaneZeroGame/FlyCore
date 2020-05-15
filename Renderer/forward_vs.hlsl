@@ -15,11 +15,35 @@
 PSInput main(float4 position : POSITION, float3 normal : NORMAL0,float2 tex_uv : TEXCOORD0, int4 boneIndex : BONEINDEX,float4 boneWeight : BONEWEIGHT)
 {
 	PSInput result;
-	result.scenePositionView = mul(view, mul(model,position));
+	float4x4 modelMatrix = 
+	{ 
+		1.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 1.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 1.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f
+	};
+	if (boneIndex.x != -1)
+	{
+		modelMatrix = boneMatrix[boneIndex.x] * boneWeight.x;
+		if (boneIndex.y != -1)
+		{
+			modelMatrix += boneMatrix[boneIndex.y] * boneWeight.y;
+			if (boneIndex.z != -1)
+			{
+				modelMatrix += boneMatrix[boneIndex.z] * boneWeight.z;
+				if (boneIndex.w != -1) modelMatrix += boneMatrix[boneIndex.w] * boneWeight.w;
+			}
+		}
+		
+	}
+	
+
+	modelMatrix = mul(model, modelMatrix);
+	result.scenePositionView = mul(view, mul(modelMatrix,position));
 	result.position = mul(project, result.scenePositionView);
-	float4 shadowCoord = mul(shadowMatrix, mul(model,position));
+	float4 shadowCoord = mul(shadowMatrix, mul(modelMatrix,position));
 	result.shadowUV = shadowCoord.xyz/shadowCoord.w;
-	result.normal = mul(view,mul(model,float4(normal,0.0))).xyz;
+	result.normal = mul(view,mul(modelMatrix,float4(normal,0.0))).xyz;
 	result.uv = tex_uv;
 	return result;
 }
