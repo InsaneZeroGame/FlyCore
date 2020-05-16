@@ -43,8 +43,8 @@ namespace Utility
 		bool LoadScene(FbxManager* pManager, FbxDocument* pScene, const char* pFilename);
 
 		void DisplayContent(FbxScene* pScene);
-		void DisplayContent(FbxNode* pNode);
-		void DisplayMesh(FbxNode* pNode);
+		void DisplayContent(FbxNode* pNode,FbxTime p_time,FbxAMatrix* p_parentGlobalPos);
+		void DisplayMesh(FbxNode* pNode,FbxAMatrix* p_globalPos,FbxTime p_time);
 		void DisplayControlsPoints(FbxMesh* pMesh,std::vector<Gameplay::Vertex>& p_vertices,FbxAMatrix* l_transformMatrix);
 		void DisplayPolygons(FbxMesh* pMesh, std::vector<uint32_t>& p_indices, std::vector<Gameplay::Vertex>& p_vertices, FbxAMatrix* l_transformMatrix);
 		void DisplayTextureNames(FbxProperty& pProperty, FbxString& pConnectionString);
@@ -52,11 +52,12 @@ namespace Utility
 		void DisplayMaterialConnections(FbxMesh* pMesh);
 		void DisplayMaterialMapping(FbxMesh* pMesh);
 		void InitializeSdkObjects(FbxManager*& pManager, FbxScene*& pScene);
-		bool DisplayLink(FbxMesh* pGeometry, std::vector<Gameplay::Vertex>& p_vertices, Gameplay::SkeletonAnim& p_anim);
+		bool DisplayLink(FbxMesh* pGeometry,FbxTime p_time, FbxAMatrix* p_globalPos,  std::vector<Gameplay::Vertex>& p_vertices, Gameplay::SkeletonAnim& p_anim);
 		void DisplayAnimation(FbxScene* pScene);
 		void DisplayAnimation(FbxAnimStack* pAnimStack, FbxNode* pNode, bool isSwitcher = false);
-		const FbxAMatrix& ComputeLinearDeformation(FbxAMatrix& pGlobalPosition,
+		void ComputeLinearDeformation(FbxAMatrix& pGlobalPosition,
 			FbxMesh* pMesh,
+			FbxAMatrix& pVertexTransformMatrix,
 			FbxTime& pTime,
 			FbxPose* pPose,
 			FbxCluster* pCluster);

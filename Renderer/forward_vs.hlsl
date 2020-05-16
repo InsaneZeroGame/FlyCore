@@ -24,17 +24,10 @@ PSInput main(float4 position : POSITION, float3 normal : NORMAL0,float2 tex_uv :
 	};
 	if (boneIndex.x != -1)
 	{
-		modelMatrix = boneMatrix[boneIndex.x] * boneWeight.x;
-		if (boneIndex.y != -1)
-		{
-			modelMatrix += boneMatrix[boneIndex.y] * boneWeight.y;
-			if (boneIndex.z != -1)
-			{
-				modelMatrix += boneMatrix[boneIndex.z] * boneWeight.z;
-				if (boneIndex.w != -1) modelMatrix += boneMatrix[boneIndex.w] * boneWeight.w;
-			}
-		}
-		
+		modelMatrix  = boneMatrix[boneIndex.x] * boneWeight.x;
+		modelMatrix += boneMatrix[boneIndex.y] * boneWeight.y;
+		modelMatrix += boneMatrix[boneIndex.z] * boneWeight.z;
+		modelMatrix += boneMatrix[boneIndex.w] * boneWeight.w;
 	}
 	
 

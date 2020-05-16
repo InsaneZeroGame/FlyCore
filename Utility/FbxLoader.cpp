@@ -23,6 +23,9 @@ static void DisplayCache(FbxGeometry* pGeometry);
 static void DisplayMaterial(FbxGeometry* pGeometry);
 
 static const unsigned int MAT_HEADER_LENGTH = 200;
+FbxAMatrix GetGeometry(FbxNode* pNode);
+FbxAMatrix GetGlobalPosition(FbxNode* pNode, const FbxTime& pTime, FbxPose* pPose, FbxAMatrix* pParentGlobalPosition = nullptr);
+
 
 
 Utility::FbxLoader::FbxLoader():
@@ -88,6 +91,7 @@ void Utility::FbxLoader::LoadSceneFromFile(const std::string p_fileName, Gamepla
         ////FBXSDK_printf("\n\n---------\nGeneric Information\n---------\n\n");
         //if (gVerbose) DisplayGenericInfo(m_scene);
     }
+    m_animStacks.clear();
 }
 
 
@@ -258,18 +262,52 @@ void Utility::FbxLoader::DisplayContent(FbxScene* pScene)
 {
     int i;
     FbxNode* lNode = pScene->GetRootNode();
+    FbxAMatrix lDummyGlobalPosition;
 
+    FbxTime pTime;
+
+    if (!m_animStacks.empty())
+    {
+        FbxTakeInfo* lCurrentTakeInfo = m_scene->GetTakeInfo(*(m_animStackNameArray[2]));
+        if (lCurrentTakeInfo)
+        {
+            mStart = lCurrentTakeInfo->mLocalTimeSpan.GetStart();
+            mStop = lCurrentTakeInfo->mLocalTimeSpan.GetStop();
+        }
+        else
+        {
+            // Take the time line value
+            FbxTimeSpan lTimeLineTimeSpan;
+            m_scene->GetGlobalSettings().GetTimelineDefaultTimeSpan(lTimeLineTimeSpan);
+
+            mStart = lTimeLineTimeSpan.GetStart();
+            mStop = lTimeLineTimeSpan.GetStop();
+        }
+        mFrameTime.SetTime(0, 0, 0, 1, 0, m_scene->GetGlobalSettings().GetTimeMode());
+
+        pTime = mStart;
+    }
+    
+
+    
     if (lNode)
     {
         for (i = 0; i < lNode->GetChildCount(); i++)
         {
-            DisplayContent(lNode->GetChild(i));
+            DisplayContent(lNode->GetChild(i), pTime, &lDummyGlobalPosition);
         }
     }
 }
 
-void Utility::FbxLoader::DisplayContent(FbxNode* pNode)
+void Utility::FbxLoader::DisplayContent(FbxNode* pNode, FbxTime p_time, FbxAMatrix* p_parentGlobalPos)
 {
+    FbxAMatrix lGlobalPosition = GetGlobalPosition(pNode, p_time, nullptr, p_parentGlobalPos);
+    // Geometry offset.
+    // it is not inherited by the children.
+    FbxAMatrix lGeometryOffset = GetGeometry(pNode);
+    FbxAMatrix lGlobalOffPosition = lGlobalPosition * lGeometryOffset;
+
+
     FbxNodeAttribute::EType lAttributeType;
     int i;
 
@@ -294,7 +332,7 @@ void Utility::FbxLoader::DisplayContent(FbxNode* pNode)
             break;
 
         case FbxNodeAttribute::eMesh:
-            DisplayMesh(pNode);
+            DisplayMesh(pNode, &lGlobalOffPosition,p_time);
             break;
 
         case FbxNodeAttribute::eNurbs:
@@ -327,38 +365,38 @@ void Utility::FbxLoader::DisplayContent(FbxNode* pNode)
 
     for (i = 0; i < pNode->GetChildCount(); i++)
     {
-        DisplayContent(pNode->GetChild(i));
+        DisplayContent(pNode->GetChild(i),p_time, &lGlobalPosition);
     }
 }
 
 
-void Utility::FbxLoader::DisplayMesh(FbxNode* pNode)
+void Utility::FbxLoader::DisplayMesh(FbxNode* pNode, FbxAMatrix* p_globalPos, FbxTime p_time)
 {
     FbxMesh* lMesh = (FbxMesh*)pNode->GetNodeAttribute();
     std::vector<Gameplay::Vertex> l_vertices;
     std::vector<uint32_t> l_indices;
     Gameplay::SkeletonAnim* l_anim = new Gameplay::SkeletonAnim;
 
-	FbxAMatrix matrixGeo;
-	matrixGeo.SetIdentity();
-	const FbxVector4 lT = pNode->GetGeometricTranslation(FbxNode::eSourcePivot);
-	const FbxVector4 lR = pNode->GetGeometricRotation(FbxNode::eSourcePivot);
-	const FbxVector4 lS = pNode->GetGeometricScaling(FbxNode::eSourcePivot);
-	matrixGeo.SetT(lT);
-	matrixGeo.SetR(lR); 
-	matrixGeo.SetS(lS);
-	FbxAMatrix globalMatrix = pNode->EvaluateLocalTransform();
-	FbxAMatrix matrix = globalMatrix * matrixGeo;
+	//FbxAMatrix matrixGeo;
+	//matrixGeo.SetIdentity();
+	//const FbxVector4 lT = pNode->GetGeometricTranslation(FbxNode::eSourcePivot);
+	//const FbxVector4 lR = pNode->GetGeometricRotation(FbxNode::eSourcePivot);
+	//const FbxVector4 lS = pNode->GetGeometricScaling(FbxNode::eSourcePivot);
+	//matrixGeo.SetT(lT);
+	//matrixGeo.SetR(lR); 
+	//matrixGeo.SetS(lS);
+	//FbxAMatrix globalMatrix = pNode->EvaluateLocalTransform();
+	//FbxAMatrix matrix = globalMatrix * matrixGeo;
 
     DisplayString("Mesh Name: ", (char*)pNode->GetName());
     DisplayMetaDataConnections(lMesh);
-    DisplayControlsPoints(lMesh,l_vertices, &matrix);
-    DisplayPolygons(lMesh,l_indices,l_vertices,&matrix);
+    DisplayControlsPoints(lMesh,l_vertices, p_globalPos);
+    DisplayPolygons(lMesh,l_indices,l_vertices,p_globalPos);
     DisplayMaterialMapping(lMesh);
     DisplayMaterial(lMesh);
     DisplayTexture(lMesh);
     DisplayMaterialConnections(lMesh);
-    bool hasAnim = DisplayLink(lMesh,l_vertices,*l_anim);
+    bool hasAnim = DisplayLink(lMesh,p_time, p_globalPos,l_vertices,*l_anim);
     DisplayShape(lMesh);
     DisplayCache(lMesh);
     if (!hasAnim) delete l_anim;
@@ -532,10 +570,10 @@ void Utility::FbxLoader::DisplayControlsPoints(FbxMesh* pMesh, std::vector<Gamep
         DisplayInt("        Control Point ", i);
         Display3DVector("            Coordinates: ", lControlPoints[i]);
         Gameplay::Vertex l_vertex = {};
-		auto transformed_control_points = l_transformMatrix->MultT(lControlPoints[i]);
-        l_vertex.position[0] = static_cast<float>(transformed_control_points.Buffer()[0]);
-        l_vertex.position[1] = static_cast<float>(transformed_control_points.Buffer()[1]);
-        l_vertex.position[2] = static_cast<float>(transformed_control_points.Buffer()[2]);
+		//auto transformed_control_points = l_transformMatrix->MultT(lControlPoints[i]);
+        l_vertex.position[0] = static_cast<float>(lControlPoints[i].Buffer()[0]);
+        l_vertex.position[1] = static_cast<float>(lControlPoints[i].Buffer()[1]);
+        l_vertex.position[2] = static_cast<float>(lControlPoints[i].Buffer()[2]);
         l_vertex.position[3] = 1.0f;
 
         p_vertices[i] = l_vertex;
@@ -1597,10 +1635,86 @@ void DisplayColor(const char* pHeader, FbxColor pValue, const char* pSuffix /* =
     lString += "\n";
     //FBXSDK_printf(lString);
 }
+FbxAMatrix GetPoseMatrix(FbxPose* pPose, int pNodeIndex)
+{
+    FbxAMatrix lPoseMatrix;
+    FbxMatrix lMatrix = pPose->GetMatrix(pNodeIndex);
+
+    memcpy((double*)lPoseMatrix, (double*)lMatrix, sizeof(lMatrix.mData));
+
+    return lPoseMatrix;
+}
+
+FbxAMatrix GetGlobalPosition(FbxNode* pNode, const FbxTime& pTime, FbxPose* pPose, FbxAMatrix* pParentGlobalPosition)
+{
+    FbxAMatrix lGlobalPosition;
+    bool        lPositionFound = false;
+
+    if (pPose)
+    {
+        int lNodeIndex = pPose->Find(pNode);
+
+        if (lNodeIndex > -1)
+        {
+            // The bind pose is always a global matrix.
+            // If we have a rest pose, we need to check if it is
+            // stored in global or local space.
+            if (pPose->IsBindPose() || !pPose->IsLocalMatrix(lNodeIndex))
+            {
+                lGlobalPosition = GetPoseMatrix(pPose, lNodeIndex);
+            }
+            else
+            {
+                // We have a local matrix, we need to convert it to
+                // a global space matrix.
+                FbxAMatrix lParentGlobalPosition;
+
+                if (pParentGlobalPosition)
+                {
+                    lParentGlobalPosition = *pParentGlobalPosition;
+                }
+                else
+                {
+                    if (pNode->GetParent())
+                    {
+                        lParentGlobalPosition = GetGlobalPosition(pNode->GetParent(), pTime, pPose);
+                    }
+                }
+
+                FbxAMatrix lLocalPosition = GetPoseMatrix(pPose, lNodeIndex);
+                lGlobalPosition = lParentGlobalPosition * lLocalPosition;
+            }
+
+            lPositionFound = true;
+        }
+    }
+
+    if (!lPositionFound)
+    {
+        // There is no pose entry for that node, get the current global position instead.
+
+        // Ideally this would use parent global position and local position to compute the global position.
+        // Unfortunately the equation 
+        //    lGlobalPosition = pParentGlobalPosition * lLocalPosition
+        // does not hold when inheritance type is other than "Parent" (RSrs).
+        // To compute the parent rotation and scaling is tricky in the RrSs and Rrs cases.
+        lGlobalPosition = pNode->EvaluateGlobalTransform(pTime);
+    }
+
+    return lGlobalPosition;
+}
+
+FbxAMatrix GetGeometry(FbxNode* pNode)
+{
+    const FbxVector4 lT = pNode->GetGeometricTranslation(FbxNode::eSourcePivot);
+    const FbxVector4 lR = pNode->GetGeometricRotation(FbxNode::eSourcePivot);
+    const FbxVector4 lS = pNode->GetGeometricScaling(FbxNode::eSourcePivot);
+
+    return FbxAMatrix(lT, lR, lS);
+}
 
 
-
-bool Utility::FbxLoader::DisplayLink(FbxMesh* pGeometry, std::vector<Gameplay::Vertex>& p_vertices, Gameplay::SkeletonAnim& p_anim)
+bool Utility::FbxLoader::DisplayLink(FbxMesh* pGeometry, FbxTime p_time, FbxAMatrix* p_globalPos,  std::vector<Gameplay::Vertex>& p_vertices, Gameplay::SkeletonAnim& p_anim)
 {
     //Display cluster now
 
@@ -1611,17 +1725,14 @@ bool Utility::FbxLoader::DisplayLink(FbxMesh* pGeometry, std::vector<Gameplay::V
     int lSkinCount = 0;
     int lClusterCount = 0;
 
+    
+
     lSkinCount = pGeometry->GetDeformerCount(FbxDeformer::eSkin);
 
     if (lSkinCount == 0)
     {
         return false;
     }
-
-    fbxsdk::FbxAMatrix lDummyGlobalPosition;
-    FbxTime pTime;
-
-     FbxPose* lPose = m_scene->GetPose(1);
 
     //lLinkCount = pGeometry->GetLinkCount();
     int boneIndex = 0;
@@ -1639,32 +1750,36 @@ bool Utility::FbxLoader::DisplayLink(FbxMesh* pGeometry, std::vector<Gameplay::V
 
             if (lSkinningType == FbxSkin::eLinear || lSkinningType == FbxSkin::eRigid)
             {
-                const fbxsdk::FbxAMatrix boneMatrix = ComputeLinearDeformation(lDummyGlobalPosition, pGeometry, pTime, lPose, lCluster);
+                fbxsdk::FbxAMatrix boneMatrix;
+                ComputeLinearDeformation(*p_globalPos, pGeometry, boneMatrix, p_time, nullptr, lCluster);
 
-                p_anim.bones[j][0][0] = float(boneMatrix.Get(0,0));
-                p_anim.bones[j][0][1] = float(boneMatrix.Get(0,1));
-                p_anim.bones[j][0][2] = float(boneMatrix.Get(0,2));
-                p_anim.bones[j][0][3] = float(boneMatrix.Get(0,3));
-                p_anim.bones[j][1][0] = float(boneMatrix.Get(1,0));
-                p_anim.bones[j][1][1] = float(boneMatrix.Get(1,1));
-                p_anim.bones[j][1][2] = float(boneMatrix.Get(1,2));
-                p_anim.bones[j][1][3] = float(boneMatrix.Get(1,3));
-                p_anim.bones[j][2][0] = float(boneMatrix.Get(2,0));
-                p_anim.bones[j][2][1] = float(boneMatrix.Get(2,1));
-                p_anim.bones[j][2][2] = float(boneMatrix.Get(2,2));
-                p_anim.bones[j][2][3] = float(boneMatrix.Get(2,3));
-                p_anim.bones[j][3][0] = float(boneMatrix.Get(3,0));
-                p_anim.bones[j][3][1] = float(boneMatrix.Get(3,1));
-                p_anim.bones[j][3][2] = float(boneMatrix.Get(3,2));
-                p_anim.bones[j][3][3] = float(boneMatrix.Get(3,3));
+                p_anim.bones[boneIndex][0][0] = float(boneMatrix.Get(0,0));
+                p_anim.bones[boneIndex][0][1] = float(boneMatrix.Get(0,1));
+                p_anim.bones[boneIndex][0][2] = float(boneMatrix.Get(0,2));
+                p_anim.bones[boneIndex][0][3] = float(boneMatrix.Get(0,3));
+                p_anim.bones[boneIndex][1][0] = float(boneMatrix.Get(1,0));
+                p_anim.bones[boneIndex][1][1] = float(boneMatrix.Get(1,1));
+                p_anim.bones[boneIndex][1][2] = float(boneMatrix.Get(1,2));
+                p_anim.bones[boneIndex][1][3] = float(boneMatrix.Get(1,3));
+                p_anim.bones[boneIndex][2][0] = float(boneMatrix.Get(2,0));
+                p_anim.bones[boneIndex][2][1] = float(boneMatrix.Get(2,1));
+                p_anim.bones[boneIndex][2][2] = float(boneMatrix.Get(2,2));
+                p_anim.bones[boneIndex][2][3] = float(boneMatrix.Get(2,3));
+                p_anim.bones[boneIndex][3][0] = float(boneMatrix.Get(3,0));
+                p_anim.bones[boneIndex][3][1] = float(boneMatrix.Get(3,1));
+                p_anim.bones[boneIndex][3][2] = float(boneMatrix.Get(3,2));
+                p_anim.bones[boneIndex][3][3] = float(boneMatrix.Get(3,3));
               
             }
             else if (lSkinningType == FbxSkin::eDualQuaternion)
             {
+                assert(0);
                 //ComputeDualQuaternionDeformation(pGlobalPosition, pMesh, pTime, pVertexArray, pPose);
             }
             else if (lSkinningType == FbxSkin::eBlend)
             {
+                assert(0);
+
                 //int lVertexCount = pMesh->GetControlPointsCount();
                 //
                 //FbxVector4* lVertexArrayLinear = new FbxVector4[lVertexCount];
@@ -1766,9 +1881,15 @@ void Utility::FbxLoader::DisplayAnimation(FbxScene* pScene)
     {
         FbxAnimStack* lAnimStack = pScene->GetSrcObject<FbxAnimStack>(i);
         m_animStacks.push_back(lAnimStack);
-
-        m_scene->SetCurrentAnimationStack(m_animStacks[0]);
     }
+
+    if (!m_animStacks.empty())
+    {
+        m_scene->SetCurrentAnimationStack(m_animStacks[2]);
+        m_scene->FillAnimStackNameArray(m_animStackNameArray);
+    }
+
+    
 }
 
 void Utility::FbxLoader::DisplayAnimation(FbxAnimStack* pAnimStack, FbxNode* pNode, bool isSwitcher)
@@ -1828,93 +1949,11 @@ void Utility::FbxLoader::DisplayAnimation(FbxAnimStack* pAnimStack, FbxNode* pNo
     //}
 }
 
-const FbxAMatrix& Utility::FbxLoader::ComputeLinearDeformation(FbxAMatrix& pGlobalPosition, FbxMesh* pMesh, FbxTime& pTime, FbxPose* pPose, FbxCluster* pCluster)
+void Utility::FbxLoader::ComputeLinearDeformation(FbxAMatrix& pGlobalPosition, FbxMesh* pMesh, FbxAMatrix& pVertexTransformMatrix, FbxTime& pTime, FbxPose* pPose, FbxCluster* pCluster)
 
 {
-    FbxAMatrix lVertexTransformMatrix;
-    ComputeClusterDeformation(pGlobalPosition, pMesh, pCluster, lVertexTransformMatrix, pTime, pPose);
-    return lVertexTransformMatrix;
+    ComputeClusterDeformation(pGlobalPosition, pMesh, pCluster, pVertexTransformMatrix, pTime, pPose);
 }
-
-FbxAMatrix GetGeometry(FbxNode* pNode)
-{
-    const FbxVector4 lT = pNode->GetGeometricTranslation(FbxNode::eSourcePivot);
-    const FbxVector4 lR = pNode->GetGeometricRotation(FbxNode::eSourcePivot);
-    const FbxVector4 lS = pNode->GetGeometricScaling(FbxNode::eSourcePivot);
-
-    return FbxAMatrix(lT, lR, lS);
-}
-
-FbxAMatrix GetPoseMatrix(FbxPose* pPose, int pNodeIndex)
-{
-    FbxAMatrix lPoseMatrix;
-    FbxMatrix lMatrix = pPose->GetMatrix(pNodeIndex);
-
-    memcpy((double*)lPoseMatrix, (double*)lMatrix, sizeof(lMatrix.mData));
-
-    return lPoseMatrix;
-}
-
-FbxAMatrix GetGlobalPosition(FbxNode* pNode, const FbxTime& pTime, FbxPose* pPose, FbxAMatrix* pParentGlobalPosition = nullptr)
-{
-    FbxAMatrix lGlobalPosition;
-    bool        lPositionFound = false;
-
-    if (pPose)
-    {
-        int lNodeIndex = pPose->Find(pNode);
-
-        if (lNodeIndex > -1)
-        {
-            // The bind pose is always a global matrix.
-            // If we have a rest pose, we need to check if it is
-            // stored in global or local space.
-            if (pPose->IsBindPose() || !pPose->IsLocalMatrix(lNodeIndex))
-            {
-                lGlobalPosition = GetPoseMatrix(pPose, lNodeIndex);
-            }
-            else
-            {
-                // We have a local matrix, we need to convert it to
-                // a global space matrix.
-                FbxAMatrix lParentGlobalPosition;
-
-                if (pParentGlobalPosition)
-                {
-                    lParentGlobalPosition = *pParentGlobalPosition;
-                }
-                else
-                {
-                    if (pNode->GetParent())
-                    {
-                        lParentGlobalPosition = GetGlobalPosition(pNode->GetParent(), pTime, pPose);
-                    }
-                }
-
-                FbxAMatrix lLocalPosition = GetPoseMatrix(pPose, lNodeIndex);
-                lGlobalPosition = lParentGlobalPosition * lLocalPosition;
-            }
-
-            lPositionFound = true;
-        }
-    }
-
-    if (!lPositionFound)
-    {
-        // There is no pose entry for that node, get the current global position instead.
-
-        // Ideally this would use parent global position and local position to compute the global position.
-        // Unfortunately the equation 
-        //    lGlobalPosition = pParentGlobalPosition * lLocalPosition
-        // does not hold when inheritance type is other than "Parent" (RSrs).
-        // To compute the parent rotation and scaling is tricky in the RrSs and Rrs cases.
-        lGlobalPosition = pNode->EvaluateGlobalTransform(pTime);
-    }
-
-    return lGlobalPosition;
-}
-
-
 
 
 void Utility::FbxLoader::ComputeClusterDeformation(FbxAMatrix& pGlobalPosition, FbxMesh* pMesh, FbxCluster* pCluster, FbxAMatrix& pVertexTransformMatrix, FbxTime pTime, FbxPose* pPose)
