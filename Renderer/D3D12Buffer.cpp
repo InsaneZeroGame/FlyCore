@@ -167,6 +167,6 @@ void Renderer::D3D12StructBuffer::CreateViews()
 
 void Renderer::D3D12AnimBuffer::UpdateActorAnim(uint64_t p_actorIndex, void* src)
 {
-	static int skeletionAnimSize = sizeof(Gameplay::SkeletonAnim);
+	static int skeletionAnimSize = sizeof(glm::mat4x4) * 60;
 	UpdateData(p_actorIndex * skeletionAnimSize, src, skeletionAnimSize);
 }

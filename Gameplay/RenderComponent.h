@@ -35,7 +35,9 @@ namespace Gameplay
 	struct SkeletonAnim
 	{
 		enum {MAX_BONE = 60};
-		std::array<glm::mat4x4, MAX_BONE> bones;
+		std::vector<std::array<glm::mat4x4, MAX_BONE>> bones;
+		uint32_t m_currentFrameIndex = 0;
+		uint32_t m_totalFrameCount = 0;
 	};
 
 	class Mesh

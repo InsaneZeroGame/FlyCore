@@ -17,6 +17,8 @@ namespace Gameplay
 
 		void Scale(const Entity& e,const glm::vec3& p_scale);
 
+		void Translate(const Entity& e, const glm::vec3& p_pos);
+
 	private:
 
 		Director();

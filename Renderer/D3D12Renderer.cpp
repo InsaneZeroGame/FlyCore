@@ -82,7 +82,7 @@ void Renderer::D3D12Renderer::OnUpdate()
 		m_VSUniform->ResetBuffer();
 		m_mainCamera->UpdateCamera();
 
-		auto shadowMatrix = glm::lookAtLH(glm::vec3(0.01, 25.0f, 2.0), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		auto shadowMatrix = glm::lookAtLH(glm::vec3(0.01, 10.0f, 2.0), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
 
 
@@ -201,7 +201,8 @@ void Renderer::D3D12Renderer::OnUpdate()
 		l_graphicsCmdList->SetGraphicsRootDescriptorTable(SHADOW_MAP, l_shadowMap->GetSRV()->gpuHandle);
 		uint32_t uniformDebugColor = 0;
 		uint64_t l_animIndex = 0;
-
+		static int animPlayRate = 0;
+		animPlayRate++;
 		for (auto i = 0; i < all_entities.size(); ++i)
 		{
 			if (!all_entities[i]) continue;
@@ -215,7 +216,12 @@ void Renderer::D3D12Renderer::OnUpdate()
 				Gameplay::Mesh* l_mesh = l_entity_meshes[j];
 				if (l_mesh->m_anim)
 				{
-					m_animBuffer->UpdateActorAnim(l_animIndex, l_mesh->m_anim->bones.data());
+					if (animPlayRate % 1 == 0)
+					{
+						auto animFrame = (l_mesh->m_anim->m_currentFrameIndex++) % l_mesh->m_anim->m_totalFrameCount;
+						m_animBuffer->UpdateActorAnim(l_animIndex, l_mesh->m_anim->bones[animFrame].data());
+					}
+					
 					l_graphicsCmdList->SetGraphicsRootConstantBufferView(COLOR_PASS_ANIM_ROOT_INDEX, m_animBuffer->GetActorAnimBufferLocation(l_animIndex));
 					l_animIndex++;
 				}

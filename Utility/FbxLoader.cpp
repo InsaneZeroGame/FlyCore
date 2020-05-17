@@ -268,7 +268,7 @@ void Utility::FbxLoader::DisplayContent(FbxScene* pScene)
 
     if (!m_animStacks.empty())
     {
-        FbxTakeInfo* lCurrentTakeInfo = m_scene->GetTakeInfo(*(m_animStackNameArray[2]));
+        FbxTakeInfo* lCurrentTakeInfo = m_scene->GetTakeInfo(*(m_animStackNameArray[0]));
         if (lCurrentTakeInfo)
         {
             mStart = lCurrentTakeInfo->mLocalTimeSpan.GetStart();
@@ -283,7 +283,11 @@ void Utility::FbxLoader::DisplayContent(FbxScene* pScene)
             mStart = lTimeLineTimeSpan.GetStart();
             mStop = lTimeLineTimeSpan.GetStop();
         }
-        mFrameTime.SetTime(0, 0, 0, 1, 0, m_scene->GetGlobalSettings().GetTimeMode());
+
+        auto frameStart = mStart.GetFrameCount();
+        auto frameStop = mStop.GetFrameCount();
+
+        mFrameTime.SetTime(0, 0, 0, 15, 0, m_scene->GetGlobalSettings().GetTimeMode());
 
         pTime = mStart;
     }
@@ -1734,6 +1738,107 @@ bool Utility::FbxLoader::DisplayLink(FbxMesh* pGeometry, FbxTime p_time, FbxAMat
         return false;
     }
 
+    if (!m_animStacks.empty())
+    {
+        FbxTakeInfo* lCurrentTakeInfo = m_scene->GetTakeInfo(*(m_animStackNameArray[0]));
+        if (lCurrentTakeInfo)
+        {
+            mStart = lCurrentTakeInfo->mLocalTimeSpan.GetStart();
+            mStop = lCurrentTakeInfo->mLocalTimeSpan.GetStop();
+        }
+        else
+        {
+            // Take the time line value
+            FbxTimeSpan lTimeLineTimeSpan;
+            m_scene->GetGlobalSettings().GetTimelineDefaultTimeSpan(lTimeLineTimeSpan);
+
+            mStart = lTimeLineTimeSpan.GetStart();
+            mStop = lTimeLineTimeSpan.GetStop();
+        }
+
+        p_anim.bones.resize(mStop.GetFrameCount() - mStart.GetFrameCount());
+        p_anim.m_totalFrameCount = p_anim.bones.size();
+
+    }
+    FbxTime frameTime;
+    for (int frameIndex = 0; frameIndex < p_anim.bones.size(); ++frameIndex)
+    {
+        frameTime.SetTime(0, 0, 0, frameIndex, 0, m_scene->GetGlobalSettings().GetTimeMode());
+        int boneIndex = 0;
+        for (i = 0; i != lSkinCount; ++i)
+        {
+            lClusterCount = ((FbxSkin*)pGeometry->GetDeformer(i, FbxDeformer::eSkin))->GetClusterCount();
+            assert(lClusterCount <= Gameplay::SkeletonAnim::MAX_BONE);
+            for (j = 0; j != lClusterCount; ++j)
+            {
+                FbxSkin* lSkinDeformer = ((FbxSkin*)pGeometry->GetDeformer(i, FbxDeformer::eSkin));
+                FbxSkin::EType lSkinningType = lSkinDeformer->GetSkinningType();
+                FbxCluster* lCluster = lSkinDeformer->GetCluster(j);
+                if (!lCluster->GetLink())
+                    continue;
+
+                if (lSkinningType == FbxSkin::eLinear || lSkinningType == FbxSkin::eRigid)
+                {
+                    fbxsdk::FbxAMatrix boneMatrix;
+                    ComputeLinearDeformation(*p_globalPos, pGeometry, boneMatrix, frameTime, nullptr, lCluster);
+
+                    p_anim.bones[frameIndex][boneIndex][0][0] = float(boneMatrix.Get(0, 0));
+                    p_anim.bones[frameIndex][boneIndex][0][1] = float(boneMatrix.Get(0, 1));
+                    p_anim.bones[frameIndex][boneIndex][0][2] = float(boneMatrix.Get(0, 2));
+                    p_anim.bones[frameIndex][boneIndex][0][3] = float(boneMatrix.Get(0, 3));
+                    p_anim.bones[frameIndex][boneIndex][1][0] = float(boneMatrix.Get(1, 0));
+                    p_anim.bones[frameIndex][boneIndex][1][1] = float(boneMatrix.Get(1, 1));
+                    p_anim.bones[frameIndex][boneIndex][1][2] = float(boneMatrix.Get(1, 2));
+                    p_anim.bones[frameIndex][boneIndex][1][3] = float(boneMatrix.Get(1, 3));
+                    p_anim.bones[frameIndex][boneIndex][2][0] = float(boneMatrix.Get(2, 0));
+                    p_anim.bones[frameIndex][boneIndex][2][1] = float(boneMatrix.Get(2, 1));
+                    p_anim.bones[frameIndex][boneIndex][2][2] = float(boneMatrix.Get(2, 2));
+                    p_anim.bones[frameIndex][boneIndex][2][3] = float(boneMatrix.Get(2, 3));
+                    p_anim.bones[frameIndex][boneIndex][3][0] = float(boneMatrix.Get(3, 0));
+                    p_anim.bones[frameIndex][boneIndex][3][1] = float(boneMatrix.Get(3, 1));
+                    p_anim.bones[frameIndex][boneIndex][3][2] = float(boneMatrix.Get(3, 2));
+                    p_anim.bones[frameIndex][boneIndex][3][3] = float(boneMatrix.Get(3, 3));
+
+                }
+                else if (lSkinningType == FbxSkin::eDualQuaternion)
+                {
+                    assert(0);
+                    //ComputeDualQuaternionDeformation(pGlobalPosition, pMesh, pTime, pVertexArray, pPose);
+                }
+                else if (lSkinningType == FbxSkin::eBlend)
+                {
+                    assert(0);
+
+                    //int lVertexCount = pMesh->GetControlPointsCount();
+                    //
+                    //FbxVector4* lVertexArrayLinear = new FbxVector4[lVertexCount];
+                    //memcpy(lVertexArrayLinear, pMesh->GetControlPoints(), lVertexCount * sizeof(FbxVector4));
+                    //
+                    //FbxVector4* lVertexArrayDQ = new FbxVector4[lVertexCount];
+                    //memcpy(lVertexArrayDQ, pMesh->GetControlPoints(), lVertexCount * sizeof(FbxVector4));
+                    //
+                    //ComputeLinearDeformation(pGlobalPosition, pMesh, pTime, lVertexArrayLinear, pPose);
+                    //ComputeDualQuaternionDeformation(pGlobalPosition, pMesh, pTime, lVertexArrayDQ, pPose);
+                    //
+                    //// To blend the skinning according to the blend weights
+                    //// Final vertex = DQSVertex * blend weight + LinearVertex * (1- blend weight)
+                    //// DQSVertex: vertex that is deformed by dual quaternion skinning method;
+                    //// LinearVertex: vertex that is deformed by classic linear skinning method;
+                    //int lBlendWeightsCount = lSkinDeformer->GetControlPointIndicesCount();
+                    //for (int lBWIndex = 0; lBWIndex < lBlendWeightsCount; ++lBWIndex)
+                    //{
+                    //    double lBlendWeight = lSkinDeformer->GetControlPointBlendWeights()[lBWIndex];
+                    //    pVertexArray[lBWIndex] = lVertexArrayDQ[lBWIndex] * lBlendWeight + lVertexArrayLinear[lBWIndex] * (1 - lBlendWeight);
+                    //}
+                }
+                boneIndex++;
+
+            }
+        }
+    }
+
+
+
     //lLinkCount = pGeometry->GetLinkCount();
     int boneIndex = 0;
     for (i = 0; i != lSkinCount; ++i)
@@ -1747,61 +1852,61 @@ bool Utility::FbxLoader::DisplayLink(FbxMesh* pGeometry, FbxTime p_time, FbxAMat
             FbxCluster* lCluster = lSkinDeformer->GetCluster(j);
             if (!lCluster->GetLink())
                 continue;
-
-            if (lSkinningType == FbxSkin::eLinear || lSkinningType == FbxSkin::eRigid)
-            {
-                fbxsdk::FbxAMatrix boneMatrix;
-                ComputeLinearDeformation(*p_globalPos, pGeometry, boneMatrix, p_time, nullptr, lCluster);
-
-                p_anim.bones[boneIndex][0][0] = float(boneMatrix.Get(0,0));
-                p_anim.bones[boneIndex][0][1] = float(boneMatrix.Get(0,1));
-                p_anim.bones[boneIndex][0][2] = float(boneMatrix.Get(0,2));
-                p_anim.bones[boneIndex][0][3] = float(boneMatrix.Get(0,3));
-                p_anim.bones[boneIndex][1][0] = float(boneMatrix.Get(1,0));
-                p_anim.bones[boneIndex][1][1] = float(boneMatrix.Get(1,1));
-                p_anim.bones[boneIndex][1][2] = float(boneMatrix.Get(1,2));
-                p_anim.bones[boneIndex][1][3] = float(boneMatrix.Get(1,3));
-                p_anim.bones[boneIndex][2][0] = float(boneMatrix.Get(2,0));
-                p_anim.bones[boneIndex][2][1] = float(boneMatrix.Get(2,1));
-                p_anim.bones[boneIndex][2][2] = float(boneMatrix.Get(2,2));
-                p_anim.bones[boneIndex][2][3] = float(boneMatrix.Get(2,3));
-                p_anim.bones[boneIndex][3][0] = float(boneMatrix.Get(3,0));
-                p_anim.bones[boneIndex][3][1] = float(boneMatrix.Get(3,1));
-                p_anim.bones[boneIndex][3][2] = float(boneMatrix.Get(3,2));
-                p_anim.bones[boneIndex][3][3] = float(boneMatrix.Get(3,3));
-              
-            }
-            else if (lSkinningType == FbxSkin::eDualQuaternion)
-            {
-                assert(0);
-                //ComputeDualQuaternionDeformation(pGlobalPosition, pMesh, pTime, pVertexArray, pPose);
-            }
-            else if (lSkinningType == FbxSkin::eBlend)
-            {
-                assert(0);
-
-                //int lVertexCount = pMesh->GetControlPointsCount();
-                //
-                //FbxVector4* lVertexArrayLinear = new FbxVector4[lVertexCount];
-                //memcpy(lVertexArrayLinear, pMesh->GetControlPoints(), lVertexCount * sizeof(FbxVector4));
-                //
-                //FbxVector4* lVertexArrayDQ = new FbxVector4[lVertexCount];
-                //memcpy(lVertexArrayDQ, pMesh->GetControlPoints(), lVertexCount * sizeof(FbxVector4));
-                //
-                //ComputeLinearDeformation(pGlobalPosition, pMesh, pTime, lVertexArrayLinear, pPose);
-                //ComputeDualQuaternionDeformation(pGlobalPosition, pMesh, pTime, lVertexArrayDQ, pPose);
-                //
-                //// To blend the skinning according to the blend weights
-                //// Final vertex = DQSVertex * blend weight + LinearVertex * (1- blend weight)
-                //// DQSVertex: vertex that is deformed by dual quaternion skinning method;
-                //// LinearVertex: vertex that is deformed by classic linear skinning method;
-                //int lBlendWeightsCount = lSkinDeformer->GetControlPointIndicesCount();
-                //for (int lBWIndex = 0; lBWIndex < lBlendWeightsCount; ++lBWIndex)
-                //{
-                //    double lBlendWeight = lSkinDeformer->GetControlPointBlendWeights()[lBWIndex];
-                //    pVertexArray[lBWIndex] = lVertexArrayDQ[lBWIndex] * lBlendWeight + lVertexArrayLinear[lBWIndex] * (1 - lBlendWeight);
-                //}
-            }
+            //
+            //if (lSkinningType == FbxSkin::eLinear || lSkinningType == FbxSkin::eRigid)
+            //{
+            //    fbxsdk::FbxAMatrix boneMatrix;
+            //    ComputeLinearDeformation(*p_globalPos, pGeometry, boneMatrix, p_time, nullptr, lCluster);
+            //
+            //    p_anim.bones[boneIndex][0][0] = float(boneMatrix.Get(0,0));
+            //    p_anim.bones[boneIndex][0][1] = float(boneMatrix.Get(0,1));
+            //    p_anim.bones[boneIndex][0][2] = float(boneMatrix.Get(0,2));
+            //    p_anim.bones[boneIndex][0][3] = float(boneMatrix.Get(0,3));
+            //    p_anim.bones[boneIndex][1][0] = float(boneMatrix.Get(1,0));
+            //    p_anim.bones[boneIndex][1][1] = float(boneMatrix.Get(1,1));
+            //    p_anim.bones[boneIndex][1][2] = float(boneMatrix.Get(1,2));
+            //    p_anim.bones[boneIndex][1][3] = float(boneMatrix.Get(1,3));
+            //    p_anim.bones[boneIndex][2][0] = float(boneMatrix.Get(2,0));
+            //    p_anim.bones[boneIndex][2][1] = float(boneMatrix.Get(2,1));
+            //    p_anim.bones[boneIndex][2][2] = float(boneMatrix.Get(2,2));
+            //    p_anim.bones[boneIndex][2][3] = float(boneMatrix.Get(2,3));
+            //    p_anim.bones[boneIndex][3][0] = float(boneMatrix.Get(3,0));
+            //    p_anim.bones[boneIndex][3][1] = float(boneMatrix.Get(3,1));
+            //    p_anim.bones[boneIndex][3][2] = float(boneMatrix.Get(3,2));
+            //    p_anim.bones[boneIndex][3][3] = float(boneMatrix.Get(3,3));
+            //  
+            //}
+            //else if (lSkinningType == FbxSkin::eDualQuaternion)
+            //{
+            //    assert(0);
+            //    //ComputeDualQuaternionDeformation(pGlobalPosition, pMesh, pTime, pVertexArray, pPose);
+            //}
+            //else if (lSkinningType == FbxSkin::eBlend)
+            //{
+            //    assert(0);
+            //
+            //    //int lVertexCount = pMesh->GetControlPointsCount();
+            //    //
+            //    //FbxVector4* lVertexArrayLinear = new FbxVector4[lVertexCount];
+            //    //memcpy(lVertexArrayLinear, pMesh->GetControlPoints(), lVertexCount * sizeof(FbxVector4));
+            //    //
+            //    //FbxVector4* lVertexArrayDQ = new FbxVector4[lVertexCount];
+            //    //memcpy(lVertexArrayDQ, pMesh->GetControlPoints(), lVertexCount * sizeof(FbxVector4));
+            //    //
+            //    //ComputeLinearDeformation(pGlobalPosition, pMesh, pTime, lVertexArrayLinear, pPose);
+            //    //ComputeDualQuaternionDeformation(pGlobalPosition, pMesh, pTime, lVertexArrayDQ, pPose);
+            //    //
+            //    //// To blend the skinning according to the blend weights
+            //    //// Final vertex = DQSVertex * blend weight + LinearVertex * (1- blend weight)
+            //    //// DQSVertex: vertex that is deformed by dual quaternion skinning method;
+            //    //// LinearVertex: vertex that is deformed by classic linear skinning method;
+            //    //int lBlendWeightsCount = lSkinDeformer->GetControlPointIndicesCount();
+            //    //for (int lBWIndex = 0; lBWIndex < lBlendWeightsCount; ++lBWIndex)
+            //    //{
+            //    //    double lBlendWeight = lSkinDeformer->GetControlPointBlendWeights()[lBWIndex];
+            //    //    pVertexArray[lBWIndex] = lVertexArrayDQ[lBWIndex] * lBlendWeight + lVertexArrayLinear[lBWIndex] * (1 - lBlendWeight);
+            //    //}
+            //}
 
             int k, lIndexCount = lCluster->GetControlPointIndicesCount();
             int* lIndices = lCluster->GetControlPointIndices();
@@ -1885,7 +1990,7 @@ void Utility::FbxLoader::DisplayAnimation(FbxScene* pScene)
 
     if (!m_animStacks.empty())
     {
-        m_scene->SetCurrentAnimationStack(m_animStacks[2]);
+        m_scene->SetCurrentAnimationStack(m_animStacks[0]);
         m_scene->FillAnimStackNameArray(m_animStackNameArray);
     }
 

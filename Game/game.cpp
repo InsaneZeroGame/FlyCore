@@ -25,10 +25,12 @@ int main() {
 	director.AddComponent(entity0, glm::vec3(0.0f), glm::vec3(0.0));
 	director.Scale(entity0, glm::vec3(0.1f));
 
-	//auto entity1 = entity_manager.SpwanEntity();
-	//renderer->AddComponent(entity1, "C:\\Dev\\FlyCore\\Assets\\scene1.fbx");
-	//director.AddComponent(entity1, glm::vec3(0.0f), glm::vec3(0.0));
-	
+	auto entity1 = entity_manager.SpwanEntity();
+	renderer->AddComponent(entity1, "C:\\Dev\\FlyCore\\Assets\\scene1.fbx");
+	director.AddComponent(entity1, glm::vec3(0.0f), glm::vec3(0.0));
+	director.Scale(entity1, glm::vec3(50.0f,1.0f,50.0f));
+	director.Translate(entity1, glm::vec3(0.0f, -1.0f, 0.0f));
+
 	renderer->OnInit();
 	renderer->SetCamera(mainCamera);
 	window->SetRendererCallback(std::bind(&Renderer::D3D12Renderer::OnUpdate,renderer));
