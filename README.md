@@ -45,5 +45,8 @@
 >>9.IBL(Todo)
 
 
+>>10.Skeleton Animation
+
+
 >><img align="right" width="800" height="600" src="https://github.com/InsaneZeroGame/FlyCore/blob/master/readme1.png"> </br> 
 >><img align="right" width="800" height="600" src="https://github.com/InsaneZeroGame/FlyCore/blob/master/PCSS.png"> </br>  
