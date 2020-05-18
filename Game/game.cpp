@@ -12,7 +12,7 @@ int main() {
 	auto window = new Framework::Window({ 1920,1080,"The Borning Game" });
 	window->OnInit();
 
-	auto mainCamera = new Gameplay::BaseCamera(glm::vec3(10.01, 10.0, 2.0), glm::vec3(0.0f,0.0f,0.0F));
+	auto mainCamera = new Gameplay::BaseCamera(glm::vec3(10.01, 10.0, 12.0), glm::vec3(0.0f,0.0f,0.0F));
 
 	auto renderer = new Renderer::D3D12Renderer();
 	renderer->SetTargetWindow(window);
@@ -30,6 +30,12 @@ int main() {
 	director.AddComponent(entity1, glm::vec3(0.0f), glm::vec3(0.0));
 	director.Scale(entity1, glm::vec3(50.0f,1.0f,50.0f));
 	director.Translate(entity1, glm::vec3(0.0f, -1.0f, 0.0f));
+
+	auto entity2 = entity_manager.SpwanEntity();
+	renderer->AddComponent(entity2, "C:\\Dev\\FlyCore\\Assets\\cube.fbx");
+	director.AddComponent(entity2, glm::vec3(0.0f), glm::vec3(0.0));
+	director.Scale(entity2, glm::vec3(1.5f, 1.5f, 1.5f));
+	director.Translate(entity2, glm::vec3(0.0f, 2.0f, 0.0f));
 
 	renderer->OnInit();
 	renderer->SetCamera(mainCamera);

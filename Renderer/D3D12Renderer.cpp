@@ -82,7 +82,7 @@ void Renderer::D3D12Renderer::OnUpdate()
 		m_VSUniform->ResetBuffer();
 		m_mainCamera->UpdateCamera();
 
-		auto shadowMatrix = glm::lookAtLH(glm::vec3(0.01, 10.0f, 2.0), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		auto shadowMatrix = glm::lookAtLH(glm::vec3(30.01, 30.0f, 2.0), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
 
 
@@ -928,9 +928,9 @@ void Renderer::D3D12Renderer::InitPipelineState()
 	psoDesc.RTVFormats[1] = DXGI_FORMAT_UNKNOWN;
 	psoDesc.RTVFormats[2] = DXGI_FORMAT_UNKNOWN;
 	psoDesc.DepthStencilState.DepthEnable = true;
-	psoDesc.RasterizerState.DepthBias = 0;
-	psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_FRONT;
-	psoDesc.RasterizerState.SlopeScaledDepthBias = 5.5;
+	psoDesc.RasterizerState.DepthBias = 10;
+	psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
+	psoDesc.RasterizerState.SlopeScaledDepthBias =20.25;
 	m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_shadowPassPipelineState));
 
 

@@ -54,8 +54,8 @@ namespace Renderer
             D3D12_RESOURCE_STATE_DEPTH_WRITE
         }
     };
-    static LONG ShadowMapWidth = 800;
-    static LONG ShadowMapHeight = 600;
+    static LONG ShadowMapWidth = 1920;
+    static LONG ShadowMapHeight = 1080;
 
 
     static D3D12_RECT ShadowPassRect = 

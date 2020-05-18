@@ -35,7 +35,7 @@ PSInput main(float4 position : POSITION, float3 normal : NORMAL0,float2 tex_uv :
 	result.scenePositionView = mul(view, mul(modelMatrix,position));
 	result.position = mul(project, result.scenePositionView);
 	float4 shadowCoord = mul(shadowMatrix, mul(modelMatrix,position));
-	result.shadowUV = shadowCoord.xyz/shadowCoord.w;
+	result.shadowUV = shadowCoord;
 	result.normal = mul(view,mul(modelMatrix,float4(normal,0.0))).xyz;
 	result.uv = tex_uv;
 	return result;

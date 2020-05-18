@@ -131,7 +131,7 @@ namespace Renderer
 	{
 	public:
 		D3D12AnimBuffer(uint64_t p_actorCount):
-			D3D12UploadBuffer(p_actorCount * sizeof(Gameplay::SkeletonAnim))
+			D3D12UploadBuffer(p_actorCount * sizeof(glm::mat4x4) * 60)
 		{};
 		~D3D12AnimBuffer()
 		{};
@@ -140,7 +140,7 @@ namespace Renderer
 
 		__forceinline D3D12_GPU_VIRTUAL_ADDRESS GetActorAnimBufferLocation(uint64_t p_actorIndex)
 		{
-			static int skeletionAnimSize = sizeof(Gameplay::SkeletonAnim);
+			static int skeletionAnimSize = sizeof(glm::mat4x4) * 60;
 			return m_GpuVirtualAddress + p_actorIndex * skeletionAnimSize;
 		};
 

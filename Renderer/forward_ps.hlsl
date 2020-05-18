@@ -158,7 +158,7 @@ float PCF_Filter(float2 uv, float zEye, float filterRadiusUV)
 	for (int i = 0; i < PCF_SAMPLE_COUNT; ++i)
 	{
 		float2 offset = Poisson64[i] * filterRadiusUV;
-		sum += ShadowMap.SampleCmpLevelZero(ShadowSampler, uv + offset / float2(800.0f, 600.0f), zEye);
+		sum += ShadowMap.SampleCmpLevelZero(ShadowSampler, uv + offset / float2(1920, 1080), zEye);
 	}
 	return sum / PCF_SAMPLE_COUNT;
 }
@@ -289,10 +289,10 @@ MRT main(PSInput input) : SV_TARGET
 			diffuseDebug += colorStep;
 		}
 	}
-	float2 shadowCoord;
-	shadowCoord.x = input.shadowUV.x * 0.5 + 0.5;
-	shadowCoord.y = -input.shadowUV.y * 0.5 + 0.5;
-	float shadow = PCSS(float3(shadowCoord, input.shadowUV.z),input.scenePositionView.z);
+	float3 shadowCoord = input.shadowUV.xyz / input.shadowUV.w;
+	shadowCoord.x = shadowCoord.x * 0.5 + 0.5;
+	shadowCoord.y = -shadowCoord.y * 0.5 + 0.5;
+	float shadow = PCSS(float3(shadowCoord.xy, shadowCoord.z),input.scenePositionView.z);
 	//float shadow = ShadowMap.SampleCmpLevelZero(ShadowSampler, shadowCoord, input.shadowUV.z);
 	l_res.LightOut = float4(Lo,1.0) * shadow * materialColor;
 	//l_res.LightOut = diffuseDebug;
