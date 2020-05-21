@@ -53,7 +53,7 @@ void Framework::Window::OnInit()
         glfwTerminate();
         exit(EXIT_FAILURE);
     }
-
+    ImGui_ImplWin32_Init(GetWin32Window());
     //glfwSetKeyCallback(window, key_callback);
     glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     if (glfwRawMouseMotionSupported())

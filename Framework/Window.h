@@ -12,6 +12,9 @@
 #include <GLFW/glfw3.h>
 #include "IModule.h"
 #include <functional>
+#include "imgui.h"
+#include "imgui_impl_win32.h"
+
 
 namespace Framework
 {
