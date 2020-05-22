@@ -1,6 +1,7 @@
 #pragma once
 #include "Window.h"
 #include "../Gameplay/BaseCamera.h"
+#include "../Framework/UI.h"
 
 namespace Interface
 {
@@ -8,6 +9,8 @@ namespace Interface
 	{
 	public:
 		virtual void RenderScene() = 0;
+
+		virtual void LoadUI(UI::UISystem* p_system) = 0;
 
 		virtual void SetCamera(Gameplay::BaseCamera* p_camera) { m_mainCamera = p_camera; };
 

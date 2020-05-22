@@ -6,6 +6,7 @@
 #include "../Gameplay/Entity.h"
 #include "../Gameplay/Director.h"
 
+
 #define CAMERA_UNIFORM_ROOT_INDEX 0
 #define LIGHT_UAV_ROOT_INDEX 1
 #define LIGHT_BUFFER_ROOT_INDEX 2
@@ -37,7 +38,8 @@ Renderer::D3D12Renderer::D3D12Renderer():
 	m_isFirstFrame(true),
 	m_vertexOffsetInByte(0),
 	m_indexOffsetInByte(0),
-	m_animBuffer(nullptr)
+	m_animBuffer(nullptr),
+	m_ui(nullptr)
 {
 }
 
@@ -835,6 +837,12 @@ void Renderer::D3D12Renderer::CreateDefaultTexture()
 		D3D12_RESOURCE_STATE_COPY_DEST,
 		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 	l_graphicsContext.End(true);
+
+}
+
+void Renderer::D3D12Renderer::LoadUI(UI::UISystem* p_system)
+{
+	m_ui = static_cast<UI::D3D12UISystem*>(p_system);
 
 }
 

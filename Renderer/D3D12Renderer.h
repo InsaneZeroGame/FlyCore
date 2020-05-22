@@ -1,4 +1,5 @@
 #pragma once
+#include "stdafx.h"
 #include "../Framework/IModule.h"
 #include "../Framework/IRenderer.h"
 #include "D3D12Device.h"
@@ -12,6 +13,7 @@
 #include "../3dparty/include/glm/ext.hpp"
 #include "../Gameplay/System.h"
 #include "../Gameplay/RenderComponent.h"
+#include "D3D12UI.h"
 
 namespace Renderer {
 
@@ -66,7 +68,7 @@ namespace Renderer {
 		// Inherited via IRenderer
 		void RenderScene() override;
 
-
+		virtual void LoadUI(UI::UISystem* p_system) override;
 	private:
 		void InitSwapChain();
 
@@ -185,5 +187,9 @@ namespace Renderer {
 
 		D3D12AnimBuffer* m_animBuffer;
 
-	};
+		UI::D3D12UISystem* m_ui;
+
+		
+
+};
 };

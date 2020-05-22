@@ -12,10 +12,13 @@ int main() {
 	auto window = new Framework::Window({ 1920,1080,"The Borning Game" });
 	window->OnInit();
 
+	auto ui = new UI::D3D12UISystem(window);
+
 	auto mainCamera = new Gameplay::BaseCamera(glm::vec3(10.01, 10.0, 12.0), glm::vec3(0.0f,0.0f,0.0F));
 
 	auto renderer = new Renderer::D3D12Renderer();
 	renderer->SetTargetWindow(window);
+	renderer->LoadUI(ui);
 
 	auto& director = Gameplay::Director::GetDirector();
 
