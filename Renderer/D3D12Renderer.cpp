@@ -263,7 +263,7 @@ void Renderer::D3D12Renderer::OnUpdate()
 		l_graphicsContext.TransitRenderTargets({ "Light","Normal","Specular" }, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		//ShaderResourceToDepth.Transition.pResource = l_depthBuffer->GetResource();
 		//l_graphicsCmdList->ResourceBarrier(1, &ShaderResourceToDepth);
-
+		m_ui->RenderUI(l_graphicsCmdList);
 
 		l_graphicsCmdList->EndRenderPass();
 	}
@@ -842,7 +842,16 @@ void Renderer::D3D12Renderer::CreateDefaultTexture()
 
 void Renderer::D3D12Renderer::LoadUI(UI::UISystem* p_system)
 {
+
+	auto& g_descManager = D3D12DescManager::GetDescManager();
+	auto l_fontDescHandle = g_descManager.RequestDesc(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	m_ui = static_cast<UI::D3D12UISystem*>(p_system);
+	m_ui->Init(m_device,
+		Constants::SWAPCHAIN_BUFFER_COUNT,
+		Constants::SwapChainFormat,
+		g_descManager.GetHeap(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)->GetHeap(),
+		l_fontDescHandle->cpuHandle, 
+		l_fontDescHandle->gpuHandle);
 
 }
 
