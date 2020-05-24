@@ -84,7 +84,7 @@ void Renderer::D3D12Renderer::OnUpdate()
 		m_VSUniform->ResetBuffer();
 		m_mainCamera->UpdateCamera();
 
-		auto shadowMatrix = glm::lookAtLH(glm::vec3(30.01, 30.0f, 2.0), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		auto shadowMatrix = glm::lookAtLH(glm::vec3(10.01, 15.0f, 2.0), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
 
 
@@ -405,13 +405,13 @@ void Renderer::D3D12Renderer::SetCamera(Gameplay::BaseCamera* p_camera)
 		{1.0f,0.0f,1.0f,1.0f},
 
 	};
-	float step = 10.0f / 16;
+	float step = 10.0f / 25;
 
 	for (auto i = 0; i < 16; ++i)
 	{
 		for (auto j = 0; j < 16; ++j)
 		{
-			auto lightPosView = glm::vec4(15 * Utility::RandomFloat_11(), 6.0 * Utility::RandomFloat_01(), 15 * Utility::RandomFloat_11(), 1.0);
+			auto lightPosView = glm::vec4(25 * Utility::RandomFloat_11(), 6.0 * Utility::RandomFloat_01(), 25 * Utility::RandomFloat_11(), 1.0);
 			//auto lightPosView = m_uniformBuffer.m_view * glm::vec4(0, 0.5, 0, 1.0f);
 			l_lights[i * 16 + j].isActive = true;
 			l_lights[i * 16 + j].position[0] = lightPosView.x;
@@ -422,8 +422,8 @@ void Renderer::D3D12Renderer::SetCamera(Gameplay::BaseCamera* p_camera)
 			l_lights[i * 16 + j].color[1] = l_colors[rand() % 6].data[1];
 			l_lights[i * 16 + j].color[2] = l_colors[rand() % 6].data[2];
 			l_lights[i * 16 + j].color[3] = l_colors[rand() % 6].data[3];
-			l_lights[i * 16 + j].radius = 2.5;
-			l_lights[i * 16 + j].attenutation = Utility::RandomFloat_01() * 0.1f;
+			l_lights[i * 16 + j].radius = 8.0;
+			l_lights[i * 16 + j].attenutation = 3.0f;
 		}
 	}
 
@@ -873,7 +873,9 @@ void Renderer::D3D12Renderer::InitPipelineState()
 
 #if defined(_DEBUG)
     // Enable better shader debugging with the graphics debugging tools.
-    UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+    //UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+
+	UINT compileFlags = D3DCOMPILE_OPTIMIZATION_LEVEL3;
 #else
     UINT compileFlags = 0;
 #endif

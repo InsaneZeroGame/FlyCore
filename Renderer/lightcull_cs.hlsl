@@ -28,18 +28,18 @@ void main(
 	float zSliceNext = zSlice + zRangePerSlice;
 	uint groupIndexInCS = groupID.z * (GROUP_SIZE_X * GROUP_SIZE_Y) + groupID.y * GROUP_SIZE_X + groupID.x;
 	LightBuffer[groupIndexInCS].isActive[threadIndex] = false;
-	float2 tileScale = float2(GROUP_SIZE_X/2, GROUP_SIZE_X/2);
-	float2 tileBias = tileScale - groupID.xy;
+	float2 tileScale = float2(GROUP_SIZE_X, GROUP_SIZE_X);
+	float2 tileBias = groupID.xy * 2.0f + 1.0 - tileScale;
 
-	float4 c1 = float4(project._11 * tileScale.x, 0.0, tileBias.x, 0.0);
-	float4 c2 = float4(0.0, -project._22 * tileScale.y, tileBias.y, 0.0);
+	float4 c1 = float4(-project._11 * tileScale.x, 0.0, tileBias.x, 0.0);
+	float4 c2 = float4(0.0, -project._22 * tileScale.y, -tileBias.y, 0.0);
 	float4 c4 = float4(0.0, 0.0, 1.0, 0.0);
 	float4 frustumPlanes[6];
 
 	frustumPlanes[0] = c4 - c1; // 
-	frustumPlanes[1] = c1; // 
+	frustumPlanes[1] = c4 + c1; // 
 	frustumPlanes[2] = c4 - c2; // 
-	frustumPlanes[3] = c2; // 
+	frustumPlanes[3] = c4 + c2; // 
 	//
 	frustumPlanes[4] = float4(0.0, 0.0, 1.0, -zSlice);
 
@@ -59,9 +59,9 @@ void main(
 	if (light.isActive == 1)
 	{
 
-		[unroll] for (uint i = 0; i < 6; ++i) {
+		[unroll] for (uint i = 0; i < 4; ++i) {
 			float d = dot(frustumPlanes[i], mul(view , float4(light.pos)));
-			inFrustum = inFrustum && (d > -light.radius / light.attenutation);
+			inFrustum = inFrustum && (d > -light.radius);
 		}
 
 		LightBuffer[groupIndexInCS].isActive[threadIndex] = inFrustum;

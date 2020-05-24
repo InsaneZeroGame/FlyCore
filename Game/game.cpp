@@ -14,7 +14,7 @@ int main() {
 
 	auto ui = new UI::D3D12UISystem(window);
 
-	auto mainCamera = new Gameplay::BaseCamera(glm::vec3(10.01, 10.0, 12.0), glm::vec3(0.0f,0.0f,0.0F));
+	auto mainCamera = new Gameplay::BaseCamera(glm::vec3(10.01, 20.0, 12.0), glm::vec3(0.0f,0.0f,0.0F));
 
 	auto renderer = new Renderer::D3D12Renderer();
 	renderer->SetTargetWindow(window);

@@ -228,6 +228,9 @@ float3 fresnelSchlick(float cosTheta, float3 F0)
 }
 
 
+
+
+
 MRT main(PSInput input) : SV_TARGET
 {
 	float zNear = zNearFar.x;
@@ -247,7 +250,7 @@ MRT main(PSInput input) : SV_TARGET
 
 	float4 diffuseDebug = 0.0f;
 	MRT l_res;
-	float3 SceneViewPos = input.scenePositionView.xyz / input.scenePositionView.w;
+	float3 SceneViewPos = input.scenePositionView.xyz;
 
 	float3 N = normalize(input.normal);
 	float3 V = normalize(float3(0.0, 0.0, 0.0) - SceneViewPos);
@@ -266,27 +269,31 @@ MRT main(PSInput input) : SV_TARGET
 			float3 L = normalize(LightViewPos - SceneViewPos);
 			float3 H = normalize(L + V);
 			float distance = length(LightViewPos - SceneViewPos);
-			float attenuation = 1.0 / (distance * distance);
-			float3 radiance = PointLights[i].color.rgb * attenuation;
 
-			// cook-torrance brdf
-			float NDF = DistributionGGX(N, H, roughness);
-			float G = GeometrySmith(N, V, L, roughness);
-			float3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
+			[branch] if (distance < PointLights[i].radius) {
+				float attenuation = linstep(PointLights[i].radius, 0.0f, distance);
+				float3 radiance = PointLights[i].color.rgb* attenuation;
 
-			float3 kS = F;
-			float3 kD = 1.0 - kS;
-			kD *= 1.0 - metallic;
+				// cook-torrance brdf
+				float NDF = DistributionGGX(N, H, roughness);
+				float G = GeometrySmith(N, V, L, roughness);
+				float3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
 
-			float3 numerator = NDF * G * F;
-			float denominator = 4.0 * dot(N, V) * dot(N, L);
-			float3 specular = numerator / max(denominator, 0.001);
+				float3 kS = F;
+				float3 kD = 1.0 - kS;
+				kD *= 1.0 - metallic;
 
-			// add to outgoing radiance Lo
-			float NdotL = max(dot(N, L), 0.0);
-			Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+				float3 numerator = NDF * G * F;
+				float denominator = 4.0 * dot(N, V) * dot(N, L);
+				float3 specular = numerator / max(denominator, 0.001);
 
-			diffuseDebug += colorStep;
+				// add to outgoing radiance Lo
+				float NdotL = max(dot(N, L), 0.0);
+				Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+
+				diffuseDebug += colorStep;
+			}
+			
 		}
 	}
 	float3 shadowCoord = input.shadowUV.xyz / input.shadowUV.w;
