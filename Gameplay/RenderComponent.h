@@ -65,9 +65,16 @@ namespace Gameplay
 		uint64_t m_vertexOffset;
 
 		uint64_t m_indexOffset;
+		
+		void SetRoughness(const float& p_roughness);
 
+		__forceinline const float& GetRoughness() const
+		{
+			return m_roughness;
+		}
 	private:
 
+		float m_roughness;
 	};
 
 	

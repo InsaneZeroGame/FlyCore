@@ -50,7 +50,8 @@ Gameplay::Mesh::Mesh(
     m_indices(p_indices),
     m_anim(p_anim),
     m_vertexOffset(0),
-    m_indexOffset(0)
+    m_indexOffset(0),
+    m_roughness(0.0f)
 {
 }
 
@@ -61,8 +62,14 @@ Gameplay::Mesh::Mesh(
     m_indices(p_indices),
     m_vertexOffset(0),
     m_indexOffset(0),
-    m_anim(nullptr)
+    m_anim(nullptr),
+    m_roughness(0.0f)
 {
+}
+
+void Gameplay::Mesh::SetRoughness(const float& p_roughness)
+{
+    m_roughness = p_roughness;
 }
 
 Gameplay::Mesh::~Mesh()

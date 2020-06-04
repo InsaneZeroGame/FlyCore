@@ -405,6 +405,7 @@ void Utility::FbxLoader::DisplayMesh(FbxNode* pNode, FbxAMatrix* p_globalPos, Fb
     DisplayCache(lMesh);
     if (!hasAnim) delete l_anim;
     Gameplay::Mesh* l_mesh = new Gameplay::Mesh(std::move(l_vertices), std::move(l_indices), hasAnim ? l_anim : nullptr);
+    l_mesh->SetRoughness(0.5f);
     m_renderComponent->AddMesh(l_mesh);
 }
 

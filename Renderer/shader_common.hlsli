@@ -43,7 +43,7 @@ cbuffer CDataBuffer : register(b0)
 cbuffer PushConstants : register(b5)
 {
 	float4x4 model;
-	float4 materialColor;
+	float4 materialColor;//a channel for roughness
 }
 
 cbuffer AnimBuffer : register(b6)

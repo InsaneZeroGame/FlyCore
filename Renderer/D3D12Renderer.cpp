@@ -227,7 +227,9 @@ void Renderer::D3D12Renderer::OnUpdate()
 					l_graphicsCmdList->SetGraphicsRootConstantBufferView(COLOR_PASS_ANIM_ROOT_INDEX, m_animBuffer->GetActorAnimBufferLocation(l_animIndex));
 					l_animIndex++;
 				}
-				l_graphicsCmdList->SetGraphicsRoot32BitConstants(PUSH_CONSTANTS, 4, debugColor[9].data(), 16);
+				//Update Roughness
+				l_graphicsCmdList->SetGraphicsRoot32BitConstants(PUSH_CONSTANTS, 3, debugColor[9].data(), 16);
+				l_graphicsCmdList->SetGraphicsRoot32BitConstants(PUSH_CONSTANTS, 1, &l_mesh->GetRoughness(), 19);
 
 				l_graphicsCmdList->DrawIndexedInstanced(
 					static_cast<uint32_t>(l_mesh->m_indices.size()),

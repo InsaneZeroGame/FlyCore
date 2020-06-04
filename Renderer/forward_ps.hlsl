@@ -122,6 +122,7 @@ static const float2 Poisson64[64] = {
 	float2(0.933348, -0.62981),
 	float2(0.95294, 0.156896)
 };
+
 struct MRT
 {
 	float4 LightOut : COLOR0;
@@ -291,9 +292,9 @@ MRT main(PSInput input) : SV_TARGET
 				float NdotL = max(dot(N, L), 0.0);
 				Lo += (kD * albedo / PI + specular) * radiance * NdotL;
 
-				diffuseDebug += colorStep;
 			}
-			
+			diffuseDebug += colorStep;
+
 		}
 	}
 	float3 shadowCoord = input.shadowUV.xyz / input.shadowUV.w;
@@ -310,8 +311,8 @@ MRT main(PSInput input) : SV_TARGET
 	l_res.LightOut = pow(abs(l_res.LightOut), 1.0 / gamma);
 	//l_res.LightOut *= Alebdo.Sample(DefaultSampler, input.uv);
 	l_res.NormalOut = float4(input.normal,1.0f);
+	l_res.NormalOut.a = materialColor.a;
 	l_res.SpecularOut = float4(input.shadowUV.xy, 0.0f, 1.0f);
-	l_res.SpecularOut.a = input.scenePositionView.z;
 
 	//l_res.LightOut = float4(shadow, 0.0, 0.0, 1.0);
 	return l_res;
