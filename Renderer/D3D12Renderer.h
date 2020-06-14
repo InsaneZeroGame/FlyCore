@@ -111,9 +111,13 @@ namespace Renderer {
 
 		ID3D12PipelineState* m_quadPipelineState;
 
-		ID3D12RootSignature* m_computeRootSignature;
+		ID3D12RootSignature* m_lightCullRootSignature;
 
-		ID3D12PipelineState* m_computePipelineState;
+		ID3D12PipelineState* m_lightCullPipelineState;
+
+		ID3D12RootSignature* m_ssrRootSignature;
+
+		ID3D12PipelineState* m_ssrPipelineState;
 
 		ID3D12PipelineState* m_shadowPassPipelineState;
 
@@ -147,8 +151,10 @@ namespace Renderer {
 		
 		D3D12GraphicsCmd* m_graphicsCmd = nullptr;
 
-		D3D12GraphicsCmd* m_computeCmd = nullptr;
+		D3D12GraphicsCmd* m_lightCullCmd = nullptr;
 
+		D3D12GraphicsCmd* m_ssrCmd = nullptr;
+		
 		uint32_t m_frameIndex;
 
 		//CmdQueue for renderer,associate with swapchain

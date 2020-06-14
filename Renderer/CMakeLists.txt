@@ -10,6 +10,7 @@ set(ShaderSource
 "shadow_pass_ps.hlsl"
 "skybox_ps.hlsl"
 "skybox_vs.hlsl"
+"ssr_cs.hlsl"
 )
 
 set(vs
@@ -28,6 +29,7 @@ set(ps
 
 set(cs
     lightcull_cs.hlsl
+    ssr_cs.hlsl
 )
 
 set_property(SOURCE ${ps} PROPERTY VS_SHADER_ENTRYPOINT main)

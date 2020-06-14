@@ -21,14 +21,15 @@ Renderer::D3D12Renderer::D3D12Renderer():
     m_swapChain(nullptr),
     m_frameIndex(0),
 	m_graphicsCmd(new D3D12GraphicsCmd(Constants::SWAPCHAIN_BUFFER_COUNT)),
-	m_computeCmd(new D3D12GraphicsCmd(Constants::COMPUTE_CMD_COUNT)),
+	m_lightCullCmd(new D3D12GraphicsCmd(Constants::COMPUTE_CMD_COUNT)),
+	m_ssrCmd(new D3D12GraphicsCmd(Constants::COMPUTE_CMD_COUNT)),
 	m_VSUniform(new D3D12UploadBuffer(Utility::AlignTo256(sizeof(SceneUniformData)))),
 	m_renderCmdQueue(new D3D12CmdQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)),
     m_lightList(nullptr),
 	m_width(0),
 	m_height(0),
 	m_quadPipelineState(nullptr),
-	m_computePipelineState(nullptr),
+	m_lightCullPipelineState(nullptr),
 	m_graphicsPipelineState(nullptr),
 	m_vertexBuffer(new D3D12VertexBuffer(Constants::VERTEX_BUFFER_SIZE)),
 	m_indexBuffer(new D3D12IndexBuffer(Constants::VERTEX_BUFFER_SIZE)),
@@ -102,16 +103,16 @@ void Renderer::D3D12Renderer::OnUpdate()
 	//Light cull 
 	{
 		using namespace Constants;
-		m_computeCmd->Reset(0, m_computePipelineState);
-		ID3D12GraphicsCommandList* l_computeCmdList = *m_computeCmd;
-		l_computeCmdList->SetPipelineState(m_computePipelineState);
-		l_computeCmdList->SetComputeRootSignature(m_computeRootSignature);
+		m_lightCullCmd->Reset(0, m_lightCullPipelineState);
+		ID3D12GraphicsCommandList* l_computeCmdList = *m_lightCullCmd;
+		l_computeCmdList->SetPipelineState(m_lightCullPipelineState);
+		l_computeCmdList->SetComputeRootSignature(m_lightCullRootSignature);
 		l_computeCmdList->SetComputeRootConstantBufferView(CAMERA_UNIFORM_ROOT_INDEX, m_VSUniform->GetGpuVirtualAddress());
         l_computeCmdList->SetComputeRootUnorderedAccessView(LIGHT_UAV_ROOT_INDEX, m_lightList->GetGpuVirtualAddress());
 		l_computeCmdList->SetComputeRootShaderResourceView(LIGHT_BUFFER_ROOT_INDEX, m_lightBuffer->GetGpuVirtualAddress());
 		l_computeCmdList->Dispatch(WORK_GROUP_SIZE_X, WORK_GROUP_SIZE_Y, WORK_GROUP_SIZE_Z);
-		m_computeCmd->Close();
-		m_computeCmd->Flush(true);
+		m_lightCullCmd->Close();
+		m_lightCullCmd->Flush(true);
 	}
 	
 
@@ -242,6 +243,19 @@ void Renderer::D3D12Renderer::OnUpdate()
 		//Resource Trasition
 		ShaderResourceToDepth.Transition.pResource = l_shadowMap->GetResource();
 		l_graphicsCmdList->ResourceBarrier(1, &ShaderResourceToDepth);
+	}
+
+
+
+
+	{
+		m_ssrCmd->Reset(0);
+		ID3D12GraphicsCommandList* l_ssrCmd = *m_ssrCmd;
+		l_ssrCmd->SetPipelineState(m_ssrPipelineState);
+		l_ssrCmd->SetComputeRootSignature(m_ssrRootSignature);
+		l_ssrCmd->Dispatch(1, 1, 1);
+		m_ssrCmd->Close();
+		m_ssrCmd->Flush(true);
 	}
 
 	//Frame Quad
@@ -750,7 +764,7 @@ void Renderer::D3D12Renderer::InitRootSignature()
 
 	}
    
-	// Create Compute RS
+	// Create Light RS
 	{
 		CD3DX12_ROOT_SIGNATURE_DESC l_computeRootSignatureDesc;
 
@@ -781,7 +795,18 @@ void Renderer::D3D12Renderer::InitRootSignature()
 		ComPtr<ID3DBlob> signature;
 		ComPtr<ID3DBlob> error;
 		D3D12SerializeRootSignature(&l_computeRootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error);
-		m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_computeRootSignature));
+		m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_lightCullRootSignature));
+	}
+
+	//Create SSR RS
+	{
+		CD3DX12_ROOT_SIGNATURE_DESC l_ssrRootSignatureDesc = {};
+		l_ssrRootSignatureDesc.Init(0, nullptr, 0, nullptr);
+
+		ComPtr<ID3DBlob> signature;
+		ComPtr<ID3DBlob> error;
+		D3D12SerializeRootSignature(&l_ssrRootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error);
+		m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_ssrRootSignature));
 	}
 }
 
@@ -960,9 +985,16 @@ void Renderer::D3D12Renderer::InitPipelineState()
 		ComPtr<ID3DBlob> computeShader;
 		D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\lightcull_cs.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "cs_5_0", compileFlags, 0, &computeShader, nullptr);
 		D3D12_COMPUTE_PIPELINE_STATE_DESC l_computePipelineStateDesc = {};
-		l_computePipelineStateDesc.pRootSignature = m_computeRootSignature;
-		l_computePipelineStateDesc.CS = CD3DX12_SHADER_BYTECODE(computeShader.Get());;
-		m_device->CreateComputePipelineState(&l_computePipelineStateDesc, MY_IID_PPV_ARGS(&m_computePipelineState));
+		l_computePipelineStateDesc.pRootSignature = m_lightCullRootSignature;
+		l_computePipelineStateDesc.CS = CD3DX12_SHADER_BYTECODE(computeShader.Get());
+		m_device->CreateComputePipelineState(&l_computePipelineStateDesc, MY_IID_PPV_ARGS(&m_lightCullPipelineState));
+	
+		ComPtr<ID3DBlob> ssr_computeShader;
+		D3DCompileFromFile(L"C:\\Dev\\FlyCore\\Renderer\\ssr_cs.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "cs_5_0", compileFlags, 0, &ssr_computeShader, nullptr);
+		D3D12_COMPUTE_PIPELINE_STATE_DESC l_ssr_computeStateDesc = {};
+		l_ssr_computeStateDesc.CS = CD3DX12_SHADER_BYTECODE(ssr_computeShader.Get());
+		l_ssr_computeStateDesc.pRootSignature = m_ssrRootSignature;
+		m_device->CreateComputePipelineState(&l_ssr_computeStateDesc, MY_IID_PPV_ARGS(&m_ssrPipelineState));
 	}
 }
 
@@ -1115,7 +1147,7 @@ void Renderer::D3D12Renderer::OnDestory()
 	SAFE_DELETE(m_PSUniform);
     SAFE_DELETE(m_lightList);
 	SAFE_DELETE(m_renderCmdQueue);
-	SAFE_DELETE(m_computeCmd);
+	SAFE_DELETE(m_lightCullCmd);
 	SAFE_DELETE(m_graphicsCmd);
     SAFE_DELETE(m_vertexBuffer); 
     SAFE_DELETE(m_indexBuffer);
