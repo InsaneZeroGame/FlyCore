@@ -253,7 +253,10 @@ void Renderer::D3D12Renderer::OnUpdate()
 		ID3D12GraphicsCommandList* l_ssrCmd = *m_ssrCmd;
 		l_ssrCmd->SetPipelineState(m_ssrPipelineState);
 		l_ssrCmd->SetComputeRootSignature(m_ssrRootSignature);
-		l_ssrCmd->Dispatch(1, 1, 1);
+		ID3D12DescriptorHeap* l_srvHeap[] = { D3D12DescManager::GetDescManager().GetHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)->GetHeap() };
+		l_ssrCmd->SetDescriptorHeaps(1, l_srvHeap);
+		l_ssrCmd->SetComputeRootDescriptorTable(0, m_ssr->GetSRV()->gpuHandle);
+		l_ssrCmd->Dispatch(60, 135, 1);
 		m_ssrCmd->Close();
 		m_ssrCmd->Flush(true);
 	}
@@ -801,7 +804,25 @@ void Renderer::D3D12Renderer::InitRootSignature()
 	//Create SSR RS
 	{
 		CD3DX12_ROOT_SIGNATURE_DESC l_ssrRootSignatureDesc = {};
-		l_ssrRootSignatureDesc.Init(0, nullptr, 0, nullptr);
+
+		D3D12_DESCRIPTOR_RANGE l_range = {};
+		l_range.BaseShaderRegister = 0;
+		l_range.NumDescriptors = 1;
+		l_range.OffsetInDescriptorsFromTableStart = 0;
+		l_range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+		l_range.RegisterSpace = 0;
+
+		D3D12_ROOT_PARAMETER l_ssrOuput = {};
+		l_ssrOuput.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		l_ssrOuput.DescriptorTable.NumDescriptorRanges = 1;
+		l_ssrOuput.DescriptorTable.pDescriptorRanges = &l_range;
+
+		std::vector<D3D12_ROOT_PARAMETER> l_rootParameters =
+		{
+			l_ssrOuput
+		};
+
+		l_ssrRootSignatureDesc.Init(l_rootParameters.size(), l_rootParameters.data(), 0, nullptr);
 
 		ComPtr<ID3DBlob> signature;
 		ComPtr<ID3DBlob> error;
@@ -817,6 +838,8 @@ void Renderer::D3D12Renderer::CreateDefaultTexture()
 	Utility::AssetLoader::LoadTextureFromFile("C:\\Dev\\FlyCore\\Assets\\uv_texture.png", l_texture);
 	m_uploadBuffer->ResetBuffer();
 	m_defaultTexture = new D3D12Texture2D(l_texture.width, l_texture.height);
+	m_ssr = new D3D12Texture2D(l_texture.width, l_texture.height);
+
 	m_defaultTexture->SetName(L"Default Texture");
 	m_uploadBuffer->CopyData(l_texture.data, l_texture.size);
 	l_graphicsContext.Begin(nullptr);
