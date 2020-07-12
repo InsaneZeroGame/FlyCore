@@ -255,7 +255,7 @@ void Renderer::D3D12Renderer::OnUpdate()
 		l_ssrCmd->SetComputeRootSignature(m_ssrRootSignature);
 		ID3D12DescriptorHeap* l_srvHeap[] = { D3D12DescManager::GetDescManager().GetHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)->GetHeap() };
 		l_ssrCmd->SetDescriptorHeaps(1, l_srvHeap);
-		l_ssrCmd->SetComputeRootDescriptorTable(0, m_ssr->GetSRV()->gpuHandle);
+		l_ssrCmd->SetComputeRootDescriptorTable(0, l_graphicsContext.GetRenderTarget("SSR")->GetSRV()->gpuHandle);
 		l_ssrCmd->Dispatch(60, 135, 1);
 		m_ssrCmd->Close();
 		m_ssrCmd->Flush(true);
@@ -263,7 +263,7 @@ void Renderer::D3D12Renderer::OnUpdate()
 
 	//Frame Quad
 	{
-		l_graphicsContext.TransitRenderTargets({ "Light","Normal","Specular" }, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		l_graphicsContext.TransitRenderTargets({ "Light","Normal","Specular","SSR" }, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 		//DepthToShaderResource.Transition.pResource = l_depthBuffer->GetResource();
 		//l_graphicsCmdList->ResourceBarrier(1, &DepthToShaderResource);
 		//Deferred Pass
@@ -279,7 +279,7 @@ void Renderer::D3D12Renderer::OnUpdate()
 		l_graphicsCmdList->SetDescriptorHeaps(1, l_srvHeap);
 		l_graphicsCmdList->SetGraphicsRootDescriptorTable(FINAL_OUTPUT_TEX_ROOT_INDEX, l_graphicsContext.GetRenderTarget("Light")->GetSRV()->gpuHandle);
 		l_graphicsCmdList->DrawIndexedInstanced(static_cast<uint32_t>(m_frameQuad.m_quadMesh.m_indices.size()), 1, static_cast<uint32_t>(m_frameQuad.m_quadIndexOffset), static_cast<uint32_t>(m_frameQuad.m_quadVertexOffset), 0);
-		l_graphicsContext.TransitRenderTargets({ "Light","Normal","Specular" }, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		l_graphicsContext.TransitRenderTargets({ "Light","Normal","Specular","SSR" }, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		//ShaderResourceToDepth.Transition.pResource = l_depthBuffer->GetResource();
 		//l_graphicsCmdList->ResourceBarrier(1, &ShaderResourceToDepth);
 		m_ui->RenderUI(l_graphicsCmdList);
@@ -372,6 +372,7 @@ void Renderer::D3D12Renderer::InitGraphicsContext()
 	l_context.AddRenderTargets("Light", m_width, m_height, nullptr, DXGI_FORMAT::DXGI_FORMAT_R10G10B10A2_UNORM);
 	l_context.AddRenderTargets("Normal", m_width, m_height, nullptr, DXGI_FORMAT::DXGI_FORMAT_R16G16B16A16_FLOAT);
 	l_context.AddRenderTargets("Specular", m_width, m_height, nullptr, DXGI_FORMAT::DXGI_FORMAT_R16G16B16A16_FLOAT);
+	l_context.AddRenderTargets("SSR", m_width, m_height, nullptr, DXGI_FORMAT::DXGI_FORMAT_R16G16B16A16_FLOAT);
 	l_context.AddDepthBuffer("DepthBuffer", m_width, m_height);
 	l_context.AddDepthBuffer("ShadowMap", ShadowMapWidth, ShadowMapHeight);
 
@@ -744,7 +745,8 @@ void Renderer::D3D12Renderer::InitRootSignature()
 		D3D12_DESCRIPTOR_RANGE l_range = {};
 		l_range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 		//+1 is for the depth buffer that used in screen space related tech.
-		l_range.NumDescriptors = static_cast<uint32_t>(m_clusterForwardPass.mrt.size() + 1);
+		//+1 is for ssr output from compute shader.
+		l_range.NumDescriptors = static_cast<uint32_t>(m_clusterForwardPass.mrt.size() + 1 + 1);
 		l_range.BaseShaderRegister = 0;
 		l_range.RegisterSpace = 0;
 		l_range.OffsetInDescriptorsFromTableStart = 0;
@@ -838,7 +840,7 @@ void Renderer::D3D12Renderer::CreateDefaultTexture()
 	Utility::AssetLoader::LoadTextureFromFile("C:\\Dev\\FlyCore\\Assets\\uv_texture.png", l_texture);
 	m_uploadBuffer->ResetBuffer();
 	m_defaultTexture = new D3D12Texture2D(l_texture.width, l_texture.height);
-	m_ssr = new D3D12Texture2D(l_texture.width, l_texture.height);
+	//m_ssr = new D3D12Texture2D(l_texture.width, l_texture.height);
 
 	m_defaultTexture->SetName(L"Default Texture");
 	m_uploadBuffer->CopyData(l_texture.data, l_texture.size);

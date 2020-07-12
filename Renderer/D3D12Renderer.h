@@ -184,7 +184,7 @@ namespace Renderer {
 
 		D3D12Texture2D* m_defaultTexture;
 
-		D3D12Texture2D* m_ssr;
+		//D3D12Texture2D* m_ssr;
 
 		D3D12TextureCube* m_skyBox;
 
