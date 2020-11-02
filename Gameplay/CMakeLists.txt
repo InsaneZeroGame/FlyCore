@@ -1,4 +1,5 @@
 file(GLOB_RECURSE source_files *.h *.cpp)
 add_library(Gameplay STATIC ${source_files})
 target_link_libraries(Gameplay Framework Utility)
+set_target_properties(Gameplay PROPERTIES COTIRE_CXX_PREFIX_HEADER_INIT "stdafx.h")
 cotire(Gameplay)
